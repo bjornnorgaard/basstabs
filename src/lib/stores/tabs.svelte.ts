@@ -1,0 +1,83 @@
+import { browser } from '$app/environment';
+import { DEFAULT_TUNING_ID } from '$lib/tab/tuning';
+
+export interface BassTab {
+	id: string;
+	title: string;
+	artist: string;
+	tuningId: string;
+	source: string;
+	createdAt: number;
+	updatedAt: number;
+}
+
+const STORAGE_KEY = 'basstabs:tabs';
+
+function load(): BassTab[] {
+	if (!browser) return [];
+	try {
+		const raw = localStorage.getItem(STORAGE_KEY);
+		const parsed = raw ? JSON.parse(raw) : [];
+		return Array.isArray(parsed) ? parsed : [];
+	} catch {
+		return [];
+	}
+}
+
+class TabStore {
+	tabs = $state<BassTab[]>(load());
+
+	sorted = $derived([...this.tabs].sort((a, b) => b.updatedAt - a.updatedAt));
+
+	constructor() {
+		if (!browser) return;
+		$effect.root(() => {
+			$effect(() => {
+				localStorage.setItem(STORAGE_KEY, JSON.stringify(this.tabs));
+			});
+		});
+		// Keep multiple open windows in sync.
+		window.addEventListener('storage', (e) => {
+			if (e.key === STORAGE_KEY) this.tabs = load();
+		});
+	}
+
+	get(id: string): BassTab | undefined {
+		return this.tabs.find((t) => t.id === id);
+	}
+
+	create(init: Partial<Omit<BassTab, 'id' | 'createdAt' | 'updatedAt'>> = {}): BassTab {
+		const now = Date.now();
+		const tab: BassTab = {
+			id: crypto.randomUUID(),
+			title: 'Untitled tab',
+			artist: '',
+			tuningId: DEFAULT_TUNING_ID,
+			source: '',
+			...init,
+			createdAt: now,
+			updatedAt: now
+		};
+		this.tabs.push(tab);
+		return tab;
+	}
+
+	update(id: string, changes: Partial<Omit<BassTab, 'id' | 'createdAt'>>) {
+		const tab = this.get(id);
+		if (!tab) return;
+		Object.assign(tab, changes, { updatedAt: Date.now() });
+	}
+
+	duplicate(id: string): BassTab | undefined {
+		const tab = this.get(id);
+		if (!tab) return;
+		const { title, artist, tuningId, source } = tab;
+		return this.create({ title: `${title} (copy)`, artist, tuningId, source });
+	}
+
+	remove(id: string) {
+		this.tabs = this.tabs.filter((t) => t.id !== id);
+	}
+}
+
+export const tabStore = new TabStore();

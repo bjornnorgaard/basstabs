@@ -1,0 +1,19 @@
+# DRAFT — the operator's custom onboarding runbook will review and replace
+# this once hostnames, secrets, and Postgres wiring (if any) are decided.
+# webapp.yml pins image.tag here after each image build on main.
+# The tag must stay double-quoted: pin-image-tag.sh only matches tag: "...".
+services:
+  web:
+    image:
+      tag: "initial"
+    ports:
+      - name: http
+        containerPort: 3000
+        servicePort: 80
+        visibility: cluster # placeholder — operator decides internet vs cluster
+    probes:
+      port: http
+      liveness:
+        path: /healthz
+      readiness:
+        path: /readyz

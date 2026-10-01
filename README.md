@@ -1,4 +1,6 @@
-# basstabs
+# basstabs by bear
+
+Lives at [basstabs.bybear.dk](https://basstabs.bybear.dk).
 
 Given input syntax
 
@@ -13,4 +15,60 @@ G|--------|--------|
 D|--------|--------|
 A|----2-2-|------2-|
 E|0-0-----|0-0-3---|
+```
+
+## Syntax
+
+| Input    | Meaning                                           |
+| -------- | ------------------------------------------------- |
+| `E3`     | Fret 3 on the E string (string names ignore case) |
+| `5`      | Fret 5 on the same string as the previous note    |
+| `\|`     | Bar line, which ends the current measure          |
+| new line | Starts a new row of tab                           |
+
+Each note gets its own column. Two-digit frets make their column wider.
+Supported tunings are 4-string (EADG), 5-string (BEADG) and 6-string (BEADGC).
+
+## App
+
+Built with SvelteKit and Skeleton UI (`vintage` theme, with light and dark mode).
+Tabs are saved in the browser's `localStorage`. You can create, search, duplicate
+and delete tabs, copy them to the clipboard, or download them as `.txt`.
+
+- Parser: `src/lib/tab/parser.ts`. New indicators go in the `TabEvent` union.
+- Renderer: `src/lib/tab/render.ts`
+
+```sh
+npm install
+npm run dev      # start the dev server
+npm test         # run the parser/renderer unit tests
+npm run build    # build a static site into build/
+```
+
+## Container
+
+The image is a static build served by `nginx-unprivileged`, so there is no Node
+runtime. It idles at a few MiB of RAM.
+
+- Listens on port **3000** and runs as UID 101. It also works with any non-root
+  `runAsUser` and `readOnlyRootFilesystem: true`, as long as `/tmp` is a
+  writable `emptyDir`.
+- `GET /healthz` (liveness) and `GET /readyz` (readiness) return `200 ok` without
+  authentication.
+- `/_app/immutable/*` is cached for a year. Every other path gets `no-cache` and
+  falls back to the app (`200.html`).
+
+## Deploy (Mimir)
+
+- `.github/workflows/webapp.yml`: pull requests are built and tested only. On `main`,
+  CI builds and tests, pushes `ghcr.io/bjornnorgaard/basstabs/webapp:<yy.mm.dd-HH.MM-sha>`,
+  and pins that tag into `deploy/mimir/services.test.yaml` (service key `web`).
+- `.github/workflows/production.yml`: run it manually to copy the test tag into
+  `deploy/mimir/services.prod.yaml`. It never runs automatically.
+- `deploy/` is excluded from Prettier because the pin script requires
+  `tag: "..."` in double quotes.
+
+```sh
+docker build -t basstabs .
+docker run --rm -p 3000:3000 basstabs
 ```

@@ -1,0 +1,25 @@
+name: Production
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  pin:
+    name: Pin production to test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    environment:
+      name: Production
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - name: Copy test image tags onto production
+        run: bash .github/scripts/copy-test-tags-to-production.sh web

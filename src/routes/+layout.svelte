@@ -1,0 +1,58 @@
+<script lang="ts">
+	import './layout.css';
+	import favicon from '$lib/assets/favicon.svg';
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import { AppBar, Toast } from '@skeletonlabs/skeleton-svelte';
+	import Plus from '@lucide/svelte/icons/plus';
+	import Brand from '$lib/components/Brand.svelte';
+	import ModeToggle from '$lib/components/ModeToggle.svelte';
+	import { tabStore } from '$lib/stores/tabs.svelte';
+	import { toaster } from '$lib/toaster';
+
+	let { children } = $props();
+
+	function newTab() {
+		const tab = tabStore.create();
+		goto(resolve('/tab/[id]', { id: tab.id }));
+	}
+</script>
+
+<svelte:head>
+	<link rel="icon" href={favicon} />
+	<title>basstabs by bear</title>
+</svelte:head>
+
+<div class="flex min-h-screen flex-col">
+	<AppBar
+		class="sticky top-0 z-10 border-b border-surface-200-800 bg-surface-50-950/80 backdrop-blur"
+	>
+		<AppBar.Toolbar class="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4">
+			<AppBar.Lead>
+				<Brand />
+			</AppBar.Lead>
+			<AppBar.Trail class="flex items-center gap-2">
+				<button type="button" class="btn preset-filled-primary-500" onclick={newTab}>
+					<Plus class="size-4" /> New tab
+				</button>
+				<ModeToggle />
+			</AppBar.Trail>
+		</AppBar.Toolbar>
+	</AppBar>
+
+	<main class="mx-auto w-full max-w-7xl flex-1 p-4 md:p-6">
+		{@render children()}
+	</main>
+</div>
+
+<Toast.Group {toaster}>
+	{#snippet children(toast)}
+		<Toast {toast}>
+			<Toast.Message>
+				<Toast.Title>{toast.title}</Toast.Title>
+				{#if toast.description}<Toast.Description>{toast.description}</Toast.Description>{/if}
+			</Toast.Message>
+			<Toast.CloseTrigger />
+		</Toast>
+	{/snippet}
+</Toast.Group>
