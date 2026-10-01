@@ -26,7 +26,8 @@ E|0-0-----|0-0-3---|
 | `\|`     | Bar line, which ends the current measure          |
 | new line | Starts a new row of tab                           |
 
-Each note gets its own column. Two-digit frets make their column wider.
+Each note gets its own column, and spaces between notes are optional. For
+example, `A2E320` means `A2 E3 2 0`. Two-digit frets make their column wider.
 Supported tunings are 4-string (EADG), 5-string (BEADG) and 6-string (BEADGC).
 
 ## App

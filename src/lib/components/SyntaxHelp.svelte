@@ -33,6 +33,7 @@
 	</div>
 	<p class="mt-3 opacity-75">
 		Example: <code>E0 0 A2 2 | E0 0 3 A2 |</code>. String names are case-insensitive and every note
-		gets its own column.
+		gets its own column. Notes can be adjacent, too: <code>A2E320</code> means
+		<code>A2 E3 2 0</code>.
 	</p>
 </details>

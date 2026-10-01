@@ -11,6 +11,7 @@
 	import Trash from '@lucide/svelte/icons/trash';
 	import SyntaxHelp from '$lib/components/SyntaxHelp.svelte';
 	import TabPreview from '$lib/components/TabPreview.svelte';
+	import { formatErrorReport } from '$lib/error-report';
 	import { tabStore } from '$lib/stores/tabs.svelte';
 	import type { ParseError } from '$lib/tab/parser';
 	import { renderTab } from '$lib/tab/render';
@@ -61,6 +62,36 @@
 		try {
 			await navigator.clipboard.writeText(result.text);
 			toaster.success({ title: 'Tab copied to clipboard' });
+		} catch {
+			toaster.error({ title: 'Could not access the clipboard' });
+		}
+	}
+
+	async function copyErrorReport(errors = result.errors) {
+		if (!tab || errors.length === 0) return;
+		const report = formatErrorReport({
+			title: 'Shorthand parsing error',
+			message: `${errors.length} parsing ${errors.length === 1 ? 'error' : 'errors'} found.`,
+			details: {
+				tabId: tab.id,
+				tabTitle: tab.title,
+				artist: tab.artist,
+				tuning: tuning.label,
+				tuningId: tuning.id,
+				strings: tuning.strings,
+				source: tab.source,
+				renderedOutput: result.text,
+				errors: errors.map(({ line, column, length, message }) => ({
+					line,
+					column,
+					length,
+					message
+				}))
+			}
+		});
+		try {
+			await navigator.clipboard.writeText(report);
+			toaster.success({ title: 'Error report copied to clipboard' });
 		} catch {
 			toaster.error({ title: 'Could not access the clipboard' });
 		}
@@ -221,22 +252,41 @@
 					bind:value={() => tab.source, (v) => set('source', v)}></textarea>
 
 				{#if result.errors.length > 0}
-					<ul class="space-y-1 card preset-tonal-error p-3 text-sm" aria-live="polite">
-						{#each result.errors as error (`${error.line}:${error.column}`)}
-							<li>
-								<button
-									type="button"
-									class="flex w-full items-start gap-2 text-left hover:underline"
-									onclick={() => selectError(error)}
-								>
-									<CircleAlert class="mt-0.5 size-4 shrink-0" />
-									<span
-										><strong>Line {error.line}, col {error.column}:</strong> {error.message}</span
+					<div class="space-y-2 card preset-tonal-error p-3 text-sm" aria-live="polite">
+						<ul class="space-y-1">
+							{#each result.errors as error (`${error.line}:${error.column}`)}
+								<li class="flex items-start justify-between gap-2">
+									<button
+										type="button"
+										class="flex items-start gap-2 text-left hover:underline"
+										onclick={() => selectError(error)}
 									>
-								</button>
-							</li>
-						{/each}
-					</ul>
+										<CircleAlert class="mt-0.5 size-4 shrink-0" />
+										<span
+											><strong>Line {error.line}, col {error.column}:</strong> {error.message}</span
+										>
+									</button>
+									<button
+										type="button"
+										class="btn shrink-0 preset-tonal btn-sm"
+										aria-label="Copy error report for line {error.line}, column {error.column}"
+										onclick={() => copyErrorReport([error])}
+									>
+										<Copy class="size-4" /> Copy error
+									</button>
+								</li>
+							{/each}
+						</ul>
+						{#if result.errors.length > 1}
+							<button
+								type="button"
+								class="btn preset-tonal btn-sm"
+								onclick={() => copyErrorReport()}
+							>
+								<Copy class="size-4" /> Copy all errors
+							</button>
+						{/if}
+					</div>
 				{/if}
 
 				<SyntaxHelp {tuning} />

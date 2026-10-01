@@ -28,6 +28,32 @@ describe('renderTab', () => {
 		);
 	});
 
+	it('parses adjacent notes without requiring spaces between columns', () => {
+		const { systems, errors } = parse('A2E320', bass4);
+
+		expect(errors).toEqual([]);
+		expect(systems[0].measures[0].events).toEqual([
+			{ kind: 'note', string: 1, fret: 2 },
+			{ kind: 'note', string: 0, fret: 3 },
+			{ kind: 'note', string: 0, fret: 2 },
+			{ kind: 'note', string: 0, fret: 0 }
+		]);
+	});
+
+	it('accepts the complete shorthand reported by the user', () => {
+		const source = `|E0 0 A2 2 |E0 0 3 A2|E0 0 A2 2 |E0 0 3 A2|E0 0 A2 2 |E0 0 3 A2|E3 3 3 3 |A2E320    |
+
+|E0 0 0 0 |A3 3 2 2 |E0 0 0 0 |A3 3 2 2 |
+
+|E0 0 3 A2|E0 0 3 A2|A3 3 3 3 |A2E320    |
+
+|E0 0 3 A2|E0 0 3 A2|A3 3 3 3 |A2E320    |
+
+|E0 0 3 A2|E0 0 3 A2|E0 0 3 A2|E0 0 3 A2|E0 0 3 A2|E0 0 3 A2|E0 0 3 A2|E0 0 3 A2|`;
+
+		expect(parse(source, bass4).errors).toEqual([]);
+	});
+
 	it('widens columns for two-digit frets', () => {
 		expect(renderTab('G12 D10 9 |', bass4).text.split('\n')).toEqual([
 			'G|12------|',

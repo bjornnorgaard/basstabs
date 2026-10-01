@@ -58,43 +58,59 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 			events = [];
 		};
 
-		const tokenRe = /\||[^\s|]+/g;
+		// A 3+ digit run after a string prefix is a single-digit note followed by frets.
+		const tokenRe = /\||[A-Za-z]\d(?=\d{2})|[A-Za-z]\d+|\d+|[^\s|]+/g;
 		let match: RegExpExecArray | null;
+		let splitFollowingDigits = false;
+		let previousTokenEnd = -1;
 		while ((match = tokenRe.exec(lineText)) !== null) {
-			const token = match[0];
-			const position = { line: lineIdx + 1, column: match.index + 1, length: token.length };
+			const matchedToken = match[0];
+			const adjacentDigits =
+				/^\d+$/.test(matchedToken) && splitFollowingDigits && match.index === previousTokenEnd;
+			const tokens = adjacentDigits ? [...matchedToken] : [matchedToken];
+			splitFollowingDigits =
+				/^[A-Za-z]\d$/.test(matchedToken) && /^\d{2}/.test(lineText.slice(tokenRe.lastIndex));
+			previousTokenEnd = tokenRe.lastIndex;
 
-			if (token === '|') {
-				closeMeasure();
-				continue;
-			}
+			for (const [partIndex, token] of tokens.entries()) {
+				const position = {
+					line: lineIdx + 1,
+					column: match.index + partIndex + 1,
+					length: token.length
+				};
 
-			const note = NOTE_PATTERN.exec(token);
-			if (!note) {
-				errors.push({ ...position, message: `Unrecognised token "${token}"` });
-				continue;
-			}
+				if (token === '|') {
+					closeMeasure();
+					continue;
+				}
 
-			const [, letter, fretText] = note;
-			if (letter) {
-				const idx = stringIndex.get(letter.toUpperCase());
-				if (idx === undefined) {
+				const note = NOTE_PATTERN.exec(token);
+				if (!note) {
+					errors.push({ ...position, message: `Unrecognised token "${token}"` });
+					continue;
+				}
+
+				const [, letter, fretText] = note;
+				if (letter) {
+					const idx = stringIndex.get(letter.toUpperCase());
+					if (idx === undefined) {
+						errors.push({
+							...position,
+							message: `Unknown string "${letter}" (tuning has ${tuning.strings.join(', ')})`
+						});
+						continue;
+					}
+					currentString = idx;
+				} else if (currentString === undefined) {
 					errors.push({
 						...position,
-						message: `Unknown string "${letter}" (tuning has ${tuning.strings.join(', ')})`
+						message: `Fret "${fretText}" has no string – prefix it with a string name, e.g. ${tuning.strings[0]}${fretText}`
 					});
 					continue;
 				}
-				currentString = idx;
-			} else if (currentString === undefined) {
-				errors.push({
-					...position,
-					message: `Fret "${fretText}" has no string – prefix it with a string name, e.g. ${tuning.strings[0]}${fretText}`
-				});
-				continue;
-			}
 
-			events.push({ kind: 'note', string: currentString, fret: Number(fretText) });
+				events.push({ kind: 'note', string: currentString, fret: Number(fretText) });
+			}
 		}
 
 		closeMeasure();
