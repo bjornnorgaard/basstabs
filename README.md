@@ -49,6 +49,26 @@ Headings and annotations are displayed in previews, copied tabs, and `.txt`
 downloads. Both markers are recognized only at the start of their own line;
 inline notes and section repeats are not yet supported.
 
+## Playback
+
+The tab view can play what you wrote as a sanity check. Use **Play all**, or hover
+a section heading, row or bar and click it to play just that part. Shift+click
+loops it; the loop button makes looping the default. The note currently sounding
+is highlighted.
+
+There is no rhythm in the syntax yet, so every bar lasts the same time (4 beats at
+the chosen BPM) and is split evenly between its columns. Joined notes like `E320`
+share one column's slot. Section headings and annotations are not played.
+
+The **Sound design** page (`/sound`, the sliders icon in the header) shapes the
+synthesised bass app-wide: exciter, Karplus–Strong string model (damping, decay,
+stiffness, pickup), sine layer, drive, amp envelope, bus EQ and compressor, and
+humanising. It has a test riff (written in the shorthand) to play once or loop at
+any BPM, single test notes, and an A/B switch against the defaults. Changes apply
+live and are saved in the browser. Settings can be copied, downloaded or pasted as
+JSON; to make a sound the default, paste its values into `DEFAULT_SOUND` in
+`src/lib/audio/sound.ts`.
+
 ## App
 
 Built with SvelteKit and Skeleton UI (`vintage` theme, with light and dark mode).
@@ -57,7 +77,11 @@ and delete tabs, copy them to the clipboard, download them as `.txt`, or share
 them as a link.
 
 - Parser: `src/lib/tab/parser.ts`. New indicators go in the `TabEvent` union.
-- Renderer: `src/lib/tab/render.ts`
+- Renderer: `src/lib/tab/render.ts`. `layoutBlocks` records where every note and bar
+  lands in the text, which playback uses for highlighting.
+- Playback: `src/lib/tab/playback.ts` (timing), `src/lib/audio/bass.ts` (synth),
+  `src/lib/audio/sound.ts` (settings) and `src/lib/audio/player.svelte.ts` (Web Audio
+  scheduling). No samples or libraries.
 - Share links: `src/lib/tab/share.ts`
 - Site metadata (name, description, URL, social preview image): `src/lib/site.ts`
 

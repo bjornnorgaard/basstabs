@@ -5,6 +5,7 @@
 	import { site } from '$lib/site';
 	import { AppBar, Toast } from '@skeletonlabs/skeleton-svelte';
 	import Plus from '@lucide/svelte/icons/plus';
+	import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
 	import Brand from '$lib/components/Brand.svelte';
 	import ModeToggle from '$lib/components/ModeToggle.svelte';
 	import { tabStore } from '$lib/stores/tabs.svelte';
@@ -34,6 +35,14 @@
 				<Brand />
 			</AppBar.Lead>
 			<AppBar.Trail class="flex items-center gap-2">
+				<a
+					href={resolve('/sound')}
+					class="btn-icon hover:preset-tonal"
+					title="Sound design"
+					aria-label="Sound design"
+				>
+					<SlidersHorizontal class="size-5" />
+				</a>
 				<button type="button" class="btn preset-filled-primary-500" onclick={newTab}>
 					<Plus class="size-4" /> New tab
 				</button>

@@ -11,7 +11,7 @@
 	import Share from '@lucide/svelte/icons/share-2';
 	import Trash from '@lucide/svelte/icons/trash';
 	import SyntaxHelp from '$lib/components/SyntaxHelp.svelte';
-	import TabPreview from '$lib/components/TabPreview.svelte';
+	import PlayableTab from '$lib/components/PlayableTab.svelte';
 	import { formatErrorReport } from '$lib/error-report';
 	import { tabStore } from '$lib/stores/tabs.svelte';
 	import type { ParseError } from '$lib/tab/parser';
@@ -22,7 +22,7 @@
 
 	const tab = $derived(tabStore.get(page.params.id ?? ''));
 	const tuning = $derived(getTuning(tab?.tuningId));
-	const result = $derived(tab ? renderTab(tab.source, tuning) : { text: '', errors: [] });
+	const result = $derived(renderTab(tab?.source ?? '', tuning));
 
 	let textarea = $state<HTMLTextAreaElement>();
 
@@ -297,8 +297,9 @@
 
 			<section class="space-y-3">
 				<h2 class="h5">Tab</h2>
-				<TabPreview
-					text={result.text}
+				<PlayableTab
+					layout={result.layout}
+					{tuning}
 					placeholder="Start typing shorthand to see your tab here."
 					class="min-h-64"
 				/>

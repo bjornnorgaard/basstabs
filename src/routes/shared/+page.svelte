@@ -6,7 +6,7 @@
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import Copy from '@lucide/svelte/icons/copy';
 	import Save from '@lucide/svelte/icons/save';
-	import TabPreview from '$lib/components/TabPreview.svelte';
+	import PlayableTab from '$lib/components/PlayableTab.svelte';
 	import { tabStore } from '$lib/stores/tabs.svelte';
 	import { renderTab } from '$lib/tab/render';
 	import { decodeSharedTab, payloadFromHash } from '$lib/tab/share';
@@ -15,7 +15,7 @@
 
 	const shared = $derived(decodeSharedTab(payloadFromHash(page.url.hash)));
 	const tuning = $derived(getTuning(shared?.tuningId));
-	const result = $derived(shared ? renderTab(shared.source, tuning) : { text: '', errors: [] });
+	const result = $derived(renderTab(shared?.source ?? '', tuning));
 
 	function save() {
 		if (!shared) return;
@@ -75,6 +75,11 @@
 			</p>
 		</header>
 
-		<TabPreview text={result.text} placeholder="This shared tab is empty." class="min-h-64" />
+		<PlayableTab
+			layout={result.layout}
+			{tuning}
+			placeholder="This shared tab is empty."
+			class="min-h-64"
+		/>
 	</div>
 {/if}
