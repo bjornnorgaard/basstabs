@@ -1,4 +1,3 @@
-import favicon from '$lib/assets/favicon.svg';
 import { site } from '$lib/site';
 
 export const prerender = true;
@@ -15,7 +14,7 @@ export function GET() {
 		background_color: site.themeColor.light,
 		theme_color: site.themeColor.light,
 		categories: ['music', 'utilities', 'productivity'],
-		icons: [{ src: favicon, sizes: 'any', type: 'image/svg+xml', purpose: 'any' }]
+		icons: [{ src: site.icon, sizes: 'any', type: 'image/svg+xml', purpose: 'any' }]
 	};
 	return new Response(JSON.stringify(manifest, null, '\t'), {
 		headers: { 'Content-Type': 'application/manifest+json' }

@@ -19,6 +19,7 @@ export const site = {
 	author: 'bear',
 	locale: 'en_US',
 	language: 'en',
+	icon: 'https://fav.farm/▶️',
 	image: {
 		url: 'https://picsum.photos/id/145/1200/630',
 		alt: 'basstabs by bear',
