@@ -242,7 +242,8 @@
 				</div>
 				<textarea
 					bind:this={textarea}
-					class="textarea min-h-64 resize-y font-tab text-base leading-relaxed"
+					class="textarea resize-y font-tab text-base leading-relaxed"
+					rows={tab.source.split('\n').length + 3}
 					spellcheck="false"
 					autocapitalize="off"
 					autocomplete="off"
