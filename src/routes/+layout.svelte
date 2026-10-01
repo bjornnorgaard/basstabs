@@ -27,7 +27,9 @@
 	<AppBar
 		class="sticky top-0 z-10 border-b border-surface-200-800 bg-surface-50-950/80 backdrop-blur"
 	>
-		<AppBar.Toolbar class="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4">
+		<AppBar.Toolbar
+			class="mx-auto flex w-full max-w-[96rem] items-center justify-between gap-4 px-4"
+		>
 			<AppBar.Lead>
 				<Brand />
 			</AppBar.Lead>
@@ -40,7 +42,7 @@
 		</AppBar.Toolbar>
 	</AppBar>
 
-	<main class="mx-auto w-full max-w-7xl flex-1 p-4 md:p-6">
+	<main class="mx-auto w-full max-w-[96rem] flex-1 p-4 md:p-6">
 		{@render children()}
 	</main>
 </div>

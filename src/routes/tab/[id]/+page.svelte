@@ -187,7 +187,8 @@
 			</label>
 		</div>
 
-		<div class="grid gap-6 lg:grid-cols-2">
+		<!-- Columns only split when each half still fits a full 8-bar system; otherwise they stack. -->
+		<div class="grid grid-cols-[repeat(auto-fit,minmax(min(45rem,100%),1fr))] gap-6">
 			<section class="space-y-3">
 				<div class="flex flex-wrap items-center justify-between gap-2">
 					<h2 class="h5">Shorthand</h2>
