@@ -227,7 +227,7 @@
 		<div class="grid grid-cols-[repeat(auto-fit,minmax(min(45rem,100%),1fr))] gap-6">
 			<section class="space-y-3">
 				<div class="flex flex-wrap items-center justify-between gap-2">
-					<h2 class="h5">Shorthand</h2>
+					<h2 class="h5">Shorthand editor</h2>
 					<div class="flex flex-wrap gap-1" aria-label="Quick insert">
 						{#each tuning.strings as name, i (name)}
 							<button
@@ -299,7 +299,7 @@
 			</section>
 
 			<section class="space-y-3">
-				<h2 class="h5">Tab</h2>
+				<h2 class="h5">Generated bass tabs</h2>
 				<PlayableTab
 					layout={result.layout}
 					{tuning}

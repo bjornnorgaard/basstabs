@@ -32,11 +32,7 @@
 .hl-fill {
 	opacity: 0.4;
 }
-.hl-section {
-	color: var(--color-tertiary-700);
-	background-color: color-mix(in oklab, var(--color-tertiary-500) 18%, transparent);
-	border-radius: 2px;
-}
+.hl-section,
 .hl-comment {
 	color: color-mix(in oklab, currentColor 50%, transparent);
 }
@@ -57,9 +53,6 @@
 	.hl-string-name {
 		color: oklch(84% 0.13 var(--string-hue));
 		background-color: oklch(70% 0.12 var(--string-hue) / 0.22);
-	}
-	.hl-section {
-		color: var(--color-tertiary-300);
 	}
 }
 
