@@ -18,6 +18,8 @@ export type TabEvent = NoteEvent;
 
 export interface Measure {
 	events: TabEvent[];
+	/** Whitespace columns after the final note, before the bar line or end of row. */
+	trailingSpaces: number;
 }
 
 /** A row of measures rendered together (one input line = one system). */
@@ -123,15 +125,23 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 
 		const measures: Measure[] = [];
 		let events: TabEvent[] = [];
+		let lastNoteEnd = -1;
 		// End index (0-based, exclusive) in lineText of the previously emitted note, used to
 		// detect notes written back-to-back with no whitespace between them. Reset whenever a
 		// measure ends, since joining never crosses a bar line.
 		let previousEventEnd = -1;
 
-		const closeMeasure = () => {
-			if (events.length > 0) measures.push({ events });
+		const closeMeasure = (end: number) => {
+			if (events.length > 0) {
+				const trailing = lineText.slice(lastNoteEnd, end);
+				measures.push({
+					events,
+					trailingSpaces: /^[ \t]*$/.test(trailing) ? trailing.length : 0
+				});
+			}
 			events = [];
 			previousEventEnd = -1;
+			lastNoteEnd = -1;
 		};
 
 		// A 3+ digit run after a string prefix is a single-digit note followed by frets.
@@ -160,7 +170,7 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 
 				if (token === '|') {
 					sourceTokens.push({ kind: 'bar', ...span });
-					closeMeasure();
+					closeMeasure(start);
 					continue;
 				}
 
@@ -216,10 +226,11 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 					fret: Number(fretText),
 					joinedToPrevious
 				});
+				lastNoteEnd = start + token.length;
 			}
 		}
 
-		closeMeasure();
+		closeMeasure(lineText.length);
 		if (measures.length > 0) {
 			const system: System = { kind: 'system', measures };
 			systems.push(system);

@@ -3,7 +3,9 @@
 	import { resolve } from '$app/paths';
 	import { site } from '$lib/site';
 	import { page } from '$app/state';
+	import { Collapsible } from '@skeletonlabs/skeleton-svelte';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
 	import Copy from '@lucide/svelte/icons/copy';
 	import Download from '@lucide/svelte/icons/download';
@@ -28,6 +30,15 @@
 
 	let textarea = $state<HTMLTextAreaElement>();
 	let focusedNote = $state<number>();
+
+	const EDITOR_KEY = 'basstabs:editor';
+	let editorOpen = $state(localStorage.getItem(EDITOR_KEY) !== 'collapsed');
+
+	function setEditorOpen(open: boolean) {
+		editorOpen = open;
+		if (!open) focusedNote = undefined;
+		localStorage.setItem(EDITOR_KEY, open ? 'open' : 'collapsed');
+	}
 
 	function set<K extends 'title' | 'artist' | 'tuningId' | 'source'>(key: K, value: string) {
 		if (tab) tabStore.update(tab.id, { [key]: value });
@@ -224,79 +235,108 @@
 		</div>
 
 		<!-- Columns only split when each half still fits a full 8-bar system; otherwise they stack. -->
-		<div class="grid grid-cols-[repeat(auto-fit,minmax(min(45rem,100%),1fr))] gap-6">
-			<section class="space-y-3">
+		<div
+			class="grid gap-6 {editorOpen
+				? 'grid-cols-[repeat(auto-fit,minmax(min(45rem,100%),1fr))]'
+				: 'grid-cols-1'}"
+		>
+			<Collapsible
+				open={editorOpen}
+				onOpenChange={(details) => setEditorOpen(details.open)}
+				class="items-stretch gap-3"
+			>
 				<div class="flex flex-wrap items-center justify-between gap-2">
-					<h2 class="h5">Shorthand editor</h2>
-					<div class="flex flex-wrap gap-1" aria-label="Quick insert">
-						{#each tuning.strings as name, i (name)}
+					<h2 class="h5">
+						<Collapsible.Trigger
+							class="-ml-3 btn px-3 hover:preset-tonal"
+							title={editorOpen
+								? 'Collapse the shorthand editor to focus on the tab'
+								: 'Expand the shorthand editor'}
+						>
+							<ChevronDown class="size-4 transition-transform {editorOpen ? '' : '-rotate-90'}" />
+							Shorthand editor
+							{#if !editorOpen && result.errors.length > 0}
+								<span class="badge preset-filled-error-500">
+									{result.errors.length}
+									{result.errors.length === 1 ? 'error' : 'errors'}
+								</span>
+							{/if}
+						</Collapsible.Trigger>
+					</h2>
+					{#if editorOpen}
+						<div class="flex flex-wrap gap-1" aria-label="Quick insert">
+							{#each tuning.strings as name, i (name)}
+								<button
+									type="button"
+									class="btn preset-tonal font-tab btn-sm"
+									style:--string-hue={stringHue(name, i)}
+									title="Insert {name} string"
+									onclick={() => insert(name)}><span class="hl-string">{name}</span></button
+								>
+							{/each}
 							<button
 								type="button"
 								class="btn preset-tonal font-tab btn-sm"
-								style:--string-hue={stringHue(name, i)}
-								title="Insert {name} string"
-								onclick={() => insert(name)}><span class="hl-string">{name}</span></button
+								title="Insert bar line"
+								onclick={() => insert('| ')}>|</button
 							>
-						{/each}
-						<button
-							type="button"
-							class="btn preset-tonal font-tab btn-sm"
-							title="Insert bar line"
-							onclick={() => insert('| ')}>|</button
-						>
-					</div>
+						</div>
+					{/if}
 				</div>
-				<ShorthandEditor
-					bind:textarea
-					bind:focusedNote
-					value={tab.source}
-					tokens={result.tokens}
-					{tuning}
-					invalid={result.errors.length > 0}
-					placeholder="E0 0 A2 2 | E0 0 3 A2 |"
-					oninput={(v) => set('source', v)}
-				/>
+				<Collapsible.Content class="space-y-3">
+					<ShorthandEditor
+						bind:textarea
+						bind:focusedNote
+						value={tab.source}
+						tokens={result.tokens}
+						{tuning}
+						invalid={result.errors.length > 0}
+						placeholder="E0 0 A2 2 | E0 0 3 A2 |"
+						oninput={(v) => set('source', v)}
+					/>
 
-				{#if result.errors.length > 0}
-					<div class="space-y-2 card preset-tonal-error p-3 text-sm" aria-live="polite">
-						<ul class="space-y-1">
-							{#each result.errors as error (`${error.line}:${error.column}`)}
-								<li class="flex items-start justify-between gap-2">
-									<button
-										type="button"
-										class="flex items-start gap-2 text-left hover:underline"
-										onclick={() => selectError(error)}
-									>
-										<CircleAlert class="mt-0.5 size-4 shrink-0" />
-										<span
-											><strong>Line {error.line}, col {error.column}:</strong> {error.message}</span
+					{#if result.errors.length > 0}
+						<div class="space-y-2 card preset-tonal-error p-3 text-sm" aria-live="polite">
+							<ul class="space-y-1">
+								{#each result.errors as error (`${error.line}:${error.column}`)}
+									<li class="flex items-start justify-between gap-2">
+										<button
+											type="button"
+											class="flex items-start gap-2 text-left hover:underline"
+											onclick={() => selectError(error)}
 										>
-									</button>
-									<button
-										type="button"
-										class="btn shrink-0 preset-tonal btn-sm"
-										aria-label="Copy error report for line {error.line}, column {error.column}"
-										onclick={() => copyErrorReport([error])}
-									>
-										<Copy class="size-4" /> Copy error
-									</button>
-								</li>
-							{/each}
-						</ul>
-						{#if result.errors.length > 1}
-							<button
-								type="button"
-								class="btn preset-tonal btn-sm"
-								onclick={() => copyErrorReport()}
-							>
-								<Copy class="size-4" /> Copy all errors
-							</button>
-						{/if}
-					</div>
-				{/if}
+											<CircleAlert class="mt-0.5 size-4 shrink-0" />
+											<span
+												><strong>Line {error.line}, col {error.column}:</strong>
+												{error.message}</span
+											>
+										</button>
+										<button
+											type="button"
+											class="btn shrink-0 preset-tonal btn-sm"
+											aria-label="Copy error report for line {error.line}, column {error.column}"
+											onclick={() => copyErrorReport([error])}
+										>
+											<Copy class="size-4" /> Copy error
+										</button>
+									</li>
+								{/each}
+							</ul>
+							{#if result.errors.length > 1}
+								<button
+									type="button"
+									class="btn preset-tonal btn-sm"
+									onclick={() => copyErrorReport()}
+								>
+									<Copy class="size-4" /> Copy all errors
+								</button>
+							{/if}
+						</div>
+					{/if}
 
-				<SyntaxHelp {tuning} />
-			</section>
+					<SyntaxHelp {tuning} />
+				</Collapsible.Content>
+			</Collapsible>
 
 			<section class="space-y-3">
 				<h2 class="h5">Generated bass tabs</h2>

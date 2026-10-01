@@ -30,6 +30,9 @@ E|0-0-----|0-0-3---|
 
 Each note gets its own column, and spaces between notes are optional. For
 example, `A2E320` means `A2 E3 2 0`. Two-digit frets make their column wider.
+Spaces after the last note in a bar are retained as blank tab columns, even
+when there are more than the note's usual trailing filler (e.g. `|E1       |`
+renders `E|1-------|`). This also works on a row without a final bar line.
 Supported tunings are 4-string (EADG), 5-string (BEADG) and 6-string (BEADGC).
 
 Use section names and annotations for structure, playing reminders, or rough
@@ -77,6 +80,10 @@ colour, and a bare fret takes the colour of the string it plays on. Sections are
 tinted, comments are muted and invalid tokens are underlined. Put the caret on a
 note to outline it in the tab. The highlighter icon in the header turns the colours
 off; the choice is saved in the browser.
+
+Click the **Shorthand** heading to collapse the editor so the tab takes the full
+width. While collapsed, the heading shows a badge if the shorthand has errors. The
+choice is saved in the browser.
 
 ## App
 

@@ -125,7 +125,13 @@ function layoutSystem(
 				column += eventWidth(event);
 			}
 		}
-		const layout = { id: counters.measure++, column: start, width: column - start, notes };
+		const lastNote = notes[notes.length - 1];
+		const width = Math.max(
+			column - start,
+			lastNote.column + lastNote.width + measure.trailingSpaces - start
+		);
+		const layout = { id: counters.measure++, column: start, width, notes };
+		column = start + width;
 		column += BAR.length;
 		return layout;
 	});

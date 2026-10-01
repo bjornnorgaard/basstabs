@@ -46,6 +46,37 @@ describe('renderTab', () => {
 		expect(text.split('\n')).toEqual(['G|--------|', 'D|--------|', 'A|2-------|', 'E|-320----|']);
 	});
 
+	it('preserves arbitrary trailing spaces in each bar and an unterminated final bar', () => {
+		expect(renderTab('|E1       |', bass4).text).toBe(
+			'G|--------|\nD|--------|\nA|--------|\nE|1-------|'
+		);
+
+		const source = '|E1       |A2                    |E3   ';
+		const { text, layout, errors } = renderTab(source, bass4);
+		expect(errors).toEqual([]);
+		expect(text.split('\n')).toEqual([
+			`G|--------|${'-'.repeat(21)}|----|`,
+			`D|--------|${'-'.repeat(21)}|----|`,
+			`A|--------|2${'-'.repeat(20)}|----|`,
+			`E|1-------|${'-'.repeat(21)}|3---|`
+		]);
+		expect(layout.measures.map(({ width }) => width)).toEqual([8, 21, 4]);
+		expect(parse(source, bass4).systems[0].measures.map((m) => m.trailingSpaces)).toEqual([
+			7, 20, 3
+		]);
+	});
+
+	it('does not double-count trailing spaces already covered by joined notes filler', () => {
+		const { text, layout } = renderTab('A2E320    |E1       |', bass4);
+		expect(text.split('\n')).toEqual([
+			'G|--------|--------|',
+			'D|--------|--------|',
+			'A|2-------|--------|',
+			'E|-320----|1-------|'
+		]);
+		expect(layout.measures.map(({ width }) => width)).toEqual([8, 8]);
+	});
+
 	it('keeps notes separated by whitespace in their own columns even when otherwise adjacent', () => {
 		// "E0 0" has spaces between every token, so each note keeps its own trailing filler,
 		// unlike the back-to-back "320" shorthand above.
