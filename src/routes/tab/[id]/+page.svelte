@@ -245,7 +245,7 @@
 				<textarea
 					bind:this={textarea}
 					class="textarea resize-y font-tab text-base leading-relaxed"
-					rows={tab.source.split('\n').length + 3}
+					rows={tab.source.split('\n').length + 1}
 					spellcheck="false"
 					autocapitalize="off"
 					autocomplete="off"
