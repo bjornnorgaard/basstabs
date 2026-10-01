@@ -33,11 +33,24 @@ describe('renderTab', () => {
 
 		expect(errors).toEqual([]);
 		expect(systems[0].measures[0].events).toEqual([
-			{ kind: 'note', string: 1, fret: 2 },
-			{ kind: 'note', string: 0, fret: 3 },
-			{ kind: 'note', string: 0, fret: 2 },
-			{ kind: 'note', string: 0, fret: 0 }
+			{ kind: 'note', string: 1, fret: 2, joinedToPrevious: false },
+			{ kind: 'note', string: 0, fret: 3, joinedToPrevious: true },
+			{ kind: 'note', string: 0, fret: 2, joinedToPrevious: true },
+			{ kind: 'note', string: 0, fret: 0, joinedToPrevious: true }
 		]);
+	});
+
+	it('renders notes with no whitespace between them packed tightly, as a quick succession', () => {
+		const { text, errors } = renderTab('A2E320    |', bass4);
+		expect(errors).toEqual([]);
+		expect(text.split('\n')).toEqual(['G|--------|', 'D|--------|', 'A|2-------|', 'E|-320----|']);
+	});
+
+	it('keeps notes separated by whitespace in their own columns even when otherwise adjacent', () => {
+		// "E0 0" has spaces between every token, so each note keeps its own trailing filler,
+		// unlike the back-to-back "320" shorthand above.
+		const { text } = renderTab('E0 0 0 |', bass4);
+		expect(text.split('\n')).toEqual(['G|------|', 'D|------|', 'A|------|', 'E|0-0-0-|']);
 	});
 
 	it('accepts the complete shorthand reported by the user', () => {

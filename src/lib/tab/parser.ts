@@ -5,6 +5,12 @@ export interface NoteEvent {
 	kind: 'note';
 	string: number;
 	fret: number;
+	/**
+	 * True when this note was written with no whitespace between it and the previous
+	 * note in the same measure (e.g. the `320` in `E320`). Such notes are played in
+	 * quick succession and should be rendered packed together, without filler between them.
+	 */
+	joinedToPrevious: boolean;
 }
 
 /** One rhythmic column in the tab. Kept as a union so new indicators can be added later. */
@@ -52,10 +58,15 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 	source.split(/\r?\n/).forEach((lineText, lineIdx) => {
 		const measures: Measure[] = [];
 		let events: TabEvent[] = [];
+		// End index (0-based, exclusive) in lineText of the previously emitted note, used to
+		// detect notes written back-to-back with no whitespace between them. Reset whenever a
+		// measure ends, since joining never crosses a bar line.
+		let previousEventEnd = -1;
 
 		const closeMeasure = () => {
 			if (events.length > 0) measures.push({ events });
 			events = [];
+			previousEventEnd = -1;
 		};
 
 		// A 3+ digit run after a string prefix is a single-digit note followed by frets.
@@ -73,9 +84,10 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 			previousTokenEnd = tokenRe.lastIndex;
 
 			for (const [partIndex, token] of tokens.entries()) {
+				const start = match.index + partIndex;
 				const position = {
 					line: lineIdx + 1,
-					column: match.index + partIndex + 1,
+					column: start + 1,
 					length: token.length
 				};
 
@@ -83,6 +95,9 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 					closeMeasure();
 					continue;
 				}
+
+				const joinedToPrevious = previousEventEnd !== -1 && start === previousEventEnd;
+				previousEventEnd = start + token.length;
 
 				const note = NOTE_PATTERN.exec(token);
 				if (!note) {
@@ -109,7 +124,12 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 					continue;
 				}
 
-				events.push({ kind: 'note', string: currentString, fret: Number(fretText) });
+				events.push({
+					kind: 'note',
+					string: currentString,
+					fret: Number(fretText),
+					joinedToPrevious
+				});
 			}
 		}
 
