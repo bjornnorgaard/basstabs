@@ -5,10 +5,14 @@ export interface NoteEvent {
 	kind: 'note';
 	string: number;
 	fret: number;
+	/** The fret as written, preserving its exact character width. */
+	digits: string;
+	/** 0-based column within the measure; string prefixes occupy no columns. */
+	column: number;
 	/**
 	 * True when this note was written with no whitespace between it and the previous
 	 * note in the same measure (e.g. the `320` in `E320`). Such notes are played in
-	 * quick succession and should be rendered packed together, without filler between them.
+	 * quick succession.
 	 */
 	joinedToPrevious: boolean;
 }
@@ -18,8 +22,8 @@ export type TabEvent = NoteEvent;
 
 export interface Measure {
 	events: TabEvent[];
-	/** Whitespace columns after the final note, before the bar line or end of row. */
-	trailingSpaces: number;
+	/** Exact number of columns written between the bar lines (or row boundaries). */
+	width: number;
 }
 
 /** A row of measures rendered together (one input line = one system). */
@@ -125,23 +129,24 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 
 		const measures: Measure[] = [];
 		let events: TabEvent[] = [];
-		let lastNoteEnd = -1;
+		let measureColumn = 0;
+		let consumedEnd = 0;
+		let openingBar = false;
 		// End index (0-based, exclusive) in lineText of the previously emitted note, used to
 		// detect notes written back-to-back with no whitespace between them. Reset whenever a
 		// measure ends, since joining never crosses a bar line.
 		let previousEventEnd = -1;
 
-		const closeMeasure = (end: number) => {
-			if (events.length > 0) {
-				const trailing = lineText.slice(lastNoteEnd, end);
-				measures.push({
-					events,
-					trailingSpaces: /^[ \t]*$/.test(trailing) ? trailing.length : 0
-				});
+		const closeMeasure = (end: number, explicit: boolean) => {
+			if (!explicit && end > consumedEnd) measureColumn += end - consumedEnd;
+			if (events.length > 0 || (openingBar && measureColumn > 0)) {
+				measures.push({ events, width: measureColumn });
 			}
 			events = [];
+			measureColumn = 0;
+			consumedEnd = end + (explicit ? 1 : 0);
 			previousEventEnd = -1;
-			lastNoteEnd = -1;
+			if (explicit) openingBar = true;
 		};
 
 		// A 3+ digit run after a string prefix is a single-digit note followed by frets.
@@ -169,11 +174,14 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 				const span = { start: offset + start, end: offset + start + token.length };
 
 				if (token === '|') {
+					measureColumn += start - consumedEnd;
 					sourceTokens.push({ kind: 'bar', ...span });
-					closeMeasure(start);
+					closeMeasure(start, true);
 					continue;
 				}
 
+				measureColumn += start - consumedEnd;
+				consumedEnd = start + token.length;
 				const joinedToPrevious = previousEventEnd !== -1 && start === previousEventEnd;
 				previousEventEnd = start + token.length;
 
@@ -181,6 +189,7 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 				if (!note) {
 					sourceTokens.push({ kind: 'invalid', ...span });
 					errors.push({ ...position, message: `Unrecognised token "${token}"` });
+					measureColumn += token.length;
 					continue;
 				}
 
@@ -193,6 +202,7 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 							...position,
 							message: `Unknown string "${letter}" (tuning has ${tuning.strings.join(', ')})`
 						});
+						measureColumn += token.length;
 						continue;
 					}
 					currentString = idx;
@@ -202,6 +212,14 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 						...position,
 						message: `Fret "${fretText}" has no string – prefix it with a string name, e.g. ${tuning.strings[0]}${fretText}`
 					});
+					measureColumn += token.length;
+					continue;
+				}
+				const fret = Number(fretText);
+				if (!Number.isSafeInteger(fret)) {
+					sourceTokens.push({ kind: 'invalid', ...span });
+					errors.push({ ...position, message: `Fret "${fretText}" is out of range` });
+					measureColumn += token.length;
 					continue;
 				}
 
@@ -223,14 +241,16 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 				events.push({
 					kind: 'note',
 					string: currentString,
-					fret: Number(fretText),
+					fret,
+					digits: fretText,
+					column: measureColumn,
 					joinedToPrevious
 				});
-				lastNoteEnd = start + token.length;
+				measureColumn += fretText.length;
 			}
 		}
 
-		closeMeasure(lineText.length);
+		closeMeasure(lineText.length, false);
 		if (measures.length > 0) {
 			const system: System = { kind: 'system', measures };
 			systems.push(system);

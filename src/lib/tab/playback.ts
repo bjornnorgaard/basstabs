@@ -26,6 +26,7 @@ export function buildSchedule(measures: MeasureLayout[], tuning: Tuning): Schedu
 	const notes: ScheduledNote[] = [];
 	measures.forEach((measure, bar) => {
 		const groups = groupJoinedEvents(measure.notes);
+		if (groups.length === 0) return;
 		const slot = 1 / groups.length;
 		groups.forEach((group, slotIndex) => {
 			const length = slot / group.length;

@@ -28,11 +28,13 @@ E|0-0-----|0-0-3---|
 | `[Intro]`       | Names the section that follows (whole line only)            |
 | `# Play softly` | Displays an annotation above the next row (whole line only) |
 
-Each note gets its own column, and spaces between notes are optional. For
-example, `A2E320` means `A2 E3 2 0`. Two-digit frets make their column wider.
-Spaces after the last note in a bar are retained as blank tab columns, even
-when there are more than the note's usual trailing filler (e.g. `|E1       |`
-renders `E|1-------|`). This also works on a row without a final bar line.
+Every fret digit and every space inside a bar occupies exactly one tab column;
+string letters and bar lines occupy none. No extra columns are added. For
+example, `|E4320|` renders `E|4320|`, while `|E1       |` renders
+`E|1-------|`. Spaces before or between notes also become blank columns, and
+bars in the same row can have different widths. A row without a final bar line
+ends immediately after its last written character. Adjacent notes such as
+`A2E320` mean `A2 E3 2 0`; multi-digit frets occupy multiple columns.
 Supported tunings are 4-string (EADG), 5-string (BEADG) and 6-string (BEADGC).
 
 Use section names and annotations for structure, playing reminders, or rough
@@ -60,8 +62,9 @@ loops it; the loop button makes looping the default. The note currently sounding
 is highlighted.
 
 There is no rhythm in the syntax yet, so every bar lasts the same time (4 beats at
-the chosen BPM) and is split evenly between its columns. Joined notes like `E320`
-share one column's slot. Section headings and annotations are not played.
+the chosen BPM), regardless of its written width. Playback divides a bar evenly
+between its note groups, not its spaces; joined notes like `E320` share a group's
+slot. Fully blank bars are silent. Section headings and annotations are not played.
 
 The **Sound design** page (`/sound`, the sliders icon in the header) shapes the
 synthesised bass app-wide: exciter, Karplus–Strong string model (damping, decay,

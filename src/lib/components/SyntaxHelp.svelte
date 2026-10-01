@@ -44,9 +44,10 @@
 	</div>
 	<p class="mt-3 opacity-75">
 		Example: <ShorthandCode source="E0 0 A2 2 | E0 0 3 A2 |" {tuning} />. String names are
-		case-insensitive and every note gets its own column. Notes can be adjacent, too:
+		case-insensitive. Each fret digit and space occupies one tab column; no blanks are added
+		automatically. Notes can be adjacent, too:
 		<ShorthandCode source="A2E320" {tuning} /> means <ShorthandCode source="A2 E3 2 0" {tuning} />.
-		Spaces after the last note in a bar extend its blank tab columns.
+		Spaces after the last note extend the bar by exactly that many blank columns.
 	</p>
 	<p class="mt-2 opacity-75">
 		Colours match between the shorthand and the tab: every string has its own colour, sections are

@@ -14,13 +14,13 @@ describe('layout', () => {
 
 		const [first, second] = layout.measures;
 		expect(first).toMatchObject({ id: 0, column: 2, width: 5 });
-		expect(second).toMatchObject({ id: 1, column: 8, width: 8 });
+		expect(second).toMatchObject({ id: 1, column: 8, width: 4 });
 		expect(eLine[first.column - 1]).toBe('|');
 		expect(eLine[first.column + first.width]).toBe('|');
 
 		for (const note of layout.measures.flatMap((m) => m.notes)) {
 			const line = lines[bass4.strings.length - 1 - note.string];
-			expect(line.slice(note.column, note.column + note.width)).toBe(String(note.fret));
+			expect(line.slice(note.column, note.column + note.width)).toBe(note.digits);
 		}
 		expect(layout.measures.flatMap((m) => m.notes).map((n) => n.id)).toEqual([0, 1, 2, 3, 4, 5]);
 	});
@@ -94,6 +94,13 @@ describe('buildSchedule', () => {
 			[0, 29],
 			[1, 25]
 		]);
+	});
+
+	it('keeps a fully blank bar in the schedule without adding notes', () => {
+		const { layout } = renderTab('|    |E1|', bass4);
+		const { notes, length } = buildSchedule(layout.measures, bass4);
+		expect(length).toBe(2);
+		expect(notes.map((note) => note.start)).toEqual([1]);
 	});
 
 	it('converts MIDI notes to frequencies', () => {

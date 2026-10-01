@@ -4,17 +4,10 @@ import type { Tuning } from './tuning';
 const FILL = '-';
 const BAR = '|';
 
-function eventWidth(event: TabEvent): number {
-	// Each column is the note plus one trailing filler so notes never touch.
-	return String(event.fret).length + 1;
-}
-
 /**
  * Splits a measure's events into runs of notes that were written back-to-back with no
- * whitespace between them (see `NoteEvent.joinedToPrevious`). Each run is rendered as a
- * single packed column group: the digits sit immediately next to each other, and the
- * filler that normally separates notes is batched once at the end of the run instead of
- * being inserted after every note.
+ * whitespace between them (see `NoteEvent.joinedToPrevious`). Playback uses the runs
+ * to schedule quickly successive notes within one slot.
  */
 export function groupJoinedEvents<T extends Pick<TabEvent, 'joinedToPrevious'>>(
 	events: T[]
@@ -37,6 +30,7 @@ export interface NoteLayout {
 	id: number;
 	string: number;
 	fret: number;
+	digits: string;
 	joinedToPrevious: boolean;
 	/** 0-based column of the note's first digit within its row's lines. */
 	column: number;
@@ -108,31 +102,17 @@ function layoutSystem(
 
 	const measures: MeasureLayout[] = system.measures.map((measure) => {
 		const start = column;
-		const notes: NoteLayout[] = [];
-		for (const group of groupJoinedEvents(measure.events)) {
-			let digitColumn = column;
-			for (const event of group) {
-				const width = String(event.fret).length;
-				notes.push({
-					id: counters.note++,
-					string: event.string,
-					fret: event.fret,
-					joinedToPrevious: event.joinedToPrevious,
-					column: digitColumn,
-					width
-				});
-				digitColumn += width;
-				column += eventWidth(event);
-			}
-		}
-		const lastNote = notes[notes.length - 1];
-		const width = Math.max(
-			column - start,
-			lastNote.column + lastNote.width + measure.trailingSpaces - start
-		);
-		const layout = { id: counters.measure++, column: start, width, notes };
-		column = start + width;
-		column += BAR.length;
+		const notes: NoteLayout[] = measure.events.map((event) => ({
+			id: counters.note++,
+			string: event.string,
+			fret: event.fret,
+			digits: event.digits,
+			joinedToPrevious: event.joinedToPrevious,
+			column: start + event.column,
+			width: event.digits.length
+		}));
+		const layout = { id: counters.measure++, column: start, width: measure.width, notes };
+		column += measure.width + BAR.length;
 		return layout;
 	});
 
@@ -153,7 +133,7 @@ function layoutSystem(
 			for (const note of measures.flatMap((m) => m.notes)) {
 				if (note.string !== string) continue;
 				fillTo(note.column);
-				segments.push({ text: String(note.fret), noteId: note.id });
+				segments.push({ text: note.digits, noteId: note.id });
 				cursor += note.width;
 			}
 			fillTo(lineLength);

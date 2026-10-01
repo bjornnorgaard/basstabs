@@ -19,13 +19,14 @@ describe('renderTab', () => {
 	});
 
 	it('closes a trailing measure without a final bar line and ignores a leading one', () => {
-		expect(renderTab('|E0 0 A2 2', bass4).text).toBe(renderTab('E0 0 A2 2 |', bass4).text);
+		expect(renderTab('|E0 0 A2 2', bass4).text).toBe(renderTab('E0 0 A2 2|', bass4).text);
 	});
 
-	it('handles attached bar lines and lowercase string names', () => {
+	it('handles attached bar lines and lowercase string names without padding', () => {
 		expect(renderTab('e0 0 a2 2|e0 0 3 a2|', bass4).text).toBe(
-			renderTab('E0 0 A2 2 |E0 0 3 A2 |', bass4).text
+			renderTab('E0 0 A2 2|E0 0 3 A2|', bass4).text
 		);
+		expect(renderTab('|E4320|', bass4).text).toBe('G|----|\nD|----|\nA|----|\nE|4320|');
 	});
 
 	it('parses adjacent notes without requiring spaces between columns', () => {
@@ -33,10 +34,10 @@ describe('renderTab', () => {
 
 		expect(errors).toEqual([]);
 		expect(systems[0].measures[0].events).toEqual([
-			{ kind: 'note', string: 1, fret: 2, joinedToPrevious: false },
-			{ kind: 'note', string: 0, fret: 3, joinedToPrevious: true },
-			{ kind: 'note', string: 0, fret: 2, joinedToPrevious: true },
-			{ kind: 'note', string: 0, fret: 0, joinedToPrevious: true }
+			{ kind: 'note', string: 1, fret: 2, digits: '2', column: 0, joinedToPrevious: false },
+			{ kind: 'note', string: 0, fret: 3, digits: '3', column: 1, joinedToPrevious: true },
+			{ kind: 'note', string: 0, fret: 2, digits: '2', column: 2, joinedToPrevious: true },
+			{ kind: 'note', string: 0, fret: 0, digits: '0', column: 3, joinedToPrevious: true }
 		]);
 	});
 
@@ -61,12 +62,10 @@ describe('renderTab', () => {
 			`E|1-------|${'-'.repeat(21)}|3---|`
 		]);
 		expect(layout.measures.map(({ width }) => width)).toEqual([8, 21, 4]);
-		expect(parse(source, bass4).systems[0].measures.map((m) => m.trailingSpaces)).toEqual([
-			7, 20, 3
-		]);
+		expect(parse(source, bass4).systems[0].measures.map((m) => m.width)).toEqual([8, 21, 4]);
 	});
 
-	it('does not double-count trailing spaces already covered by joined notes filler', () => {
+	it('renders mixed bar lengths without inferred padding', () => {
 		const { text, layout } = renderTab('A2E320    |E1       |', bass4);
 		expect(text.split('\n')).toEqual([
 			'G|--------|--------|',
@@ -75,13 +74,40 @@ describe('renderTab', () => {
 			'E|-320----|1-------|'
 		]);
 		expect(layout.measures.map(({ width }) => width)).toEqual([8, 8]);
+		expect(
+			renderTab('|E4320|A2      |E1         |', bass4).layout.measures.map((m) => m.width)
+		).toEqual([4, 7, 10]);
+		expect(renderTab('|E4320|A2      |E1         |', bass4).text).toBe(
+			'G|----|-------|----------|\n' +
+				'D|----|-------|----------|\n' +
+				'A|----|2------|----------|\n' +
+				'E|4320|-------|1---------|'
+		);
 	});
 
-	it('keeps notes separated by whitespace in their own columns even when otherwise adjacent', () => {
-		// "E0 0" has spaces between every token, so each note keeps its own trailing filler,
-		// unlike the back-to-back "320" shorthand above.
+	it('uses only literal whitespace to separate and pad notes', () => {
 		const { text } = renderTab('E0 0 0 |', bass4);
 		expect(text.split('\n')).toEqual(['G|------|', 'D|------|', 'A|------|', 'E|0-0-0-|']);
+		expect(renderTab('E0 0 0|', bass4).text.split('\n')).toEqual([
+			'G|-----|',
+			'D|-----|',
+			'A|-----|',
+			'E|0-0-0|'
+		]);
+		expect(renderTab('|  E1  2 |', bass4).text.split('\n')).toEqual([
+			'G|-------|',
+			'D|-------|',
+			'A|-------|',
+			'E|--1--2-|'
+		]);
+	});
+
+	it('keeps fully blank bars with explicitly written spaces', () => {
+		const { text, layout, errors } = renderTab('|    |E1|', bass4);
+		expect(errors).toEqual([]);
+		expect(layout.measures.map((m) => m.width)).toEqual([4, 1]);
+		expect(text).toBe('G|----|-|\nD|----|-|\nA|----|-|\nE|----|1|');
+		expect(renderTab('E1|    ', bass4).text).toBe('G|-|----|\nD|-|----|\nA|-|----|\nE|1|----|');
 	});
 
 	it('accepts the complete shorthand reported by the user', () => {
@@ -105,6 +131,13 @@ describe('renderTab', () => {
 			'A|--------|',
 			'E|--------|'
 		]);
+	});
+
+	it('preserves the width of a fret written with leading zeroes', () => {
+		const { text, layout, errors } = renderTab('|E01|', bass4);
+		expect(errors).toEqual([]);
+		expect(text).toBe('G|--|\nD|--|\nA|--|\nE|01|');
+		expect(layout.measures[0].notes[0]).toMatchObject({ fret: 1, width: 2 });
 	});
 
 	it('renders each input line as a separate system and carries the string across lines', () => {
@@ -177,6 +210,12 @@ describe('parse errors', () => {
 	it('reports an empty section name instead of silently discarding it', () => {
 		expect(parse('  [  ]\nE0 |', bass4).errors).toEqual([
 			{ line: 1, column: 3, length: 4, message: 'Section name cannot be empty' }
+		]);
+	});
+
+	it('rejects frets too large to represent without changing their digits', () => {
+		expect(parse('E0 999999999999999999999999999999', bass4).errors).toMatchObject([
+			{ line: 1, column: 4, message: expect.stringContaining('out of range') }
 		]);
 	});
 
