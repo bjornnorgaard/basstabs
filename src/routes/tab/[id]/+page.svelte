@@ -234,16 +234,12 @@
 			</label>
 		</div>
 
-		<!-- Columns only split when each half still fits a full 8-bar system; otherwise they stack. -->
-		<div
-			class="grid gap-6 {editorOpen
-				? 'grid-cols-[repeat(auto-fit,minmax(min(45rem,100%),1fr))]'
-				: 'grid-cols-1'}"
-		>
+		<!-- Side by side from laptop width up; stacked on tablets and phones. Wide tabs scroll within their column. -->
+		<div class="grid grid-cols-1 gap-6 {editorOpen ? 'lg:grid-cols-2' : ''}">
 			<Collapsible
 				open={editorOpen}
 				onOpenChange={(details) => setEditorOpen(details.open)}
-				class="items-stretch gap-3"
+				class="min-w-0 items-stretch gap-3"
 			>
 				<div class="flex flex-wrap items-center justify-between gap-2">
 					<h2 class="h5">
@@ -338,7 +334,7 @@
 				</Collapsible.Content>
 			</Collapsible>
 
-			<section class="space-y-3">
+			<section class="min-w-0 space-y-3">
 				<h2 class="h5">Generated bass tabs</h2>
 				<PlayableTab
 					layout={result.layout}
