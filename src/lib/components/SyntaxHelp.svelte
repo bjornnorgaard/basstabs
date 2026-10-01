@@ -10,6 +10,10 @@
 			meaning: `Fret 3 on the ${tuning.strings[0]} string. Strings: ${tuning.strings.join(' ')}.`
 		},
 		{ syntax: '5', meaning: 'Fret 5 on the same string as the previous note.' },
+		{
+			syntax: 'A2E320',
+			meaning: 'Compact notes: A2 E3 2 0. Each digit is a single fret, printed side by side.'
+		},
 		{ syntax: '|', meaning: 'Bar line – ends the current measure.' },
 		{ syntax: '↵ new line', meaning: 'Starts a new row of tab.' }
 	]);

@@ -5,6 +5,7 @@ export interface NoteEvent {
 	kind: 'note';
 	string: number;
 	fret: number;
+	compact?: boolean;
 }
 
 /** One rhythmic column in the tab. Kept as a union so new indicators can be added later. */
@@ -34,12 +35,14 @@ export interface ParseResult {
 }
 
 const NOTE_PATTERN = /^([A-Za-z])?(\d+)$/;
+const COMPACT_NOTES_PATTERN = /^(?:[A-Za-z]\d+){2,}$/;
 
 /**
  * Parses the shorthand syntax, e.g. `E0 0 A2 2 |E0 0 3 A2 |`.
  *
  * - `<String><fret>` plays a fret on a string (`E0`, `A12`). String letters are case-insensitive.
  * - `<fret>` alone reuses the most recently named string.
+ * - Adjacent string-prefixed notes such as `A2E320` play `A2 E3 2 0`; digits in a compact group are single frets.
  * - `|` ends a measure. It may be attached to a note (`2|`, `|E0`).
  * - Each non-empty line becomes its own system (a separate block of tab).
  */
@@ -69,32 +72,58 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 				continue;
 			}
 
-			const note = NOTE_PATTERN.exec(token);
-			if (!note) {
+			const compact = COMPACT_NOTES_PATTERN.test(token);
+			const notes = compact
+				? Array.from(token.matchAll(/[A-Za-z]?\d/g), (part) => ({
+						text: part[0],
+						column: position.column + part.index
+					}))
+				: [{ text: token, column: position.column }];
+
+			if (notes.length === 1 && !NOTE_PATTERN.test(token)) {
 				errors.push({ ...position, message: `Unrecognised token "${token}"` });
 				continue;
 			}
 
-			const [, letter, fretText] = note;
-			if (letter) {
-				const idx = stringIndex.get(letter.toUpperCase());
-				if (idx === undefined) {
+			for (const { text, column } of notes) {
+				const note = NOTE_PATTERN.exec(text);
+				if (!note) {
 					errors.push({
-						...position,
-						message: `Unknown string "${letter}" (tuning has ${tuning.strings.join(', ')})`
+						line: position.line,
+						column,
+						length: text.length,
+						message: `Unrecognised token "${text}"`
 					});
 					continue;
 				}
-				currentString = idx;
-			} else if (currentString === undefined) {
-				errors.push({
-					...position,
-					message: `Fret "${fretText}" has no string – prefix it with a string name, e.g. ${tuning.strings[0]}${fretText}`
-				});
-				continue;
-			}
 
-			events.push({ kind: 'note', string: currentString, fret: Number(fretText) });
+				const [, letter, fretText] = note;
+				const notePosition = { line: position.line, column, length: text.length };
+				if (letter) {
+					const idx = stringIndex.get(letter.toUpperCase());
+					if (idx === undefined) {
+						errors.push({
+							...notePosition,
+							message: `Unknown string "${letter}" (tuning has ${tuning.strings.join(', ')})`
+						});
+						continue;
+					}
+					currentString = idx;
+				} else if (currentString === undefined) {
+					errors.push({
+						...notePosition,
+						message: `Fret "${fretText}" has no string – prefix it with a string name, e.g. ${tuning.strings[0]}${fretText}`
+					});
+					continue;
+				}
+
+				events.push({
+					kind: 'note',
+					string: currentString,
+					fret: Number(fretText),
+					...(compact ? { compact: true } : {})
+				});
+			}
 		}
 
 		closeMeasure();

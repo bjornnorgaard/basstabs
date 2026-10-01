@@ -19,14 +19,17 @@ E|0-0-----|0-0-3---|
 
 ## Syntax
 
-| Input    | Meaning                                           |
-| -------- | ------------------------------------------------- |
-| `E3`     | Fret 3 on the E string (string names ignore case) |
-| `5`      | Fret 5 on the same string as the previous note    |
-| `\|`     | Bar line, which ends the current measure          |
-| new line | Starts a new row of tab                           |
+| Input    | Meaning                                             |
+| -------- | --------------------------------------------------- |
+| `E3`     | Fret 3 on the E string (string names ignore case)   |
+| `5`      | Fret 5 on the same string as the previous note      |
+| `A2E320` | Compact notes: `A2 E3 2 0` (each digit is one fret) |
+| `\|`     | Bar line, which ends the current measure            |
+| new line | Starts a new row of tab                             |
 
 Each note gets its own column. Two-digit frets make their column wider.
+Compact notes appear side by side; their measure is padded to the width of the longest measure.
+Use spaces around multi-digit frets when writing compact notes (for example, `A12 E10`).
 Supported tunings are 4-string (EADG), 5-string (BEADG) and 6-string (BEADGC).
 
 ## App

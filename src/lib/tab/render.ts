@@ -10,19 +10,23 @@ function eventCell(event: TabEvent, stringIdx: number, width: number): string {
 }
 
 function eventWidth(event: TabEvent): number {
-	// Each column is the note plus one trailing filler so notes never touch.
-	return String(event.fret).length + 1;
+	return String(event.fret).length + (event.compact ? 0 : 1);
 }
 
 export function renderSystem(system: System, tuning: Tuning): string {
 	const nameWidth = Math.max(...tuning.strings.map((s) => s.length));
 	const highToLow = tuning.strings.map((name, idx) => ({ name, idx })).reverse();
+	const maxWidth = Math.max(
+		0,
+		...system.measures.map((m) => m.events.reduce((width, event) => width + eventWidth(event), 0))
+	);
 
 	return highToLow
 		.map(({ name, idx }) => {
-			const measures = system.measures.map((m) =>
-				m.events.map((e) => eventCell(e, idx, eventWidth(e))).join('')
-			);
+			const measures = system.measures.map((m) => {
+				const cells = m.events.map((e) => eventCell(e, idx, eventWidth(e))).join('');
+				return m.events.some((e) => e.compact) ? cells.padEnd(maxWidth, FILL) : cells;
+			});
 			return name.padEnd(nameWidth) + BAR + measures.map((m) => m + BAR).join('');
 		})
 		.join('\n');
