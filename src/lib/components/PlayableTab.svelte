@@ -82,7 +82,7 @@
 {#if !layout.text}
 	<TabPreview text="" {placeholder} class={className} />
 {:else}
-	<div class="rounded-container bg-surface-100-900 {className}">
+	<div class="rounded-container tab-surface {className}">
 		<div
 			class="flex flex-wrap items-center gap-2 border-b border-surface-200-800 px-4 py-2 text-sm"
 		>

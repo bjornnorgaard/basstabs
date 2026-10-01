@@ -10,6 +10,8 @@
 				const stored = localStorage.getItem('basstabs:mode');
 				const prefersDark = matchMedia('(prefers-color-scheme: dark)').matches;
 				document.documentElement.dataset.mode = stored ?? (prefersDark ? 'dark' : 'light');
+				document.documentElement.dataset.highlight =
+					localStorage.getItem('basstabs:highlight') === 'off' ? 'off' : 'on';
 			})();
 		</script>
 		%sveltekit.head%

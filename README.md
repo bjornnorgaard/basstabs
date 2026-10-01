@@ -69,6 +69,15 @@ live and are saved in the browser. Settings can be copied, downloaded or pasted 
 JSON; to make a sound the default, paste its values into `DEFAULT_SOUND` in
 `src/lib/audio/sound.ts`.
 
+## Syntax highlighting
+
+The shorthand editor is colour-coded, and the rendered tab uses the same colours so
+you can see which shorthand produced which part of the tab. Each string has its own
+colour, and a bare fret takes the colour of the string it plays on. Sections are
+tinted, comments are muted and invalid tokens are underlined. Put the caret on a
+note to outline it in the tab. The highlighter icon in the header turns the colours
+off; the choice is saved in the browser.
+
 ## App
 
 Built with SvelteKit and Skeleton UI (`vintage` theme, with light and dark mode).
@@ -82,6 +91,9 @@ them as a link.
 - Playback: `src/lib/tab/playback.ts` (timing), `src/lib/audio/bass.ts` (synth),
   `src/lib/audio/sound.ts` (settings) and `src/lib/audio/player.svelte.ts` (Web Audio
   scheduling). No samples or libraries.
+- Highlighting: the parser emits source `tokens`; `src/lib/tab/highlight.ts` and
+  `src/lib/components/ShorthandEditor.svelte` render them, styled by the `.hl-*`
+  rules in `src/routes/layout.css`.
 - Share links: `src/lib/tab/share.ts`
 - Site metadata (name, description, URL, social preview image): `src/lib/site.ts`
 

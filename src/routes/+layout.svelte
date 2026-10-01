@@ -7,6 +7,7 @@
 	import Plus from '@lucide/svelte/icons/plus';
 	import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
 	import Brand from '$lib/components/Brand.svelte';
+	import HighlightToggle from '$lib/components/HighlightToggle.svelte';
 	import ModeToggle from '$lib/components/ModeToggle.svelte';
 	import { tabStore } from '$lib/stores/tabs.svelte';
 	import { toaster } from '$lib/toaster';
@@ -46,6 +47,7 @@
 				<button type="button" class="btn preset-filled-primary-500" onclick={newTab}>
 					<Plus class="size-4" /> New tab
 				</button>
+				<HighlightToggle />
 				<ModeToggle />
 			</AppBar.Trail>
 		</AppBar.Toolbar>
