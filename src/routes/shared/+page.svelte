@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { site } from '$lib/site';
 	import { page } from '$app/state';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import Copy from '@lucide/svelte/icons/copy';
@@ -34,10 +35,11 @@
 </script>
 
 <svelte:head>
+	<meta name="robots" content="noindex, follow" />
 	<title
 		>{shared
-			? `${shared.title || 'Shared tab'} · basstabs by bear`
-			: 'Shared tab · basstabs by bear'}</title
+			? `${shared.title || 'Shared tab'} · ${site.name}`
+			: `Shared tab · ${site.name}`}</title
 	>
 </svelte:head>
 

@@ -3,6 +3,7 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { site } from '$lib/site';
 	import { AppBar, Toast } from '@skeletonlabs/skeleton-svelte';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Brand from '$lib/components/Brand.svelte';
@@ -20,7 +21,7 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
-	<title>basstabs by bear</title>
+	<title>{site.name}</title>
 </svelte:head>
 
 <div class="flex min-h-screen flex-col">

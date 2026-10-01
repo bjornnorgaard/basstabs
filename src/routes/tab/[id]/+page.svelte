@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { site } from '$lib/site';
 	import { page } from '$app/state';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
@@ -148,7 +149,8 @@
 </script>
 
 <svelte:head>
-	<title>{tab ? `${tab.title} · basstabs by bear` : 'Tab not found · basstabs by bear'}</title>
+	<meta name="robots" content="noindex, follow" />
+	<title>{tab ? `${tab.title} · ${site.name}` : `Tab not found · ${site.name}`}</title>
 </svelte:head>
 
 <svelte:window {onkeydown} />

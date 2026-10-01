@@ -59,6 +59,17 @@ them as a link.
 - Parser: `src/lib/tab/parser.ts`. New indicators go in the `TabEvent` union.
 - Renderer: `src/lib/tab/render.ts`
 - Share links: `src/lib/tab/share.ts`
+- Site metadata (name, description, URL, social preview image): `src/lib/site.ts`
+
+### SEO
+
+The app runs only in the browser, so `src/hooks.server.ts` adds the SEO tags to
+the SPA shell at build time. These are the description, canonical URL, Open
+Graph, Twitter card and JSON-LD tags. This way crawlers and link previews can
+read them without running JavaScript. `robots.txt`, `sitemap.xml` and
+`manifest.webmanifest` are pre-built from `src/lib/site.ts`. Tab and shared
+pages are marked `noindex` because their content is private to each browser.
+To change the preview image or any other site metadata, edit `src/lib/site.ts`.
 
 ### Sharing
 
