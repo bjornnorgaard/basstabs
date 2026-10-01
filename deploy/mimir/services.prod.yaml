@@ -1,4 +1,5 @@
-# basstabs — test environment (CI pins services.web.image.tag on every main push).
+# basstabs — production. Promote tags manually via .github/workflows/production.yml
+# (copies from services.test.yaml). Never auto-bump from main CI.
 # Keep the tag double-quoted: pin-image-tag.sh only matches tag: "...".
 # Hostnames live in mimir operator values, not here.
 services:
