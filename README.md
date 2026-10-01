@@ -33,10 +33,21 @@ Supported tunings are 4-string (EADG), 5-string (BEADG) and 6-string (BEADGC).
 
 Built with SvelteKit and Skeleton UI (`vintage` theme, with light and dark mode).
 Tabs are saved in the browser's `localStorage`. You can create, search, duplicate
-and delete tabs, copy them to the clipboard, or download them as `.txt`.
+and delete tabs, copy them to the clipboard, download them as `.txt`, or share
+them as a link.
 
 - Parser: `src/lib/tab/parser.ts`. New indicators go in the `TabEvent` union.
 - Renderer: `src/lib/tab/render.ts`
+- Share links: `src/lib/tab/share.ts`
+
+### Sharing
+
+**Share link** on a tab page copies a URL like
+`https://basstabs.bybear.dk/shared#<payload>` to the clipboard. The payload is
+the title, artist, tuning and shorthand, base64url encoded in the hash, so the
+whole tab travels inside the link and never touches a server. Opening the link
+shows the rendered tab with a **Save to my tabs** button that stores an editable
+copy in that browser.
 
 ```sh
 npm install

@@ -1,0 +1,65 @@
+import { DEFAULT_TUNING_ID } from './tuning';
+
+/** The parts of a tab that travel inside a share link. */
+export interface SharedTab {
+	title: string;
+	artist: string;
+	tuningId: string;
+	source: string;
+}
+
+/** Bumped whenever the payload layout changes, so old links can be rejected. */
+const VERSION = '1';
+const SEPARATOR = '\n';
+
+function toBase64Url(bytes: Uint8Array): string {
+	let binary = '';
+	for (const byte of bytes) binary += String.fromCharCode(byte);
+	return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function fromBase64Url(value: string): Uint8Array {
+	const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
+	const binary = atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '='));
+	return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+}
+
+/**
+ * Packs a tab into a compact, URL-safe string. Fields are newline separated,
+ * and only the source may contain newlines, so it always comes last.
+ */
+export function encodeSharedTab(tab: SharedTab): string {
+	const fields = [VERSION, tab.title, tab.artist, tab.tuningId, tab.source];
+	return toBase64Url(new TextEncoder().encode(fields.join(SEPARATOR)));
+}
+
+/** Unpacks a payload produced by {@link encodeSharedTab}, or `null` if invalid. */
+export function decodeSharedTab(payload: string): SharedTab | null {
+	if (!payload) return null;
+	try {
+		const text = new TextDecoder().decode(fromBase64Url(payload));
+		const [version, title, artist, tuningId, ...rest] = text.split(SEPARATOR);
+		if (version !== VERSION || rest.length === 0) return null;
+		return {
+			title: title ?? '',
+			artist: artist ?? '',
+			tuningId: tuningId || DEFAULT_TUNING_ID,
+			source: rest.join(SEPARATOR)
+		};
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Builds the link to share. The payload lives in the hash so it never reaches
+ * the server and is not limited by request line length.
+ */
+export function buildShareUrl(base: string, tab: SharedTab): string {
+	return `${base.replace(/\/+$/, '')}#${encodeSharedTab(tab)}`;
+}
+
+/** Reads the payload from a location hash such as `#abc123`. */
+export function payloadFromHash(hash: string): string {
+	return hash.replace(/^#/, '');
+}

@@ -7,12 +7,14 @@
 	import Copy from '@lucide/svelte/icons/copy';
 	import Download from '@lucide/svelte/icons/download';
 	import Files from '@lucide/svelte/icons/files';
+	import Share from '@lucide/svelte/icons/share-2';
 	import Trash from '@lucide/svelte/icons/trash';
 	import SyntaxHelp from '$lib/components/SyntaxHelp.svelte';
 	import TabPreview from '$lib/components/TabPreview.svelte';
 	import { tabStore } from '$lib/stores/tabs.svelte';
 	import type { ParseError } from '$lib/tab/parser';
 	import { renderTab } from '$lib/tab/render';
+	import { buildShareUrl } from '$lib/tab/share';
 	import { getTuning, TUNINGS } from '$lib/tab/tuning';
 	import { toaster } from '$lib/toaster';
 
@@ -59,6 +61,26 @@
 		try {
 			await navigator.clipboard.writeText(result.text);
 			toaster.success({ title: 'Tab copied to clipboard' });
+		} catch {
+			toaster.error({ title: 'Could not access the clipboard' });
+		}
+	}
+
+	async function share() {
+		if (!tab) return;
+		const { title, artist, tuningId, source } = tab;
+		const url = buildShareUrl(new URL(resolve('/shared'), page.url.origin).href, {
+			title,
+			artist,
+			tuningId,
+			source
+		});
+		try {
+			await navigator.clipboard.writeText(url);
+			toaster.success({
+				title: 'Share link copied',
+				description: 'Anyone with the link can open this tab.'
+			});
 		} catch {
 			toaster.error({ title: 'Could not access the clipboard' });
 		}
@@ -120,6 +142,9 @@
 					disabled={!result.text}
 				>
 					<Copy class="size-4" /> Copy tab
+				</button>
+				<button type="button" class="btn preset-tonal" onclick={share}>
+					<Share class="size-4" /> Share link
 				</button>
 				<button type="button" class="btn preset-tonal" onclick={download} disabled={!result.text}>
 					<Download class="size-4" /> .txt
