@@ -1,8 +1,8 @@
 // Single source of truth for site-wide metadata (SEO, social previews, manifest, sitemap).
 export const site = {
-	name: 'basstabs by bear',
-	shortName: 'basstabs',
-	title: 'basstabs by bear – write bass tabs in shorthand',
+	name: 'BassTabs by Bear',
+	shortName: 'BassTabs',
+	title: 'BassTabs by Bear – write bass tabs in shorthand',
 	description:
 		'Write bass lines in a quick shorthand like "E0 0 A2 2 |" and instantly get classic text bass tabs. Free, private and works offline in your browser.',
 	keywords: [
