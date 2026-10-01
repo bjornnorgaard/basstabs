@@ -206,7 +206,7 @@ export function renderBlocks(blocks: TabBlock[], tuning: Tuning): string {
 
 /** Parse and render in one go. */
 export function renderTab(source: string, tuning: Tuning) {
-	const { blocks, errors } = parse(source, tuning);
+	const { blocks, errors, tokens } = parse(source, tuning);
 	const layout = layoutBlocks(blocks, tuning);
-	return { text: layout.text, layout, errors };
+	return { text: layout.text, layout, errors, tokens };
 }

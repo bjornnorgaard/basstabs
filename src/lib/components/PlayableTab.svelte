@@ -5,6 +5,7 @@
 	import { onDestroy, untrack } from 'svelte';
 	import { player } from '$lib/audio/player.svelte';
 	import TabPreview from '$lib/components/TabPreview.svelte';
+	import { stringHue } from '$lib/tab/highlight';
 	import { buildSchedule } from '$lib/tab/playback';
 	import type { MeasureLayout, TabLayout } from '$lib/tab/render';
 	import type { Tuning } from '$lib/tab/tuning';
@@ -14,9 +15,11 @@
 		tuning: Tuning;
 		placeholder?: string;
 		class?: string;
+		/** A note to outline, e.g. the one under the editor's caret. */
+		focusedNote?: number;
 	}
 
-	let { layout, tuning, placeholder, class: className = '' }: Props = $props();
+	let { layout, tuning, placeholder, class: className = '', focusedNote }: Props = $props();
 
 	// Note and bar ids shift when the tab changes, so stop instead of highlighting stale notes.
 	const signature = $derived(`${tuning.id}\n${layout.text}`);
@@ -44,6 +47,21 @@
 	}
 
 	const hint = 'Click to play · Shift+click to loop';
+
+	/** Splits the filler between notes into the string label, dashes and bar lines for styling. */
+	function fillerParts(text: string) {
+		return [...text.matchAll(/-+|\|+|\s+|[^-|\s]+/g)].map(([part]) => ({
+			text: part,
+			class:
+				part[0] === '-'
+					? 'hl-fill'
+					: part[0] === '|'
+						? 'hl-bar'
+						: /\S/.test(part)
+							? 'hl-string-name'
+							: ''
+		}));
+	}
 </script>
 
 {#snippet gutterButton(key: string, label: string, measures: MeasureLayout[])}
@@ -131,12 +149,12 @@
 									)}
 								{/if}
 							</div>
-							<div class="whitespace-pre">{block.text}</div>
+							<div class="whitespace-pre"><span class="hl-section">{block.text}</span></div>
 						</div>
 					{:else if block.kind === 'annotation'}
 						<div class="flex gap-1 {gap ? 'mt-[1lh]' : ''}">
 							<div class="w-5 shrink-0"></div>
-							<div class="whitespace-pre">{block.text}</div>
+							<div class="hl-comment whitespace-pre">{block.text}</div>
 						</div>
 					{:else}
 						<div class="group flex items-center gap-1 {gap ? 'mt-[1lh]' : ''}">
@@ -149,12 +167,19 @@
 							</div>
 							<div class="relative">
 								{#each block.lines as line (line.string)}
-									<div class="whitespace-pre">
+									<div
+										class="whitespace-pre"
+										style:--string-hue={stringHue(tuning.strings[line.string], line.string)}
+									>
 										{#each line.segments as segment, s (s)}{#if segment.noteId !== undefined}<span
 													class="rounded-xs {player.activeNoteId === segment.noteId
 														? 'preset-filled-primary-500'
-														: ''}">{segment.text}</span
-												>{:else}{segment.text}{/if}{/each}
+														: segment.noteId === focusedNote
+															? 'hl-string hl-focus'
+															: 'hl-string'}">{segment.text}</span
+												>{:else}{#each fillerParts(segment.text) as part, p (p)}<span
+														class={part.class}>{part.text}</span
+													>{/each}{/if}{/each}
 									</div>
 								{/each}
 								{#each block.measures as measure (measure.id)}

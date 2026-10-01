@@ -47,10 +47,27 @@ export interface ParseError {
 	length: number;
 }
 
+export type SourceTokenKind = 'string' | 'fret' | 'bar' | 'section' | 'comment' | 'invalid';
+
+/** A highlightable span of the source, used for syntax highlighting in the editor. */
+export interface SourceToken {
+	kind: SourceTokenKind;
+	/** 0-based offset into the source (inclusive). */
+	start: number;
+	/** 0-based offset into the source (exclusive). */
+	end: number;
+	/** Index into `tuning.strings` for `string` and `fret` tokens. */
+	string?: number;
+	/** Index of the note this token belongs to, in playing order (matches `NoteLayout.id`). */
+	note?: number;
+}
+
 export interface ParseResult {
 	systems: System[];
 	blocks: TabBlock[];
 	errors: ParseError[];
+	/** Highlightable spans in source order. Whitespace and unhighlighted text is omitted. */
+	tokens: SourceToken[];
 }
 
 const NOTE_PATTERN = /^([A-Za-z])?(\d+)$/;
@@ -69,20 +86,31 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 	const systems: System[] = [];
 	const blocks: TabBlock[] = [];
 	const errors: ParseError[] = [];
+	const sourceTokens: SourceToken[] = [];
 	const stringIndex = new Map(tuning.strings.map((name, i) => [name.toUpperCase(), i]));
 	let currentString: number | undefined;
+	let noteCount = 0;
+	let lineOffset = 0;
 
-	source.split(/\r?\n/).forEach((lineText, lineIdx) => {
+	source.split('\n').forEach((rawLine, lineIdx) => {
+		const lineText = rawLine.replace(/\r$/, '');
+		const offset = lineOffset;
+		lineOffset += rawLine.length + 1;
 		const trimmed = lineText.trim();
+		const trimmedStart = offset + lineText.length - lineText.trimStart().length;
+		const trimmedSpan = { start: trimmedStart, end: trimmedStart + trimmed.length };
 		if (trimmed.startsWith('#')) {
 			blocks.push({ kind: 'annotation', text: trimmed.slice(1).trim() });
+			sourceTokens.push({ kind: 'comment', ...trimmedSpan });
 			return;
 		}
 		if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
 			const title = trimmed.slice(1, -1).trim();
 			if (title) {
 				blocks.push({ kind: 'section', title });
+				sourceTokens.push({ kind: 'section', ...trimmedSpan });
 			} else {
+				sourceTokens.push({ kind: 'invalid', ...trimmedSpan });
 				errors.push({
 					line: lineIdx + 1,
 					column: lineText.indexOf('[') + 1,
@@ -128,7 +156,10 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 					length: token.length
 				};
 
+				const span = { start: offset + start, end: offset + start + token.length };
+
 				if (token === '|') {
+					sourceTokens.push({ kind: 'bar', ...span });
 					closeMeasure();
 					continue;
 				}
@@ -138,6 +169,7 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 
 				const note = NOTE_PATTERN.exec(token);
 				if (!note) {
+					sourceTokens.push({ kind: 'invalid', ...span });
 					errors.push({ ...position, message: `Unrecognised token "${token}"` });
 					continue;
 				}
@@ -146,6 +178,7 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 				if (letter) {
 					const idx = stringIndex.get(letter.toUpperCase());
 					if (idx === undefined) {
+						sourceTokens.push({ kind: 'invalid', ...span });
 						errors.push({
 							...position,
 							message: `Unknown string "${letter}" (tuning has ${tuning.strings.join(', ')})`
@@ -154,6 +187,7 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 					}
 					currentString = idx;
 				} else if (currentString === undefined) {
+					sourceTokens.push({ kind: 'invalid', ...span });
 					errors.push({
 						...position,
 						message: `Fret "${fretText}" has no string – prefix it with a string name, e.g. ${tuning.strings[0]}${fretText}`
@@ -161,6 +195,21 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 					continue;
 				}
 
+				const noteToken = { string: currentString, note: noteCount++ };
+				if (letter) {
+					sourceTokens.push({
+						kind: 'string',
+						start: span.start,
+						end: span.start + 1,
+						...noteToken
+					});
+				}
+				sourceTokens.push({
+					kind: 'fret',
+					start: span.end - fretText.length,
+					end: span.end,
+					...noteToken
+				});
 				events.push({
 					kind: 'note',
 					string: currentString,
@@ -178,5 +227,5 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 		}
 	});
 
-	return { systems, blocks, errors };
+	return { systems, blocks, errors, tokens: sourceTokens };
 }

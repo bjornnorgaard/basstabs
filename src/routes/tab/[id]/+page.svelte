@@ -10,11 +10,13 @@
 	import Files from '@lucide/svelte/icons/files';
 	import Share from '@lucide/svelte/icons/share-2';
 	import Trash from '@lucide/svelte/icons/trash';
+	import ShorthandEditor from '$lib/components/ShorthandEditor.svelte';
 	import SyntaxHelp from '$lib/components/SyntaxHelp.svelte';
 	import PlayableTab from '$lib/components/PlayableTab.svelte';
 	import { formatErrorReport } from '$lib/error-report';
 	import { tabStore } from '$lib/stores/tabs.svelte';
 	import type { ParseError } from '$lib/tab/parser';
+	import { stringHue } from '$lib/tab/highlight';
 	import { renderTab } from '$lib/tab/render';
 	import { buildShareUrl } from '$lib/tab/share';
 	import { getTuning, TUNINGS } from '$lib/tab/tuning';
@@ -25,6 +27,7 @@
 	const result = $derived(renderTab(tab?.source ?? '', tuning));
 
 	let textarea = $state<HTMLTextAreaElement>();
+	let focusedNote = $state<number>();
 
 	function set<K extends 'title' | 'artist' | 'tuningId' | 'source'>(key: K, value: string) {
 		if (tab) tabStore.update(tab.id, { [key]: value });
@@ -226,12 +229,13 @@
 				<div class="flex flex-wrap items-center justify-between gap-2">
 					<h2 class="h5">Shorthand</h2>
 					<div class="flex flex-wrap gap-1" aria-label="Quick insert">
-						{#each tuning.strings as name (name)}
+						{#each tuning.strings as name, i (name)}
 							<button
 								type="button"
 								class="btn preset-tonal font-tab btn-sm"
+								style:--string-hue={stringHue(name, i)}
 								title="Insert {name} string"
-								onclick={() => insert(name)}>{name}</button
+								onclick={() => insert(name)}><span class="hl-string">{name}</span></button
 							>
 						{/each}
 						<button
@@ -242,17 +246,16 @@
 						>
 					</div>
 				</div>
-				<textarea
-					bind:this={textarea}
-					class="textarea resize-y font-tab text-base leading-relaxed"
-					rows={tab.source.split('\n').length + 1}
-					spellcheck="false"
-					autocapitalize="off"
-					autocomplete="off"
+				<ShorthandEditor
+					bind:textarea
+					bind:focusedNote
+					value={tab.source}
+					tokens={result.tokens}
+					{tuning}
+					invalid={result.errors.length > 0}
 					placeholder="E0 0 A2 2 | E0 0 3 A2 |"
-					aria-label="Tab shorthand"
-					aria-invalid={result.errors.length > 0}
-					bind:value={() => tab.source, (v) => set('source', v)}></textarea>
+					oninput={(v) => set('source', v)}
+				/>
 
 				{#if result.errors.length > 0}
 					<div class="space-y-2 card preset-tonal-error p-3 text-sm" aria-live="polite">
@@ -302,6 +305,7 @@
 					{tuning}
 					placeholder="Start typing shorthand to see your tab here."
 					class="min-h-64"
+					{focusedNote}
 				/>
 			</section>
 		</div>

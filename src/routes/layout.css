@@ -12,3 +12,53 @@
 		ui-monospace, 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Menlo, Consolas, monospace;
 	--font-signature: 'Caveat', 'Segoe Script', 'Bradley Hand', cursive;
 }
+
+/*
+ * Shorthand syntax colours, shared by the editor and the rendered tab so the two visibly line up.
+ * Only colours and backgrounds are used: anything that changes glyph widths (bold, italic) would
+ * misalign the highlighted backdrop with the textarea above it.
+ */
+.hl-string {
+	color: oklch(50% 0.15 var(--string-hue));
+}
+.hl-string-name {
+	color: oklch(46% 0.16 var(--string-hue));
+	background-color: oklch(70% 0.12 var(--string-hue) / 0.18);
+	border-radius: 2px;
+}
+.hl-bar {
+	color: color-mix(in oklab, currentColor 70%, transparent);
+}
+.hl-fill {
+	opacity: 0.4;
+}
+.hl-section {
+	color: var(--color-tertiary-700);
+	background-color: color-mix(in oklab, var(--color-tertiary-500) 18%, transparent);
+	border-radius: 2px;
+}
+.hl-comment {
+	color: color-mix(in oklab, currentColor 50%, transparent);
+}
+.hl-invalid {
+	text-decoration: underline wavy var(--color-error-500);
+	text-decoration-skip-ink: none;
+	text-underline-offset: 3px;
+}
+.hl-focus {
+	outline: 1.5px solid currentColor;
+	outline-offset: 1px;
+	border-radius: 2px;
+}
+[data-mode='dark'] {
+	.hl-string {
+		color: oklch(80% 0.12 var(--string-hue));
+	}
+	.hl-string-name {
+		color: oklch(84% 0.13 var(--string-hue));
+		background-color: oklch(70% 0.12 var(--string-hue) / 0.22);
+	}
+	.hl-section {
+		color: var(--color-tertiary-300);
+	}
+}
