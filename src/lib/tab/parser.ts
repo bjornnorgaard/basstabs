@@ -22,8 +22,21 @@ export interface Measure {
 
 /** A row of measures rendered together (one input line = one system). */
 export interface System {
+	kind: 'system';
 	measures: Measure[];
 }
+
+export interface Section {
+	kind: 'section';
+	title: string;
+}
+
+export interface Annotation {
+	kind: 'annotation';
+	text: string;
+}
+
+export type TabBlock = System | Section | Annotation;
 
 export interface ParseError {
 	message: string;
@@ -36,6 +49,7 @@ export interface ParseError {
 
 export interface ParseResult {
 	systems: System[];
+	blocks: TabBlock[];
 	errors: ParseError[];
 }
 
@@ -47,15 +61,38 @@ const NOTE_PATTERN = /^([A-Za-z])?(\d+)$/;
  * - `<String><fret>` plays a fret on a string (`E0`, `A12`). String letters are case-insensitive.
  * - `<fret>` alone reuses the most recently named string.
  * - `|` ends a measure. It may be attached to a note (`2|`, `|E0`).
- * - Each non-empty line becomes its own system (a separate block of tab).
+ * - Each non-empty note line becomes its own system (a separate block of tab).
+ * - `[Name]` on its own line starts a named section.
+ * - `# Text` on its own line displays a note above the next row of tab.
  */
 export function parse(source: string, tuning: Tuning): ParseResult {
 	const systems: System[] = [];
+	const blocks: TabBlock[] = [];
 	const errors: ParseError[] = [];
 	const stringIndex = new Map(tuning.strings.map((name, i) => [name.toUpperCase(), i]));
 	let currentString: number | undefined;
 
 	source.split(/\r?\n/).forEach((lineText, lineIdx) => {
+		const trimmed = lineText.trim();
+		if (trimmed.startsWith('#')) {
+			blocks.push({ kind: 'annotation', text: trimmed.slice(1).trim() });
+			return;
+		}
+		if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+			const title = trimmed.slice(1, -1).trim();
+			if (title) {
+				blocks.push({ kind: 'section', title });
+			} else {
+				errors.push({
+					line: lineIdx + 1,
+					column: lineText.indexOf('[') + 1,
+					length: trimmed.length,
+					message: 'Section name cannot be empty'
+				});
+			}
+			return;
+		}
+
 		const measures: Measure[] = [];
 		let events: TabEvent[] = [];
 		// End index (0-based, exclusive) in lineText of the previously emitted note, used to
@@ -134,8 +171,12 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 		}
 
 		closeMeasure();
-		if (measures.length > 0) systems.push({ measures });
+		if (measures.length > 0) {
+			const system: System = { kind: 'system', measures };
+			systems.push(system);
+			blocks.push(system);
+		}
 	});
 
-	return { systems, errors };
+	return { systems, blocks, errors };
 }

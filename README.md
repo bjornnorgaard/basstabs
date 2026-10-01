@@ -19,16 +19,35 @@ E|0-0-----|0-0-3---|
 
 ## Syntax
 
-| Input    | Meaning                                           |
-| -------- | ------------------------------------------------- |
-| `E3`     | Fret 3 on the E string (string names ignore case) |
-| `5`      | Fret 5 on the same string as the previous note    |
-| `\|`     | Bar line, which ends the current measure          |
-| new line | Starts a new row of tab                           |
+| Input           | Meaning                                                     |
+| --------------- | ----------------------------------------------------------- |
+| `E3`            | Fret 3 on the E string (string names ignore case)           |
+| `5`             | Fret 5 on the same string as the previous note              |
+| `\|`            | Bar line, which ends the current measure                    |
+| new line        | Starts a new row of tab                                     |
+| `[Intro]`       | Names the section that follows (whole line only)            |
+| `# Play softly` | Displays an annotation above the next row (whole line only) |
 
 Each note gets its own column, and spaces between notes are optional. For
 example, `A2E320` means `A2 E3 2 0`. Two-digit frets make their column wider.
 Supported tunings are 4-string (EADG), 5-string (BEADG) and 6-string (BEADGC).
+
+Use section names and annotations for structure, playing reminders, or rough
+lyrics without aligning words to notes:
+
+```text
+[Verse 1]
+# First lyric line: ...
+E0 0 A2 2 | E0 0 3 A2 |
+
+[Chorus]
+# Play loudly
+E3 3 A2 2 |
+```
+
+Headings and annotations are displayed in previews, copied tabs, and `.txt`
+downloads. Both markers are recognized only at the start of their own line;
+inline notes and section repeats are not yet supported.
 
 ## App
 

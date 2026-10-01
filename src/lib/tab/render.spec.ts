@@ -82,6 +82,37 @@ describe('renderTab', () => {
 		expect(systems[1]).toContain('E|5-|');
 	});
 
+	it('renders section names and comments above rows without altering notes or string continuity', () => {
+		const source =
+			'[Intro]\n# Play softly\nE3 |\n# First lyric line: ...\n5 |\n\n[Chorus]\n# Louder\nA2 |';
+		const { blocks, systems, errors } = parse(source, bass4);
+		expect(errors).toEqual([]);
+		expect(blocks.map((block) => block.kind)).toEqual([
+			'section',
+			'annotation',
+			'system',
+			'annotation',
+			'system',
+			'section',
+			'annotation',
+			'system'
+		]);
+		expect(blocks[0]).toEqual({ kind: 'section', title: 'Intro' });
+		expect(blocks[1]).toEqual({ kind: 'annotation', text: 'Play softly' });
+		expect(systems).toHaveLength(3);
+		expect(renderTab(source, bass4).text).toBe(
+			'[Intro]\n# Play softly\nG|--|\nD|--|\nA|--|\nE|3-|' +
+				'\n\n# First lyric line: ...\nG|--|\nD|--|\nA|--|\nE|5-|' +
+				'\n\n[Chorus]\n# Louder\nG|--|\nD|--|\nA|2-|\nE|--|'
+		);
+	});
+
+	it('preserves standalone headings and annotations, including indented lines and CRLF', () => {
+		const { text, errors } = renderTab('  [Verse 1]  \r\n  # words [here] | @repeat  \r\n', bass4);
+		expect(errors).toEqual([]);
+		expect(text).toBe('[Verse 1]\n# words [here] | @repeat');
+	});
+
 	it('supports 5-string tunings', () => {
 		expect(renderTab('B0 E0 |', bass5).text.split('\n')).toEqual([
 			'G|----|',
@@ -109,6 +140,22 @@ describe('parse errors', () => {
 		expect(errors.map((e) => [e.line, e.column])).toEqual([
 			[1, 4],
 			[2, 1]
+		]);
+	});
+
+	it('reports an empty section name instead of silently discarding it', () => {
+		expect(parse('  [  ]\nE0 |', bass4).errors).toEqual([
+			{ line: 1, column: 3, length: 4, message: 'Section name cannot be empty' }
+		]);
+	});
+
+	it('does not treat inline markers as whole-line comments or headings', () => {
+		const { blocks, errors } = parse('E0 # note\nE0 [Verse]', bass4);
+		expect(blocks.map((block) => block.kind)).toEqual(['system', 'system']);
+		expect(errors.map(({ line, column }) => [line, column])).toEqual([
+			[1, 4],
+			[1, 6],
+			[2, 4]
 		]);
 	});
 });

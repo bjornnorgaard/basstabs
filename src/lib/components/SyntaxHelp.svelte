@@ -11,7 +11,12 @@
 		},
 		{ syntax: '5', meaning: 'Fret 5 on the same string as the previous note.' },
 		{ syntax: '|', meaning: 'Bar line – ends the current measure.' },
-		{ syntax: '↵ new line', meaning: 'Starts a new row of tab.' }
+		{ syntax: '↵ new line', meaning: 'Starts a new row of tab.' },
+		{ syntax: '[Verse 1]', meaning: 'Names the section that follows. Use a line of its own.' },
+		{
+			syntax: '# Play softly',
+			meaning: 'Displays a note or rough lyrics above the next row. Use a line of its own.'
+		}
 	]);
 </script>
 

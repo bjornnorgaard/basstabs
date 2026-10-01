@@ -1,4 +1,4 @@
-import { parse, type System, type TabEvent } from './parser';
+import { parse, type System, type TabBlock, type TabEvent } from './parser';
 import type { Tuning } from './tuning';
 
 const FILL = '-';
@@ -57,8 +57,24 @@ export function renderSystems(systems: System[], tuning: Tuning): string {
 	return systems.map((s) => renderSystem(s, tuning)).join('\n\n');
 }
 
+export function renderBlocks(blocks: TabBlock[], tuning: Tuning): string {
+	return blocks
+		.map((block, index) => {
+			const previous = blocks[index - 1];
+			const separator = previous?.kind === 'system' ? '\n\n' : previous ? '\n' : '';
+			const text =
+				block.kind === 'system'
+					? renderSystem(block, tuning)
+					: block.kind === 'section'
+						? `[${block.title}]`
+						: `#${block.text ? ` ${block.text}` : ''}`;
+			return separator + text;
+		})
+		.join('');
+}
+
 /** Parse and render in one go. */
 export function renderTab(source: string, tuning: Tuning) {
-	const { systems, errors } = parse(source, tuning);
-	return { text: renderSystems(systems, tuning), errors };
+	const { blocks, errors } = parse(source, tuning);
+	return { text: renderBlocks(blocks, tuning), errors };
 }

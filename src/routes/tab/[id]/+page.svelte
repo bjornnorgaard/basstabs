@@ -244,7 +244,7 @@
 					bind:this={textarea}
 					class="textarea min-h-64 resize-y font-tab text-base leading-relaxed"
 					spellcheck="false"
-					autocapitalize="characters"
+					autocapitalize="off"
 					autocomplete="off"
 					placeholder="E0 0 A2 2 | E0 0 3 A2 |"
 					aria-label="Tab shorthand"
