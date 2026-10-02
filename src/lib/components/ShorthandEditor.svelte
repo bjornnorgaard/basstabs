@@ -1,7 +1,26 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { EditorState, StateEffect, StateField } from '@codemirror/state';
+	import {
+		addCursorAbove,
+		addCursorBelow,
+		defaultKeymap,
+		history,
+		historyKeymap,
+		indentWithTab
+	} from '@codemirror/commands';
+	import { selectNextOccurrence } from '@codemirror/search';
+	import {
+		Decoration,
+		drawSelection,
+		EditorView,
+		keymap,
+		placeholder as placeholderExtension,
+		type DecorationSet
+	} from '@codemirror/view';
 	import { player } from '$lib/audio/player.svelte';
 	import type { SourceToken } from '$lib/tab/parser';
-	import { highlightSegments, noteAtCaret, stringHue, tokenClass } from '$lib/tab/highlight';
+	import { noteAtCaret, stringHue, tokenClass } from '$lib/tab/highlight';
 	import type { Tuning } from '$lib/tab/tuning';
 
 	interface Props {
@@ -10,9 +29,9 @@
 		tuning: Tuning;
 		invalid?: boolean;
 		placeholder?: string;
-		/** The note under the caret, in playing order. Cleared when the editor loses focus. */
+		/** The note under the main cursor, in playing order. Cleared when the editor loses focus. */
 		focusedNote?: number;
-		textarea?: HTMLTextAreaElement;
+		editor?: EditorView;
 		oninput: (value: string) => void;
 	}
 
@@ -23,70 +42,151 @@
 		invalid = false,
 		placeholder,
 		focusedNote = $bindable(),
-		textarea = $bindable(),
+		editor = $bindable(),
 		oninput
 	}: Props = $props();
 
-	const segments = $derived(highlightSegments(value, tokens));
+	let host: HTMLDivElement;
+	const refreshHighlight = StateEffect.define<void>();
 
-	function trackCaret() {
-		if (!textarea || document.activeElement !== textarea) return;
-		const { selectionStart, selectionEnd } = textarea;
-		focusedNote = selectionStart === selectionEnd ? noteAtCaret(tokens, selectionStart) : undefined;
+	function tokenDecorations(state: EditorState): DecorationSet {
+		const marks = tokens.flatMap((token) => {
+			if (token.end > state.doc.length || token.start >= token.end) return [];
+			const classes = [tokenClass(token)];
+			if (token.note !== undefined) {
+				if (token.note === player.activeNoteId)
+					classes.push('preset-filled-primary-500 rounded-xs');
+				else if (token.note === focusedNote) classes.push('hl-focus');
+			}
+			const hue =
+				token.string !== undefined
+					? stringHue(tuning.strings[token.string], token.string)
+					: undefined;
+			return [
+				Decoration.mark({
+					class: classes.join(' '),
+					attributes: hue === undefined ? {} : { style: `--string-hue: ${hue}` }
+				}).range(token.start, token.end)
+			];
+		});
+		return Decoration.set(marks, true);
 	}
 
-	// Tokens change after input is parsed, so re-resolve the caret once they're up to date.
-	$effect(() => {
-		void tokens;
-		trackCaret();
+	function updateFocusedNote(view: EditorView) {
+		if (!view.hasFocus) return;
+		const selection = view.state.selection.main;
+		focusedNote = selection.empty ? noteAtCaret(tokens, selection.head) : undefined;
+	}
+
+	onMount(() => {
+		const highlightField = StateField.define<DecorationSet>({
+			create: tokenDecorations,
+			update(decorations, transaction) {
+				return transaction.docChanged ||
+					transaction.effects.some((effect) => effect.is(refreshHighlight))
+					? tokenDecorations(transaction.state)
+					: decorations;
+			},
+			provide: (field) => EditorView.decorations.from(field)
+		});
+
+		const view = new EditorView({
+			state: EditorState.create({
+				doc: value,
+				extensions: [
+					EditorState.allowMultipleSelections.of(true),
+					history(),
+					drawSelection(),
+					EditorView.lineWrapping,
+					placeholderExtension(placeholder ?? ''),
+					highlightField,
+					keymap.of([
+						{ key: 'Mod-d', run: selectNextOccurrence },
+						{ key: 'Mod-Alt-ArrowUp', run: addCursorAbove },
+						{ key: 'Mod-Alt-ArrowDown', run: addCursorBelow },
+						...defaultKeymap,
+						...historyKeymap,
+						indentWithTab
+					]),
+					EditorView.contentAttributes.of({
+						'aria-label': 'Tab shorthand',
+						'aria-invalid': String(invalid)
+					}),
+					EditorView.updateListener.of((update) => {
+						if (update.docChanged) oninput(update.state.doc.toString());
+						if (update.docChanged || update.selectionSet) updateFocusedNote(update.view);
+					}),
+					EditorView.domEventHandlers({
+						blur: () => {
+							focusedNote = undefined;
+							return false;
+						},
+						focus: (_event, focusedView) => {
+							updateFocusedNote(focusedView);
+							return false;
+						}
+					}),
+					EditorView.theme({
+						'&': {
+							fontFamily: 'inherit',
+							fontSize: 'inherit',
+							lineHeight: 'inherit',
+							color: 'inherit'
+						},
+						'.cm-scroller': {
+							overflow: 'visible',
+							fontFamily: 'inherit'
+						},
+						'.cm-content': {
+							minHeight: '3.25rem',
+							padding: '0',
+							whiteSpace: 'pre-wrap',
+							overflowWrap: 'anywhere',
+							caretColor: 'currentColor'
+						},
+						'.cm-line': { padding: '0' },
+						'.cm-cursor': { borderLeftColor: 'currentColor' },
+						'&.cm-focused': { outline: 'none' },
+						'&.cm-focused .cm-selectionBackground, .cm-selectionBackground': {
+							backgroundColor: 'color-mix(in oklab, var(--color-primary-500) 30%, transparent)'
+						},
+						'.cm-placeholder': { opacity: '0.5' }
+					})
+				]
+			}),
+			parent: host
+		});
+		editor = view;
+		return () => {
+			editor = undefined;
+			view.destroy();
+		};
 	});
 
-	function classFor(token: SourceToken): string {
-		const classes = [tokenClass(token)];
-		if (token.note !== undefined) {
-			if (token.note === player.activeNoteId) classes.push('preset-filled-primary-500 rounded-xs');
-			else if (token.note === focusedNote) classes.push('hl-focus');
+	$effect(() => {
+		void tokens;
+		void focusedNote;
+		void player.activeNoteId;
+		void tuning;
+		editor?.dispatch({ effects: refreshHighlight.of() });
+	});
+
+	$effect(() => {
+		if (editor) editor.contentDOM.setAttribute('aria-invalid', String(invalid));
+	});
+
+	$effect(() => {
+		const source = value;
+		if (editor && editor.state.doc.toString() !== source) {
+			editor.dispatch({
+				changes: { from: 0, to: editor.state.doc.length, insert: source }
+			});
 		}
-		return classes.join(' ');
-	}
-
-	// Keeps a trailing newline visible and leaves one empty row below the text to type into.
-	const TRAILER = '\n ';
-
-	const shared =
-		'textarea col-start-1 row-start-1 min-w-0 font-tab text-base leading-relaxed whitespace-pre-wrap break-words [font-variant-ligatures:none] [tab-size:4]';
+	});
 </script>
 
-<svelte:document onselectionchange={trackCaret} />
-
-<!--
-	The textarea sits on top of a highlighted copy of its text. Its own text is transparent so only the
-	caret and selection show, and both layers share one grid cell so the editor grows with its content.
--->
-<div class="grid">
-	<pre
-		aria-hidden="true"
-		class="{shared} pointer-events-none m-0 overflow-hidden">{#each segments as segment, i (i)}{#if segment.token}<span
-					class={classFor(segment.token)}
-					style:--string-hue={segment.token.string !== undefined
-						? stringHue(tuning.strings[segment.token.string], segment.token.string)
-						: undefined}>{segment.text}</span
-				>{:else}{segment.text}{/if}{/each}{TRAILER}</pre>
-	<textarea
-		bind:this={textarea}
-		class="{shared} resize-none overflow-hidden bg-transparent text-transparent caret-surface-950-50 selection:bg-primary-500/30 selection:text-transparent"
-		rows="2"
-		spellcheck="false"
-		autocapitalize="off"
-		autocomplete="off"
-		{placeholder}
-		aria-label="Tab shorthand"
-		aria-invalid={invalid}
-		{value}
-		oninput={(e) => oninput(e.currentTarget.value)}
-		onkeyup={trackCaret}
-		onclick={trackCaret}
-		onselect={trackCaret}
-		onfocus={trackCaret}
-		onblur={() => (focusedNote = undefined)}></textarea>
-</div>
+<div
+	bind:this={host}
+	class="min-w-0 rounded-base bg-transparent font-tab text-base leading-relaxed"
+	aria-invalid={invalid}
+></div>

@@ -4,6 +4,7 @@
 	import { site } from '$lib/site';
 	import { page } from '$app/state';
 	import { Collapsible } from '@skeletonlabs/skeleton-svelte';
+	import type { EditorView } from '@codemirror/view';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
@@ -28,7 +29,7 @@
 	const tuning = $derived(getTuning(tab?.tuningId));
 	const result = $derived(renderTab(tab?.source ?? '', tuning));
 
-	let textarea = $state<HTMLTextAreaElement>();
+	let editor = $state<EditorView>();
 	let focusedNote = $state<number>();
 
 	const EDITOR_KEY = 'basstabs:editor';
@@ -44,27 +45,41 @@
 		if (tab) tabStore.update(tab.id, { [key]: value });
 	}
 
+	function clearSource() {
+		if (!editor) return;
+		editor.dispatch({
+			changes: { from: 0, to: editor.state.doc.length, insert: '' },
+			selection: { anchor: 0 }
+		});
+		editor.focus();
+	}
+
 	/** Inserts a snippet at the caret, adding a separating space where needed. */
 	function insert(snippet: string) {
-		if (!tab || !textarea) return;
-		const { selectionStart: start, selectionEnd: end, value } = textarea;
-		const before = value.slice(0, start);
+		if (!tab || !editor) return;
+		const { from, to } = editor.state.selection.main;
+		const value = editor.state.doc.toString();
+		const before = value.slice(0, from);
 		const pad = before.length > 0 && !/\s$/.test(before) ? ' ' : '';
 		const text = `${pad}${snippet}`;
-		set('source', before + text + value.slice(end));
-		requestAnimationFrame(() => {
-			textarea?.focus();
-			textarea?.setSelectionRange(start + text.length, start + text.length);
+		editor.dispatch({
+			changes: { from, to, insert: text },
+			selection: { anchor: from + text.length },
+			scrollIntoView: true
 		});
+		editor.focus();
 	}
 
 	function selectError(error: ParseError) {
-		if (!tab || !textarea) return;
+		if (!tab || !editor) return;
 		const lines = tab.source.split('\n');
 		const offset =
 			lines.slice(0, error.line - 1).reduce((sum, l) => sum + l.length + 1, 0) + error.column - 1;
-		textarea.focus();
-		textarea.setSelectionRange(offset, offset + error.length);
+		editor.dispatch({
+			selection: { anchor: offset, head: offset + error.length },
+			scrollIntoView: true
+		});
+		editor.focus();
 	}
 
 	function exportText() {
@@ -276,12 +291,21 @@
 								title="Insert bar line"
 								onclick={() => insert('| ')}>|</button
 							>
+							<button
+								type="button"
+								class="btn preset-tonal-error font-tab btn-sm ml-8"
+								title="Clear shorthand editor"
+								aria-label="Clear shorthand editor"
+								onclick={clearSource}
+								disabled={!tab.source}
+							>Clear editor
+							</button>
 						</div>
 					{/if}
 				</div>
 				<Collapsible.Content class="space-y-3">
 					<ShorthandEditor
-						bind:textarea
+						bind:editor
 						bind:focusedNote
 						value={tab.source}
 						tokens={result.tokens}
@@ -290,6 +314,9 @@
 						placeholder="E0 0 A2 2 | E0 0 3 A2 |"
 						oninput={(v) => set('source', v)}
 					/>
+					<p class="text-xs opacity-60">
+						Ctrl/Cmd+D selects the next occurrence; Ctrl/Cmd+Alt+↑/↓ adds a cursor.
+					</p>
 
 					{#if result.errors.length > 0}
 						<div class="space-y-2 card preset-tonal-error p-3 text-sm" aria-live="polite">
