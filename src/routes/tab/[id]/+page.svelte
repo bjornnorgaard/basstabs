@@ -293,12 +293,12 @@
 							>
 							<button
 								type="button"
-								class="btn preset-tonal-error font-tab btn-sm ml-8"
+								class="ml-8 btn preset-tonal-error font-tab btn-sm"
 								title="Clear shorthand editor"
 								aria-label="Clear shorthand editor"
 								onclick={clearSource}
 								disabled={!tab.source}
-							>Clear editor
+								>Clear editor
 							</button>
 						</div>
 					{/if}
