@@ -1,5 +1,6 @@
 import { browser } from '$app/environment';
-import { DEFAULT_TUNING_ID } from '$lib/tab/tuning';
+import { migrateLegacySource } from '$lib/tab/migrate';
+import { DEFAULT_TUNING_ID, getTuning } from '$lib/tab/tuning';
 import { DEFAULT_SOUND, normalizeSoundSettings, type SoundSettings } from './sound';
 
 const STORAGE_KEY = 'basstabs:sound';
@@ -12,7 +13,7 @@ E0 0 0 0 | E3 3 A0 0 | E5 5 7 7 | A0 0 E7 5 |
 A2 2 2 2 2 2 2 2 | D0 0 0 0 0 0 0 0 |
 
 [Up the neck]
-G0 2 4 5 | G7 9 12 9 | D12 10 9 7 | A12 E12 0 |
+G0 2 4 5 | G7 9 [12] 9 | D[12] [10] 9 7 | A[12] E[12] 0 |
 
 [Sustain]
 E0 | A0 | D0 | G0 |
@@ -21,17 +22,26 @@ E0 | A0 | D0 | G0 |
 interface TestRiff {
 	source: string;
 	tuningId: string;
+	syntaxVersion: 2;
 }
 
 function loadTest(): TestRiff {
-	const fallback = { source: DEFAULT_TEST_SOURCE, tuningId: DEFAULT_TUNING_ID };
+	const fallback: TestRiff = {
+		source: DEFAULT_TEST_SOURCE,
+		tuningId: DEFAULT_TUNING_ID,
+		syntaxVersion: 2
+	};
 	if (!browser) return fallback;
 	try {
 		const raw = JSON.parse(localStorage.getItem(TEST_STORAGE_KEY) ?? 'null');
-		return {
-			source: typeof raw?.source === 'string' ? raw.source : fallback.source,
-			tuningId: typeof raw?.tuningId === 'string' ? raw.tuningId : fallback.tuningId
-		};
+		const tuningId = typeof raw?.tuningId === 'string' ? raw.tuningId : fallback.tuningId;
+		const source =
+			typeof raw?.source !== 'string'
+				? fallback.source
+				: raw.syntaxVersion === 2
+					? raw.source
+					: migrateLegacySource(raw.source, getTuning(tuningId));
+		return { source, tuningId, syntaxVersion: 2 };
 	} catch {
 		return fallback;
 	}

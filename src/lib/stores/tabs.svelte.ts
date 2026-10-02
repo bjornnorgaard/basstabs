@@ -1,6 +1,7 @@
 import { browser } from '$app/environment';
 import { EXAMPLE_SOURCE } from '$lib/tab/example';
-import { DEFAULT_TUNING_ID } from '$lib/tab/tuning';
+import { migrateLegacySource } from '$lib/tab/migrate';
+import { DEFAULT_TUNING_ID, getTuning } from '$lib/tab/tuning';
 
 export interface BassTab {
 	id: string;
@@ -8,6 +9,7 @@ export interface BassTab {
 	artist: string;
 	tuningId: string;
 	source: string;
+	syntaxVersion: 2;
 	createdAt: number;
 	updatedAt: number;
 }
@@ -19,7 +21,16 @@ function load(): BassTab[] {
 	try {
 		const raw = localStorage.getItem(STORAGE_KEY);
 		const parsed = raw ? JSON.parse(raw) : [];
-		return Array.isArray(parsed) ? parsed : [];
+		return Array.isArray(parsed)
+			? parsed.map((tab) => ({
+					...tab,
+					source:
+						tab.syntaxVersion === 2
+							? tab.source
+							: migrateLegacySource(tab.source, getTuning(tab.tuningId)),
+					syntaxVersion: 2
+				}))
+			: [];
 	} catch {
 		return [];
 	}
@@ -56,6 +67,7 @@ class TabStore {
 			tuningId: DEFAULT_TUNING_ID,
 			source: EXAMPLE_SOURCE,
 			...init,
+			syntaxVersion: 2,
 			createdAt: now,
 			updatedAt: now
 		};

@@ -14,6 +14,14 @@
 			syntax: `${tuning.strings[0]}3 5`,
 			meaning: 'A bare fret stays on the previous string – it keeps that string’s colour.'
 		},
+		{
+			syntax: `${tuning.strings[0]}[12]3`,
+			meaning: 'Brackets mean one multi-digit fret: fret 12, then a joined fret 3.'
+		},
+		{
+			syntax: `${tuning.strings[0]}123`,
+			meaning: 'Unbracketed digits are separate frets: a joined run of frets 1, 2, and 3.'
+		},
 		{ syntax: '|', meaning: 'Bar line – ends the current measure.' },
 		{ syntax: '↵ new line', meaning: 'Starts a new row of tab.', plain: true },
 		{ syntax: '[Verse 1]', meaning: 'Names the section that follows. Use a line of its own.' },
@@ -47,7 +55,12 @@
 		case-insensitive. Each fret digit and space occupies one tab column; no blanks are added
 		automatically. Notes can be adjacent, too:
 		<ShorthandCode source="A2E320" {tuning} /> means <ShorthandCode source="A2 E3 2 0" {tuning} />.
-		Spaces after the last note extend the bar by exactly that many blank columns.
+		Spaces after the last note extend the bar by exactly that many blank columns. Brackets and
+		string names occupy no tab columns. A bare bracketed fret reuses the previous string; use <ShorthandCode
+			source="E0 |[12]|"
+			{tuning}
+		/> rather than putting
+		<code>[12]</code> on its own line, where it names a section.
 	</p>
 	<p class="mt-2 opacity-75">
 		Colours match between the shorthand and the tab: every string has its own colour, sections are

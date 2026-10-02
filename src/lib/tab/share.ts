@@ -1,4 +1,5 @@
-import { DEFAULT_TUNING_ID } from './tuning';
+import { migrateLegacySource } from './migrate';
+import { DEFAULT_TUNING_ID, getTuning } from './tuning';
 
 /** The parts of a tab that travel inside a share link. */
 export interface SharedTab {
@@ -8,8 +9,8 @@ export interface SharedTab {
 	source: string;
 }
 
-/** Bumped whenever the payload layout changes, so old links can be rejected. */
-const VERSION = '1';
+/** Version 2 uses brackets for multi-digit frets; version 1 links are migrated on read. */
+const VERSION = '2';
 const SEPARATOR = '\n';
 
 function toBase64Url(bytes: Uint8Array): string {
@@ -39,12 +40,13 @@ export function decodeSharedTab(payload: string): SharedTab | null {
 	try {
 		const text = new TextDecoder().decode(fromBase64Url(payload));
 		const [version, title, artist, tuningId, ...rest] = text.split(SEPARATOR);
-		if (version !== VERSION || rest.length === 0) return null;
+		if ((version !== VERSION && version !== '1') || rest.length === 0) return null;
+		const source = rest.join(SEPARATOR);
 		return {
 			title: title ?? '',
 			artist: artist ?? '',
 			tuningId: tuningId || DEFAULT_TUNING_ID,
-			source: rest.join(SEPARATOR)
+			source: version === '1' ? migrateLegacySource(source, getTuning(tuningId)) : source
 		};
 	} catch {
 		return null;

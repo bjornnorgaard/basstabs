@@ -234,8 +234,8 @@
 			</label>
 		</div>
 
-		<!-- Side by side from laptop width up; stacked on tablets and phones. Wide tabs scroll within their column. -->
-		<div class="grid grid-cols-1 gap-6 {editorOpen ? 'lg:grid-cols-2' : ''}">
+		<!-- Side by side from wide desktop width up; stacked on smaller screens. Wide tabs scroll within their column. -->
+		<div class="grid grid-cols-1 gap-6 {editorOpen ? 'xl:grid-cols-2' : ''}">
 			<Collapsible
 				open={editorOpen}
 				onOpenChange={(details) => setEditorOpen(details.open)}

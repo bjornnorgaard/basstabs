@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { EXAMPLE_SOURCE } from './example';
 import { parse } from './parser';
+import { buildSchedule } from './playback';
 import { renderTab } from './render';
 import { TUNINGS, getTuning } from './tuning';
 
@@ -22,22 +23,21 @@ describe('new tab example', () => {
 		}
 	});
 
-	it('demonstrates every syntax feature in six lines', () => {
+	it('walks through the syntax with sections and uppercase string names', () => {
 		const tuning = getTuning('standard-4');
 		const { blocks, systems, tokens } = parse(EXAMPLE_SOURCE, tuning);
-		expect(EXAMPLE_SOURCE.split('\n')).toHaveLength(6);
 		expect(EXAMPLE_SOURCE).toContain('\n\n# Newlines start a new row of tab.');
-		expect(blocks.map((block) => block.kind)).toEqual([
-			'section',
-			'annotation',
-			'system',
-			'annotation',
-			'system'
+		expect(blocks.filter((block) => block.kind === 'section').map((block) => block.title)).toEqual([
+			'C Major Scale',
+			'Strings and Frets',
+			'Spacing and Silence',
+			'Joined Notes',
+			'Higher Frets',
+			'Bar Lines and Rows',
+			'Verse',
+			'Try the Features'
 		]);
-		expect(blocks[3]).toEqual({
-			kind: 'annotation',
-			text: 'Newlines start a new row of tab.'
-		});
+		expect(systems).toHaveLength(8);
 		expect(new Set(tokens.map((token) => token.kind))).toEqual(
 			new Set(['section', 'comment', 'bar', 'string', 'fret'])
 		);
@@ -45,28 +45,60 @@ describe('new tab example', () => {
 			const name = EXAMPLE_SOURCE.slice(token.start, token.end);
 			expect(name).toBe(name.toUpperCase());
 		}
-		expect(systems[0].measures.map((measure) => measure.width)).toEqual([11, 7, 4]);
-		expect(systems[0].measures[2].events).toEqual([]);
-		expect(systems[0].measures[0].events.map((note) => note.fret)).toEqual([0, 2, 2, 3, 2, 0]);
-		expect(systems[0].measures[0].events.map((note) => note.joinedToPrevious)).toEqual([
-			false,
-			false,
+	});
+
+	it.each(TUNINGS)('plays an ascending C major scale for $label', (tuning) => {
+		const { systems } = parse(EXAMPLE_SOURCE, tuning);
+		const pitches = systems[0].measures[0].events.map(
+			(note) => tuning.openMidi[note.string] + note.fret
+		);
+		expect(pitches).toEqual([36, 38, 40, 41, 43, 45, 47, 48]);
+	});
+
+	it('demonstrates visual spacing, silent bars, joined notes, and higher frets', () => {
+		const tuning = getTuning('standard-4');
+		const { systems } = parse(EXAMPLE_SOURCE, tuning);
+		const spacing = systems[2].measures;
+		expect(spacing.map((measure) => measure.width)).toEqual([7, 12, 4]);
+		expect(spacing[0].events.map((note) => note.column)).toEqual([0, 2, 4, 6]);
+		expect(spacing[1].events.map((note) => note.column)).toEqual([0, 3, 6, 9]);
+		expect(spacing[2].events).toEqual([]);
+		const joined = systems[3].measures;
+		expect(joined.map((measure) => measure.events.map((note) => note.fret))).toEqual([
+			[2, 3, 2, 0],
+			[2, 3, 2, 0]
+		]);
+		expect(joined[0].events.map((note) => note.joinedToPrevious)).toEqual([
 			false,
 			true,
 			true,
 			true
 		]);
-		expect(systems[1].measures[0].events.map((note) => [note.string, note.fret])).toEqual([
-			[3, 5],
-			[3, 7]
+		expect(joined[1].events.every((note) => !note.joinedToPrevious)).toBe(true);
+		expect(systems[4].measures[0].events.map((note) => note.fret)).toEqual([10, 12, 12, 14]);
+		expect(systems[4].measures[1].events.map((note) => note.fret)).toEqual([12, 3]);
+		expect(systems[4].measures[2].events.map((note) => note.fret)).toEqual([1, 2, 3]);
+		expect(systems[5].measures.map((measure) => measure.width)).toEqual([2, 7, 9, 8]);
+		const { layout } = renderTab(EXAMPLE_SOURCE, tuning);
+		const silentBar = layout.measures.find((measure) => measure.notes.length === 0);
+		expect(silentBar?.width).toBe(4);
+		const schedule = buildSchedule(layout.measures, tuning);
+		expect(schedule.notes.some((note) => note.measureId === silentBar?.id)).toBe(false);
+		expect(schedule.length).toBe(layout.measures.length);
+	});
+
+	it('places the newline comment above the next row and preserves the previous string', () => {
+		const tuning = getTuning('standard-4');
+		const { systems } = parse(EXAMPLE_SOURCE, tuning);
+		expect(systems[6].measures[0].events.map((note) => [note.string, note.fret])).toEqual([
+			[0, 3],
+			[0, 2],
+			[0, 0]
 		]);
-		expect(renderTab(EXAMPLE_SOURCE, tuning).text).toBe(
-			'[Example]\n# String names ignore case. Spaces leave gaps; A2E320 joins notes; D10 is fret 10.\n' +
-				'G|-----------|----12-|----|\n' +
-				'D|-----------|-10----|----|\n' +
-				'A|-----2-----|-------|----|\n' +
-				'E|-0-2--320--|-------|----|\n\n' +
-				'# Newlines start a new row of tab.\nG|5-7|\nD|---|\nA|---|\nE|---|'
+		expect(renderTab(EXAMPLE_SOURCE, tuning).text).toContain(
+			'\n\n# Newlines start a new row of tab.\n' +
+				'# Bare frets still use the previous string (E here). A final | is optional.\n' +
+				'G|-----|\nD|-----|\nA|-----|\nE|3-2-0|'
 		);
 	});
 });

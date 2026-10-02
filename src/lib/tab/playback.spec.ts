@@ -8,7 +8,7 @@ const bass5 = getTuning('standard-5');
 
 describe('layout', () => {
 	it('records where every note and bar sits in the rendered text', () => {
-		const { layout } = renderTab('E0 12 |A2E320', bass4);
+		const { layout } = renderTab('E0 [12] |A2E320', bass4);
 		const lines = layout.text.split('\n');
 		const eLine = lines[3];
 

@@ -12,6 +12,15 @@ describe('share links', () => {
 	it('round-trips a tab', () => {
 		expect(decodeSharedTab(encodeSharedTab(tab))).toEqual(tab);
 	});
+	it('migrates version 1 links without changing legacy pitches', () => {
+		const payload = btoa('1\nOld tab\nArtist\nstandard-4\nE12 10 E320');
+		expect(decodeSharedTab(payload)?.source).toBe('E[12] [10] E320');
+	});
+
+	it('keeps version 2 single-digit runs and bracketed frets unchanged', () => {
+		const current = { ...tab, source: 'E12 E[12]3' };
+		expect(decodeSharedTab(encodeSharedTab(current))).toEqual(current);
+	});
 
 	it('keeps the payload URL-safe', () => {
 		expect(encodeSharedTab(tab)).toMatch(/^[\w-]+$/);

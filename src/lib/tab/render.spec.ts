@@ -125,7 +125,7 @@ describe('renderTab', () => {
 	});
 
 	it('widens columns for two-digit frets', () => {
-		expect(renderTab('G12 D10 9 |', bass4).text.split('\n')).toEqual([
+		expect(renderTab('G[12] D[10] 9 |', bass4).text.split('\n')).toEqual([
 			'G|12------|',
 			'D|---10-9-|',
 			'A|--------|',
@@ -134,7 +134,7 @@ describe('renderTab', () => {
 	});
 
 	it('preserves the width of a fret written with leading zeroes', () => {
-		const { text, layout, errors } = renderTab('|E01|', bass4);
+		const { text, layout, errors } = renderTab('|E[01]|', bass4);
 		expect(errors).toEqual([]);
 		expect(text).toBe('G|--|\nD|--|\nA|--|\nE|01|');
 		expect(layout.measures[0].notes[0]).toMatchObject({ fret: 1, width: 2 });
@@ -214,7 +214,7 @@ describe('parse errors', () => {
 	});
 
 	it('rejects frets too large to represent without changing their digits', () => {
-		expect(parse('E0 999999999999999999999999999999', bass4).errors).toMatchObject([
+		expect(parse('E0 [999999999999999999999999999999]', bass4).errors).toMatchObject([
 			{ line: 1, column: 4, message: expect.stringContaining('out of range') }
 		]);
 	});

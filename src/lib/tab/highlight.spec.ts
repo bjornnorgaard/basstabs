@@ -66,17 +66,18 @@ describe('highlightSegments', () => {
 });
 
 describe('noteAtCaret', () => {
-	const { tokens } = parse('E0 12 A3', bass4);
+	const { tokens } = parse('E0 [12] A3', bass4);
 
 	it('prefers the note just before the caret', () => {
 		expect(noteAtCaret(tokens, 2)).toBe(0);
-		expect(noteAtCaret(tokens, 5)).toBe(1);
+		expect(noteAtCaret(tokens, 7)).toBe(1);
 		expect(noteAtCaret(tokens, 4)).toBe(1);
+		expect(noteAtCaret(tokens, 6)).toBe(1);
 	});
 
 	it('falls back to the note starting at the caret', () => {
 		expect(noteAtCaret(tokens, 0)).toBe(0);
-		expect(noteAtCaret(tokens, 6)).toBe(2);
+		expect(noteAtCaret(tokens, 8)).toBe(2);
 	});
 
 	it('returns nothing between notes', () => {

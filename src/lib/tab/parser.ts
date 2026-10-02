@@ -76,19 +76,20 @@ export interface ParseResult {
 	tokens: SourceToken[];
 }
 
-const NOTE_PATTERN = /^([A-Za-z])?(\d+)$/;
+const NOTE_PATTERN = /^([A-Za-z])?(?:\[(\d+)\]|(\d+))$/;
 
 /**
  * Parses the shorthand syntax, e.g. `E0 0 A2 2 |E0 0 3 A2 |`.
  *
- * - `<String><fret>` plays a fret on a string (`E0`, `A12`). String letters are case-insensitive.
+ * - `<String><fret>` plays a fret on a string (`E0`, `A[12]`). String letters are case-insensitive.
+ * - Unbracketed digits are individual frets (`E12` means `E1 E2`).
  * - `<fret>` alone reuses the most recently named string.
  * - `|` ends a measure. It may be attached to a note (`2|`, `|E0`).
  * - Each non-empty note line becomes its own system (a separate block of tab).
  * - `[Name]` on its own line starts a named section.
  * - `# Text` on its own line displays a note above the next row of tab.
  */
-export function parse(source: string, tuning: Tuning): ParseResult {
+export function parse(source: string, tuning: Tuning, syntaxVersion: 1 | 2 = 2): ParseResult {
 	const systems: System[] = [];
 	const blocks: TabBlock[] = [];
 	const errors: ParseError[] = [];
@@ -110,7 +111,11 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 			sourceTokens.push({ kind: 'comment', ...trimmedSpan });
 			return;
 		}
-		if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+		if (
+			syntaxVersion === 1
+				? trimmed.startsWith('[') && trimmed.endsWith(']')
+				: /^\[[^[\]]*\]$/.test(trimmed)
+		) {
 			const title = trimmed.slice(1, -1).trim();
 			if (title) {
 				blocks.push({ kind: 'section', title });
@@ -149,8 +154,10 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 			if (explicit) openingBar = true;
 		};
 
-		// A 3+ digit run after a string prefix is a single-digit note followed by frets.
-		const tokenRe = /\||[A-Za-z]\d(?=\d{2})|[A-Za-z]\d+|\d+|[^\s|]+/g;
+		const tokenRe =
+			syntaxVersion === 1
+				? /\||[A-Za-z]\d(?=\d{2})|[A-Za-z]\d+|\d+|[^\s|]+/g
+				: /\||[A-Za-z]?\[\d+\]|[A-Za-z]?\d|[^\s|]+/g;
 		let match: RegExpExecArray | null;
 		let splitFollowingDigits = false;
 		let previousTokenEnd = -1;
@@ -193,7 +200,8 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 					continue;
 				}
 
-				const [, letter, fretText] = note;
+				const [, letter, bracketedFret, plainFret] = note;
+				const fretText = bracketedFret ?? plainFret;
 				if (letter) {
 					const idx = stringIndex.get(letter.toUpperCase());
 					if (idx === undefined) {
@@ -234,7 +242,7 @@ export function parse(source: string, tuning: Tuning): ParseResult {
 				}
 				sourceTokens.push({
 					kind: 'fret',
-					start: span.end - fretText.length,
+					start: span.start + (letter ? 1 : 0),
 					end: span.end,
 					...noteToken
 				});
