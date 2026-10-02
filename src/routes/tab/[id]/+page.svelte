@@ -24,8 +24,12 @@
 	import { buildShareUrl } from '$lib/tab/share';
 	import { getTuning, TUNINGS } from '$lib/tab/tuning';
 	import { toaster } from '$lib/toaster';
+	import CloudTabControls from '$lib/components/CloudTabControls.svelte';
+	import { cloudStore } from '$lib/stores/cloud.svelte';
+	import { errorMessage } from '$lib/cloud/model';
 
-	const tab = $derived(tabStore.get(page.params.id ?? ''));
+	const cloud = $derived(cloudStore.get(page.params.id ?? ''));
+	const tab = $derived(cloud ?? tabStore.get(page.params.id ?? ''));
 	const tuning = $derived(getTuning(tab?.tuningId));
 	const result = $derived(renderTab(tab?.source ?? '', tuning));
 
@@ -42,7 +46,10 @@
 	}
 
 	function set<K extends 'title' | 'artist' | 'tuningId' | 'source'>(key: K, value: string) {
-		if (tab) tabStore.update(tab.id, { [key]: value });
+		if (tab) {
+			if (cloud) cloudStore.update(tab.id, { [key]: value });
+			else tabStore.update(tab.id, { [key]: value });
+		}
 	}
 
 	function clearSource() {
@@ -159,14 +166,26 @@
 
 	function duplicate() {
 		if (!tab) return;
-		const copy = tabStore.duplicate(tab.id);
+		const copy = cloud
+			? tabStore.create({
+					title: `${tab.title} (copy)`,
+					artist: tab.artist,
+					tuningId: tab.tuningId,
+					source: tab.source
+				})
+			: tabStore.duplicate(tab.id);
 		if (copy) goto(resolve('/tab/[id]', { id: copy.id }));
 	}
 
-	function remove() {
+	async function remove() {
 		if (!tab || !confirm(`Delete "${tab.title}"? This cannot be undone.`)) return;
-		tabStore.remove(tab.id);
-		goto(resolve('/'));
+		try {
+			if (cloud) await cloudStore.remove(tab.id);
+			else tabStore.remove(tab.id);
+			await goto(resolve('/'));
+		} catch (error) {
+			toaster.error({ title: 'Could not delete tab', description: errorMessage(error) });
+		}
 	}
 
 	function onkeydown(e: KeyboardEvent) {
@@ -184,7 +203,9 @@
 
 <svelte:window {onkeydown} />
 
-{#if !tab}
+{#if !tab && (!cloudStore.ready || cloudStore.loading)}
+	<p role="status">Loading your tabs...</p>
+{:else if !tab}
 	<section class="space-y-4 card preset-tonal-surface p-10 text-center">
 		<h1 class="h3">Tab not found</h1>
 		<p class="opacity-70">It may have been deleted, or it lives in another browser.</p>
@@ -206,7 +227,7 @@
 					<Copy class="size-4" /> Copy tab
 				</button>
 				<button type="button" class="btn preset-tonal" onclick={share}>
-					<Share class="size-4" /> Share link
+					<Share class="size-4" /> Snapshot link
 				</button>
 				<button type="button" class="btn preset-tonal" onclick={download} disabled={!result.text}>
 					<Download class="size-4" /> .txt
@@ -219,6 +240,8 @@
 				</button>
 			</div>
 		</div>
+
+		<CloudTabControls {tab} />
 
 		<div class="grid gap-4 md:grid-cols-[2fr_2fr_1fr]">
 			<label class="label">

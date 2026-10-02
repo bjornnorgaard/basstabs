@@ -11,6 +11,8 @@
 	import ModeToggle from '$lib/components/ModeToggle.svelte';
 	import { tabStore } from '$lib/stores/tabs.svelte';
 	import { toaster } from '$lib/toaster';
+	import AccountControls from '$lib/components/AccountControls.svelte';
+	import { cloudStore } from '$lib/stores/cloud.svelte';
 
 	let { children } = $props();
 
@@ -35,7 +37,9 @@
 			<AppBar.Lead>
 				<Brand />
 			</AppBar.Lead>
-			<AppBar.Trail class="flex items-center gap-2">
+			<AppBar.Trail class="flex flex-wrap items-center justify-end gap-2">
+				<a href={resolve('/public')} class="btn preset-tonal btn-sm">Public tabs</a>
+				<AccountControls />
 				<a
 					href={resolve('/sound')}
 					class="btn-icon hover:preset-tonal"
@@ -54,6 +58,26 @@
 	</AppBar>
 
 	<main class="mx-auto w-full max-w-[96rem] flex-1 p-4 md:p-6">
+		{#if cloudStore.error}
+			<div role="alert" class="mb-4 space-y-2 card preset-tonal-error p-4">
+				<p>Cloud: {cloudStore.error}</p>
+				<p class="text-sm">
+					Local tabs still work. Retry saving unsaved cloud changes. Drafts are backed up in this
+					browser when browser storage is available.
+				</p>
+				{#if cloudStore.connectionFailed}
+					<button class="btn preset-tonal btn-sm" onclick={() => cloudStore.connect()}>
+						Reconnect cloud
+					</button>
+				{/if}
+				<button
+					class="btn preset-tonal btn-sm"
+					onclick={() => {
+						cloudStore.error = '';
+					}}>Dismiss</button
+				>
+			</div>
+		{/if}
 		{@render children()}
 	</main>
 </div>

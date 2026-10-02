@@ -12,14 +12,56 @@
 	import { decodeSharedTab, payloadFromHash } from '$lib/tab/share';
 	import { getTuning } from '$lib/tab/tuning';
 	import { toaster } from '$lib/toaster';
+	import { doc, onSnapshot } from 'firebase/firestore';
+	import { db } from '$lib/firebase';
+	import { readCloudTab, errorMessage } from '$lib/cloud/model';
+	import type { SharedTab } from '$lib/tab/share';
 
-	const shared = $derived(decodeSharedTab(payloadFromHash(page.url.hash)));
+	let live = $state<SharedTab | null>(null);
+	let loading = $state(false);
+	let error = $state('');
+	let retry = $state(0);
+	const token = $derived(page.url.searchParams.get('id'));
+	const shared = $derived(token ? live : decodeSharedTab(payloadFromHash(page.url.hash)));
+	$effect(() => {
+		const attempt = retry;
+		live = null;
+		loading = false;
+		error = '';
+		if (!token) return;
+		if (!/^[a-f0-9]{32}$/.test(token)) {
+			error = 'This live share link is invalid.';
+			return;
+		}
+		loading = true;
+		return onSnapshot(
+			doc(db, 'publishedTabs', token),
+			(snapshot) => {
+				try {
+					live = snapshot.exists()
+						? readCloudTab(snapshot.id, { ...snapshot.data(), shareId: snapshot.id })
+						: null;
+					error = snapshot.exists() ? '' : 'This tab was deleted or sharing was revoked.';
+				} catch (cause) {
+					live = null;
+					error = errorMessage(cause);
+				}
+				loading = false;
+			},
+			(cause) => {
+				live = null;
+				loading = false;
+				error = `${errorMessage(cause)}${attempt > 0 ? ' Please check the link or try again later.' : ''}`;
+			}
+		);
+	});
 	const tuning = $derived(getTuning(shared?.tuningId));
 	const result = $derived(renderTab(shared?.source ?? '', tuning));
 
 	function save() {
 		if (!shared) return;
-		const tab = tabStore.create(shared);
+		const { title, artist, tuningId, source } = shared;
+		const tab = tabStore.create({ title, artist, tuningId, source });
 		toaster.success({ title: 'Saved to your tabs' });
 		goto(resolve('/tab/[id]', { id: tab.id }));
 	}
@@ -35,6 +77,7 @@
 </script>
 
 <svelte:head>
+	<meta name="referrer" content="no-referrer" />
 	<meta name="robots" content="noindex, follow" />
 	<title
 		>{shared
@@ -43,7 +86,21 @@
 	>
 </svelte:head>
 
-{#if !shared}
+{#if loading}
+	<p role="status">Loading shared tab...</p>
+{:else if error}
+	<section class="space-y-4 card preset-tonal-surface p-10 text-center">
+		<h1 class="h3">Shared tab unavailable</h1>
+		<p role="alert">{error}</p>
+		<button
+			class="btn preset-tonal"
+			onclick={() => {
+				retry += 1;
+			}}>Retry</button
+		>
+		<a class="btn preset-filled-primary-500" href={resolve('/')}>Back to your tabs</a>
+	</section>
+{:else if !shared}
 	<section class="space-y-4 card preset-tonal-surface p-10 text-center">
 		<h1 class="h3">Nothing to see here</h1>
 		<p class="opacity-70">This share link is incomplete or was damaged on its way here.</p>
@@ -71,7 +128,10 @@
 				{shared.artist || 'Unknown artist'} · {tuning.label}
 			</p>
 			<p class="text-sm opacity-60">
-				Shared with you. Save it to keep your own editable copy in this browser.
+				{token
+					? 'Live read-only tab. Saved updates appear here automatically.'
+					: 'Snapshot shared with you.'}
+				Save it to keep your own independent editable copy in this browser.
 			</p>
 		</header>
 

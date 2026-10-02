@@ -98,9 +98,10 @@ choice is saved in the browser.
 ## App
 
 Built with SvelteKit and Skeleton UI (`vintage` theme, with light and dark mode).
-Tabs are saved in the browser's `localStorage`. You can create, search, duplicate
+Local tabs are saved in the browser's `localStorage`. You can create, search, duplicate
 and delete tabs, copy them to the clipboard, download them as `.txt`, or share
-them as a link.
+them as a snapshot link. Google sign-in is optional: all existing local features
+work without an account. Sign-in does not automatically upload any local tabs.
 
 New tabs are prefilled with an editable walkthrough, not just a placeholder.
 Starting with an ascending C major scale, it explains sections and comments,
@@ -132,17 +133,106 @@ the SPA shell at build time. These are the description, canonical URL, Open
 Graph, Twitter card and JSON-LD tags. This way crawlers and link previews can
 read them without running JavaScript. `robots.txt`, `sitemap.xml` and
 `manifest.webmanifest` are pre-built from `src/lib/site.ts`. Tab and shared
-pages are marked `noindex` because their content is private to each browser.
+pages are marked `noindex`; public tabs are discoverable through the public library.
 To change the preview image or any other site metadata, edit `src/lib/site.ts`.
 
 ### Sharing
 
-**Share link** on a tab page copies a URL like
+**Snapshot link** on a tab page copies a URL like
 `https://basstabs.bybear.dk/shared#<payload>` to the clipboard. The payload is
 the title, artist, tuning and shorthand, base64url encoded in the hash, so the
 whole tab travels inside the link and never touches a server. Opening the link
 shows the rendered tab with a **Save to my tabs** button that stores an editable
 copy in that browser.
+
+### Optional Google sign-in and cloud tabs
+
+Sign in with Google, open a local tab, and choose **Save a cloud copy**. This
+creates a separate private cloud tab and keeps the original local tab unchanged.
+Cloud tabs appear separately on the home page, are available across devices, and
+save edits automatically after a short delay. **Save / retry** explicitly retries
+a failed save. Sign-out waits for pending edits to save; if saving fails, the
+account stays signed in. Unsaved drafts are backed up in browser storage under
+the account's UID and restored only for that account. Browser storage errors are
+shown explicitly. Local tabs remain available after sign-out.
+
+Visibility options:
+
+- **Private:** only the signed-in owner can read or edit.
+- **Unlisted:** anyone with the live link can read, but it is not listed publicly.
+- **Public:** anyone can read, and it appears under **Public tabs**.
+
+**Copy live link** produces `/shared?id=<random-token>`. The link is read-only,
+does not expire automatically, and shows successfully saved updates in real time.
+Anyone with an unlisted link can forward it; this is not friend-specific access
+control. Making the tab private or deleting it revokes the link. Sharing again
+after revocation generates a new token. Switching between public and unlisted
+keeps the existing link. Snapshot links remain independent, immutable copies and
+cannot be revoked. Viewers can save a local editable copy without signing in.
+
+Cloud edits need a connection to save. Recovered drafts can be saved with
+**Save / retry**. Simultaneous edits from multiple devices use last-write-wins,
+not collaborative merging. The app warns before closing with pending changes.
+On shared computers, sign out after successful saving; local tabs and sound
+settings still belong to the browser.
+
+### Firebase setup and deployment
+
+The client configuration in `src/lib/firebase.ts` targets `basstabs-by-bear`.
+It is public Web app configuration, not an admin credential. Analytics is not
+initialized. The static nginx deployment does not need a server SDK or secrets.
+
+In Firebase Console:
+
+1. Enable the Google provider in Authentication.
+2. Authorize `basstabs.bybear.dk`, `localhost`, and any staging hostname.
+3. Create a Standard edition Firestore database with ID `(default)`.
+4. Publish the repository's `firestore.rules` and `firestore.indexes.json` before
+   testing cloud features. Production-mode deny-all rules intentionally prevent
+   the cloud UI from working until these rules are deployed.
+
+Use the Firebase CLI to deploy rules and indexes:
+
+```sh
+npx firebase login
+npx firebase deploy --project basstabs-by-bear --only firestore:rules,firestore:indexes
+```
+
+Rules tests use the Firestore emulator and require Java 21 or newer:
+
+```sh
+npm run test:rules
+```
+
+The Firebase CLI supports Node 20/22/24; use Node 22 or 24 for local rules
+testing if a newer Node version produces an engine warning. The Firestore
+dependency's Node-only gRPC package is overridden to a patched compatible
+1.x version; the browser app uses Firebase's Web transport.
+
+Alternatively, paste `firestore.rules` into **Firestore Database → Rules** and
+publish, then create the collection-scope composite index for `publishedTabs`
+with `visibility` ascending and `updatedAt` descending in **Indexes**. Wait for
+the index to finish building before using the public library.
+
+Canonical tabs live at `users/{uid}/tabs/{tabId}`. Shared content is mirrored
+atomically at `publishedTabs/{unguessableToken}`. Rules require the projection
+to match its canonical tab, enforce owner-only writes, and require deletion of
+the projection on revocation/deletion. Guests may get a shared document by its
+token; collection queries must filter `visibility == 'public'`. Shared
+documents contain tab content and owner UID/tab ID, not the owner's email or
+Google profile. Do not add private information to shared documents.
+
+Monitor Firestore usage: public reads and live listeners consume quota. App Check
+can reduce abuse once configured, but it does not replace Security Rules. No
+Storage, Functions, Anonymous Authentication, or Firebase Hosting is required.
+
+If Google sign-in succeeds but loading tabs reports **Missing or insufficient
+permissions**, verify that the app-specific rules above are published to the
+`(default)` database in `basstabs-by-bear`, not just saved in the editor or deployed
+to another project/database. The initial Production-mode deny-all rules cause
+this error even for signed-in users. After publishing, choose **Reconnect cloud**
+or reload the app; a denied Firestore listener does not resume by itself. Do not
+work around this error by allowing all reads/writes.
 
 ```sh
 npm install

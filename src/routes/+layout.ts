@@ -1,3 +1,3 @@
-// Tabs are stored in localStorage, so the app runs entirely client-side.
+// Local tabs and Firebase use browser APIs; the static app runs client-side.
 export const ssr = false;
 export const prerender = false;

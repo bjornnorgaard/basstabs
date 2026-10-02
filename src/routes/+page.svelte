@@ -11,6 +11,7 @@
 	import { EXAMPLE_SOURCE } from '$lib/tab/example';
 	import { renderTab } from '$lib/tab/render';
 	import { getTuning } from '$lib/tab/tuning';
+	import { cloudStore } from '$lib/stores/cloud.svelte';
 
 	let query = $state('');
 
@@ -67,6 +68,50 @@
 			</div>
 		{/if}
 	</header>
+
+	{#if cloudStore.user}
+		<section class="space-y-3">
+			<h2 class="h4">Your cloud tabs</h2>
+			{#if cloudStore.loading}
+				<p role="status">Loading cloud tabs...</p>
+			{:else if cloudStore.connectionFailed}
+				<p role="alert">
+					Cloud tabs could not be loaded. Your cloud library is unavailable, not necessarily empty.
+				</p>
+				<button class="btn preset-tonal btn-sm" onclick={() => cloudStore.connect()}
+					>Reconnect cloud</button
+				>
+			{:else if cloudStore.tabs.length === 0}
+				<p class="opacity-70">
+					No cloud tabs yet. Open a local tab and choose “Save a cloud copy”.
+				</p>
+			{:else}
+				<ul class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+					{#each cloudStore.sorted.filter((t) => `${t.title} ${t.artist}`
+							.toLowerCase()
+							.includes(query.trim().toLowerCase())) as tab (tab.id)}
+						<li class="space-y-2 card preset-outlined-surface-200-800 p-4">
+							<a class="block space-y-1" href={resolve('/tab/[id]', { id: tab.id })}>
+								<h3 class="h5">{tab.title || 'Untitled tab'}</h3>
+								<p class="text-sm opacity-70">
+									{tab.artist || 'Unknown artist'} · {tab.visibility} · {cloudStore.dirty.includes(
+										tab.id
+									)
+										? 'Unsaved changes'
+										: 'Cloud'}
+								</p>
+								<TabPreview text={preview(tab)} placeholder="Empty tab" class="max-h-40 text-xs" />
+							</a>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</section>
+	{/if}
+	<h2 class="h4">In this browser</h2>
+	<p class="text-sm opacity-70">
+		Local tabs are not uploaded automatically and remain available when signed out.
+	</p>
 
 	{#if tabStore.tabs.length === 0}
 		<section class="flex flex-col items-center gap-4 card preset-tonal-surface p-10 text-center">

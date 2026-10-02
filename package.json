@@ -13,9 +13,12 @@
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write .",
 		"test:unit": "vitest",
-		"test": "npm run test:unit -- --run"
+		"test": "npm run test:unit -- --run",
+		"test:rules": "firebase emulators:exec --only firestore --project demo-basstabs \"node --test tests/firestore.rules.test.mjs\""
 	},
 	"devDependencies": {
+		"@firebase/rules-unit-testing": "^5.0.2",
+		"firebase-tools": "^15.32.1",
 		"@eslint/js": "^10.0.1",
 		"@fontsource/caveat": "^5.3.0",
 		"@lucide/svelte": "^1.49.0",
@@ -41,7 +44,13 @@
 		"vite": "^8.0.16",
 		"vitest": "^4.1.8"
 	},
+	"overrides": {
+		"@firebase/firestore": {
+			"@grpc/grpc-js": "^1.14.5"
+		}
+	},
 	"dependencies": {
+		"firebase": "^12.19.0",
 		"@codemirror/commands": "^6.11.1",
 		"@codemirror/search": "^6.7.2",
 		"@codemirror/state": "^6.7.6",
