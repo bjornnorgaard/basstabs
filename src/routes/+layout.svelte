@@ -28,9 +28,7 @@
 </svelte:head>
 
 <div class="flex min-h-screen flex-col">
-	<AppBar
-		class="sticky top-0 z-10 border-b border-surface-200-800 bg-surface-50-950/80 backdrop-blur"
-	>
+	<AppBar class="z-10 border-b border-surface-200-800 bg-surface-50-950/80 backdrop-blur">
 		<AppBar.Toolbar
 			class="mx-auto grid w-full max-w-[96rem] grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 px-3 py-2 lg:flex lg:justify-between lg:gap-x-4 lg:px-4"
 		>
