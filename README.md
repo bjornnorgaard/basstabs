@@ -95,6 +95,14 @@ Tabs are saved in the browser's `localStorage`. You can create, search, duplicat
 and delete tabs, copy them to the clipboard, download them as `.txt`, or share
 them as a link.
 
+New tabs are prefilled with a compact, editable syntax example, not just a
+placeholder. It demonstrates a section heading, an annotation, all four standard
+strings, bare and joined notes, multi-digit frets,
+literal spacing, different bar widths, a silent bar, and a new row without a
+final bar line. String names are consistently uppercase in the example, with a
+comment explaining that casing does not matter. Duplicating or saving a shared
+tab preserves its source instead.
+
 - Parser: `src/lib/tab/parser.ts`. New indicators go in the `TabEvent` union.
 - Renderer: `src/lib/tab/render.ts`. `layoutBlocks` records where every note and bar
   lands in the text, which playback uses for highlighting.

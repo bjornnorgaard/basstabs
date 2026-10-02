@@ -1,4 +1,5 @@
 import { browser } from '$app/environment';
+import { EXAMPLE_SOURCE } from '$lib/tab/example';
 import { DEFAULT_TUNING_ID } from '$lib/tab/tuning';
 
 export interface BassTab {
@@ -53,7 +54,7 @@ class TabStore {
 			title: 'Untitled tab',
 			artist: '',
 			tuningId: DEFAULT_TUNING_ID,
-			source: '',
+			source: EXAMPLE_SOURCE,
 			...init,
 			createdAt: now,
 			updatedAt: now

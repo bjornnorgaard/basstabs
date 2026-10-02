@@ -8,10 +8,9 @@
 	import Trash from '@lucide/svelte/icons/trash';
 	import TabPreview from '$lib/components/TabPreview.svelte';
 	import { tabStore, type BassTab } from '$lib/stores/tabs.svelte';
+	import { EXAMPLE_SOURCE } from '$lib/tab/example';
 	import { renderTab } from '$lib/tab/render';
 	import { getTuning } from '$lib/tab/tuning';
-
-	const EXAMPLE_SOURCE = 'E0 0 A2 2 | E0 0 3 A2 |';
 
 	let query = $state('');
 
@@ -30,7 +29,7 @@
 		goto(resolve('/tab/[id]', { id }));
 	}
 
-	function create(source = '', title?: string) {
+	function create(source = EXAMPLE_SOURCE, title?: string) {
 		open(tabStore.create({ source, ...(title ? { title } : {}) }).id);
 	}
 
@@ -74,7 +73,7 @@
 			<FileMusic class="size-12 text-primary-500" />
 			<h2 class="h4">No tabs yet</h2>
 			<p class="max-w-md opacity-75">
-				Type something like <code>{EXAMPLE_SOURCE}</code> and watch it turn into a bass tab.
+				New tabs start with an editable example covering the supported shorthand syntax.
 			</p>
 			<div class="flex flex-wrap justify-center gap-2">
 				<button type="button" class="btn preset-filled-primary-500" onclick={() => create()}>
