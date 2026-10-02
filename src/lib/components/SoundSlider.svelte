@@ -35,13 +35,13 @@
 </script>
 
 <div class="space-y-1">
-	<div class="flex items-center gap-2">
-		<label for={id} class="flex-1 text-sm {modified ? 'font-semibold' : ''}">
+	<div class="flex flex-wrap items-center gap-2">
+		<label for={id} class="min-w-0 flex-1 text-sm {modified ? 'font-semibold' : ''}">
 			{control.label}
 		</label>
 		<input
 			type="number"
-			class="input w-24 px-2 py-0.5 text-right font-tab text-xs"
+			class="input w-24 shrink-0 px-2 py-0.5 text-right font-tab text-xs"
 			aria-label="{control.label} value"
 			min={control.min}
 			max={control.max}
@@ -49,7 +49,7 @@
 			value={Number(value.toFixed(decimals))}
 			onchange={(e) => set(e.currentTarget.valueAsNumber)}
 		/>
-		<span class="w-12 text-xs opacity-60">{control.unit ?? ''}</span>
+		<span class="w-12 shrink-0 text-xs opacity-60">{control.unit ?? ''}</span>
 		<button
 			type="button"
 			class="btn-icon btn-icon-sm hover:preset-tonal {modified ? '' : 'invisible'}"

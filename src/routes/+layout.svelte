@@ -6,8 +6,8 @@
 	import { AppBar, Toast } from '@skeletonlabs/skeleton-svelte';
 	import Plus from '@lucide/svelte/icons/plus';
 	import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
+	import UserRound from '@lucide/svelte/icons/user-round';
 	import Brand from '$lib/components/Brand.svelte';
-	import HighlightToggle from '$lib/components/HighlightToggle.svelte';
 	import ModeToggle from '$lib/components/ModeToggle.svelte';
 	import { tabStore } from '$lib/stores/tabs.svelte';
 	import { toaster } from '$lib/toaster';
@@ -32,32 +32,65 @@
 		class="sticky top-0 z-10 border-b border-surface-200-800 bg-surface-50-950/80 backdrop-blur"
 	>
 		<AppBar.Toolbar
-			class="mx-auto flex w-full max-w-[96rem] items-center justify-between gap-4 px-4"
+			class="mx-auto grid w-full max-w-[96rem] grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 px-3 py-2 lg:flex lg:justify-between lg:gap-x-4 lg:px-4"
 		>
-			<AppBar.Lead>
+			<AppBar.Lead class="shrink-0">
 				<Brand />
 			</AppBar.Lead>
-			<AppBar.Trail class="flex flex-wrap items-center justify-end gap-2">
-				<a href={resolve('/public')} class="btn preset-tonal btn-sm">Public tabs</a>
-				<AccountControls />
-				<a
-					href={resolve('/sound')}
-					class="btn-icon hover:preset-tonal"
-					title="Sound design"
-					aria-label="Sound design"
-				>
-					<SlidersHorizontal class="size-5" />
+			<AppBar.Trail class="flex items-center justify-end gap-1 lg:flex-1 lg:gap-2">
+				<div class="flex items-center gap-1 lg:hidden">
+					<a
+						href={resolve('/sound')}
+						class="btn-icon hover:preset-tonal"
+						title="Sound design"
+						aria-label="Sound design"
+					>
+						<SlidersHorizontal class="size-5" />
+					</a>
+					<ModeToggle />
+					<a
+						href={resolve('/profile')}
+						class="btn-icon overflow-hidden rounded-full hover:preset-tonal"
+						title="Profile"
+						aria-label="Profile"
+					>
+						{#if cloudStore.user?.photoURL}
+							<img src={cloudStore.user.photoURL} alt="" class="size-7 rounded-full object-cover" />
+						{:else}
+							<UserRound class="size-5" />
+						{/if}
+					</a>
+				</div>
+				<div class="hidden items-center gap-2 lg:flex">
+					<a href={resolve('/public')} class="btn preset-tonal btn-sm">Public tabs</a>
+					<AccountControls />
+					<a
+						href={resolve('/sound')}
+						class="btn-icon hover:preset-tonal"
+						title="Sound design"
+						aria-label="Sound design"
+					>
+						<SlidersHorizontal class="size-5" />
+					</a>
+					<button type="button" class="btn preset-filled-primary-500" onclick={newTab}>
+						<Plus class="size-4" /> New tab
+					</button>
+					<ModeToggle />
+				</div>
+			</AppBar.Trail>
+			<div class="col-span-2 flex items-center gap-2 lg:hidden">
+				<a href={resolve('/public')} class="btn preset-tonal btn-sm">
+					<span class="max-[360px]:hidden">Public tabs</span>
+					<span class="hidden max-[360px]:inline">Public</span>
 				</a>
 				<button type="button" class="btn preset-filled-primary-500" onclick={newTab}>
 					<Plus class="size-4" /> New tab
 				</button>
-				<HighlightToggle />
-				<ModeToggle />
-			</AppBar.Trail>
+			</div>
 		</AppBar.Toolbar>
 	</AppBar>
 
-	<main class="mx-auto w-full max-w-[96rem] flex-1 p-4 md:p-6">
+	<main class="mx-auto w-full max-w-[96rem] min-w-0 flex-1 p-3 sm:p-4 md:p-6">
 		{#if cloudStore.error}
 			<div role="alert" class="mb-4 space-y-2 card preset-tonal-error p-4">
 				<p>Cloud: {cloudStore.error}</p>

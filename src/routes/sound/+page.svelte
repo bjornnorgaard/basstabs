@@ -104,7 +104,7 @@
 	</header>
 
 	<div
-		class="sticky top-16 z-[5] flex flex-wrap items-center gap-2 card border border-surface-200-800 bg-surface-50-950/90 p-3 backdrop-blur"
+		class="z-[5] flex flex-wrap items-center gap-2 card border border-surface-200-800 bg-surface-50-950/90 p-3 backdrop-blur max-sm:static sm:sticky sm:top-16"
 	>
 		<span class="text-sm opacity-70">Preset:</span>
 		<button
@@ -143,8 +143,8 @@
 		</button>
 	</div>
 
-	<div class="grid items-start gap-6 lg:grid-cols-2">
-		<div class="space-y-4">
+	<div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+		<div class="min-w-0 space-y-4">
 			{#each SOUND_GROUPS as group (group.id)}
 				<section class="space-y-4 card preset-tonal-surface p-4">
 					<header>
@@ -159,14 +159,14 @@
 		</div>
 
 		<div
-			class="space-y-4 lg:sticky lg:top-36 lg:max-h-[calc(100vh-10rem)] lg:overflow-y-auto lg:pr-1"
+			class="min-w-0 space-y-4 lg:sticky lg:top-36 lg:max-h-[calc(100vh-10rem)] lg:overflow-y-auto lg:pr-1"
 		>
 			<section class="space-y-3 card preset-tonal-surface p-4">
 				<header class="flex flex-wrap items-center justify-between gap-2">
 					<h2 class="h5">Test riff</h2>
-					<div class="flex items-center gap-2">
+					<div class="flex w-full flex-wrap items-center gap-2 sm:w-auto">
 						<select
-							class="select w-auto py-1 text-sm"
+							class="select min-w-0 flex-1 py-1 text-sm sm:w-auto sm:flex-none"
 							aria-label="Tuning"
 							bind:value={soundStore.test.tuningId}
 						>
@@ -176,7 +176,7 @@
 						</select>
 						<button
 							type="button"
-							class="btn preset-tonal btn-sm"
+							class="btn shrink-0 preset-tonal btn-sm"
 							disabled={soundStore.test.source === DEFAULT_TEST_SOURCE}
 							onclick={() => (soundStore.test.source = DEFAULT_TEST_SOURCE)}
 						>

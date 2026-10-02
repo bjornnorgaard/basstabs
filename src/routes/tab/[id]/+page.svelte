@@ -14,6 +14,7 @@
 	import Share from '@lucide/svelte/icons/share-2';
 	import Trash from '@lucide/svelte/icons/trash';
 	import ShorthandEditor from '$lib/components/ShorthandEditor.svelte';
+	import HighlightToggle from '$lib/components/HighlightToggle.svelte';
 	import SyntaxHelp from '$lib/components/SyntaxHelp.svelte';
 	import PlayableTab from '$lib/components/PlayableTab.svelte';
 	import { formatErrorReport } from '$lib/error-report';
@@ -244,27 +245,30 @@
 		<CloudTabControls {tab} />
 
 		<div class="grid gap-4 md:grid-cols-[2fr_2fr_1fr]">
-			<label class="label">
+			<label class="label min-w-0">
 				<span class="label-text">Title</span>
 				<input
-					class="input"
+					class="input w-full min-w-0"
 					type="text"
 					placeholder="Song title"
 					bind:value={() => tab.title, (v) => set('title', v)}
 				/>
 			</label>
-			<label class="label">
+			<label class="label min-w-0">
 				<span class="label-text">Artist</span>
 				<input
-					class="input"
+					class="input w-full min-w-0"
 					type="text"
 					placeholder="Artist"
 					bind:value={() => tab.artist, (v) => set('artist', v)}
 				/>
 			</label>
-			<label class="label">
+			<label class="label min-w-0">
 				<span class="label-text">Tuning</span>
-				<select class="select" bind:value={() => tab.tuningId, (v) => set('tuningId', v)}>
+				<select
+					class="select w-full min-w-0"
+					bind:value={() => tab.tuningId, (v) => set('tuningId', v)}
+				>
 					{#each TUNINGS as t (t.id)}
 						<option value={t.id}>{t.label}</option>
 					{/each}
@@ -280,23 +284,26 @@
 				class="min-w-0 items-stretch gap-3"
 			>
 				<div class="flex flex-wrap items-center justify-between gap-2">
-					<h2 class="h5">
-						<Collapsible.Trigger
-							class="-ml-3 btn px-3 hover:preset-tonal"
-							title={editorOpen
-								? 'Collapse the shorthand editor to focus on the tab'
-								: 'Expand the shorthand editor'}
-						>
-							<ChevronDown class="size-4 transition-transform {editorOpen ? '' : '-rotate-90'}" />
-							Shorthand editor
-							{#if !editorOpen && result.errors.length > 0}
-								<span class="badge preset-filled-error-500">
-									{result.errors.length}
-									{result.errors.length === 1 ? 'error' : 'errors'}
-								</span>
-							{/if}
-						</Collapsible.Trigger>
-					</h2>
+					<div class="flex items-center gap-1">
+						<h2 class="h5">
+							<Collapsible.Trigger
+								class="-ml-3 btn px-3 hover:preset-tonal"
+								title={editorOpen
+									? 'Collapse the shorthand editor to focus on the tab'
+									: 'Expand the shorthand editor'}
+							>
+								<ChevronDown class="size-4 transition-transform {editorOpen ? '' : '-rotate-90'}" />
+								Shorthand editor
+								{#if !editorOpen && result.errors.length > 0}
+									<span class="badge preset-filled-error-500">
+										{result.errors.length}
+										{result.errors.length === 1 ? 'error' : 'errors'}
+									</span>
+								{/if}
+							</Collapsible.Trigger>
+						</h2>
+						<HighlightToggle />
+					</div>
 					{#if editorOpen}
 						<div class="flex flex-wrap gap-1" aria-label="Quick insert">
 							{#each tuning.strings as name, i (name)}

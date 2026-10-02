@@ -9,7 +9,7 @@
 	<span class="flex items-baseline text-xl font-bold">
 		<span>bass<span class="text-primary-500">tabs</span></span>
 		<span
-			class="ml-1.5 inline-block -rotate-6 font-signature text-base font-medium opacity-50 transition-opacity group-hover:opacity-80"
+			class="ml-1.5 inline-block -rotate-6 font-signature text-base font-medium opacity-50 transition-opacity group-hover:opacity-80 max-[360px]:hidden"
 			aria-hidden="true">by bear</span
 		>
 	</span>

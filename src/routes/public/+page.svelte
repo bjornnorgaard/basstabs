@@ -60,12 +60,12 @@
 		<p class="opacity-70">Explore tabs shared by their owners. No sign-in required.</p>
 	</header>
 	{#if error}<p role="alert" class="preset-tonal-error p-4">{error}</p>{/if}
-	<ul class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+	<ul class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
 		{#each tabs as tab (tab.id)}
-			<li class="card preset-outlined-surface-200-800 p-4">
+			<li class="min-w-0 card preset-outlined-surface-200-800 p-4">
 				<a class="block space-y-2" href={resolve(`/shared?id=${tab.id}`)}>
-					<h2 class="h5">{tab.title || 'Untitled tab'}</h2>
-					<p class="opacity-70">{tab.artist || 'Unknown artist'}</p>
+					<h2 class="h5 break-words">{tab.title || 'Untitled tab'}</h2>
+					<p class="break-words opacity-70">{tab.artist || 'Unknown artist'}</p>
 				</a>
 			</li>
 		{/each}

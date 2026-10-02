@@ -70,10 +70,10 @@
 				disabled={busy || cloudStore.saving.includes(tab.id)}
 				onclick={() => perform(() => cloudStore.save(tab.id))}>Save / retry</button
 			>
-			<label class="label">
+			<label class="label min-w-0 basis-full sm:basis-auto">
 				<span class="label-text">Visibility</span>
 				<select
-					class="select"
+					class="select w-full min-w-0 sm:w-auto"
 					value={cloud.visibility}
 					disabled={busy}
 					onchange={(event) => visibility(event.currentTarget.value)}

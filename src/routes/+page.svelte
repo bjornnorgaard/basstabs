@@ -86,11 +86,11 @@
 					No cloud tabs yet. Open a local tab and choose “Save a cloud copy”.
 				</p>
 			{:else}
-				<ul class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+				<ul class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
 					{#each cloudStore.sorted.filter((t) => `${t.title} ${t.artist}`
 							.toLowerCase()
 							.includes(query.trim().toLowerCase())) as tab (tab.id)}
-						<li class="space-y-2 card preset-outlined-surface-200-800 p-4">
+						<li class="min-w-0 space-y-2 card preset-outlined-surface-200-800 p-4">
 							<a class="block space-y-1" href={resolve('/tab/[id]', { id: tab.id })}>
 								<h3 class="h5">{tab.title || 'Untitled tab'}</h3>
 								<p class="text-sm opacity-70">
@@ -136,10 +136,10 @@
 	{:else if filtered.length === 0}
 		<p class="opacity-70">No tabs match “{query}”.</p>
 	{:else}
-		<ul class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+		<ul class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
 			{#each filtered as tab (tab.id)}
 				<li
-					class="flex flex-col gap-3 card preset-outlined-surface-200-800 p-4 hover:preset-outlined-primary-500"
+					class="flex min-w-0 flex-col gap-3 card preset-outlined-surface-200-800 p-4 hover:preset-outlined-primary-500"
 				>
 					<a href={resolve('/tab/[id]', { id: tab.id })} class="block space-y-1">
 						<h2 class="truncate h5">{tab.title || 'Untitled tab'}</h2>
