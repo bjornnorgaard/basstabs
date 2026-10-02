@@ -134,7 +134,10 @@ Graph, Twitter card and JSON-LD tags. This way crawlers and link previews can
 read them without running JavaScript. `robots.txt`, `sitemap.xml` and
 `manifest.webmanifest` are pre-built from `src/lib/site.ts`. Tab and shared
 pages are marked `noindex`; public tabs are discoverable through the public library.
-To change the preview image or any other site metadata, edit `src/lib/site.ts`.
+Tab detail pages also set a title and description from the tab's title, artist,
+and tuning for browser-rendered metadata; they remain `noindex` because tabs
+are private browser or account data. To change the preview image or any other
+site-wide metadata, edit `src/lib/site.ts`.
 
 ### Sharing
 

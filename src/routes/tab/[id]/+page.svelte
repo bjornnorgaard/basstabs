@@ -33,6 +33,18 @@
 	const tab = $derived(cloud ?? tabStore.get(page.params.id ?? ''));
 	const tuning = $derived(getTuning(tab?.tuningId));
 	const result = $derived(renderTab(tab?.source ?? '', tuning));
+	const seoTitle = $derived(
+		tab
+			? `${[tab.title || 'Untitled tab', tab.artist].filter(Boolean).join(' – ')} · ${site.name}`
+			: `Tab not found · ${site.name}`
+	);
+	const seoDescription = $derived(
+		tab
+			? `View, edit, and play the bass tab for “${tab.title || 'Untitled tab'}”${
+					tab.artist ? ` by ${tab.artist}` : ''
+				} in ${tuning.label}.`
+			: 'This bass tab could not be found.'
+	);
 
 	let editor = $state<EditorView>();
 	let focusedNote = $state<number>();
@@ -199,7 +211,12 @@
 
 <svelte:head>
 	<meta name="robots" content="noindex, follow" />
-	<title>{tab ? `${tab.title} · ${site.name}` : `Tab not found · ${site.name}`}</title>
+	<title>{seoTitle}</title>
+	<meta name="description" content={seoDescription} />
+	<meta property="og:title" content={seoTitle} />
+	<meta property="og:description" content={seoDescription} />
+	<meta name="twitter:title" content={seoTitle} />
+	<meta name="twitter:description" content={seoDescription} />
 </svelte:head>
 
 <svelte:window {onkeydown} />
