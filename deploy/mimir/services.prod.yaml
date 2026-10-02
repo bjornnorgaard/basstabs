@@ -5,7 +5,7 @@
 services:
   web:
     image:
-      tag: "26.10.01-22.29-d01157c"
+      tag: "26.10.02-12.18-df103de"
     ports:
       - name: http
         containerPort: 3000
