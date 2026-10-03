@@ -48,12 +48,16 @@
 					<ModeToggle />
 					<a
 						href={resolve('/profile')}
-						class="btn-icon overflow-hidden rounded-full hover:preset-tonal"
+						class="btn-icon shrink-0 overflow-hidden rounded-full p-0 hover:preset-tonal"
 						title="Profile"
 						aria-label="Profile"
 					>
 						{#if cloudStore.user?.photoURL}
-							<img src={cloudStore.user.photoURL} alt="" class="size-7 rounded-full object-cover" />
+							<img
+								src={cloudStore.user.photoURL}
+								alt=""
+								class="size-7 shrink-0 rounded-full object-cover"
+							/>
 						{:else}
 							<UserRound class="size-5" />
 						{/if}
