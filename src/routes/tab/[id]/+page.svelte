@@ -83,6 +83,12 @@
 
 	function clearSource() {
 		if (!editor) return;
+		if (
+			!confirm(
+				'Clear the shorthand editor? Changes are saved immediately, so the whole tab will be emptied.'
+			)
+		)
+			return;
 		editor.dispatch({
 			changes: { from: 0, to: editor.state.doc.length, insert: '' },
 			selection: { anchor: 0 }
