@@ -31,8 +31,11 @@
 	});
 
 	function preview(tab: BassTab) {
-		// Only the first row keeps the cards compact.
-		return renderTab(tab.source, getTuning(tab.tuningId)).text.split('\n\n')[0];
+		// Only the first row (and any headings above it) keeps the cards compact.
+		const tuning = getTuning(tab.tuningId);
+		const { blocks } = renderTab(tab.source, tuning).layout;
+		const firstSystem = blocks.findIndex((block) => block.kind === 'system');
+		return { tuning, blocks: firstSystem < 0 ? blocks : blocks.slice(0, firstSystem + 1) };
 	}
 
 	function open(id: string) {
@@ -176,7 +179,7 @@
 						</span>
 					</a>
 					<a href={resolve('/tab/[id]', { id: tab.id })} tabindex="-1" class="block">
-						<TabPreview text={preview(tab)} placeholder="Empty tab" class="max-h-40 text-xs" />
+						<TabPreview {...preview(tab)} placeholder="Empty tab" class="max-h-40 text-xs" />
 					</a>
 					<footer class="mt-auto flex items-center justify-between text-xs">
 						<span class="opacity-60">Edited {dateFormat.format(tab.updatedAt)}</span>

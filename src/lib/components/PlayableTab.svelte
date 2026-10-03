@@ -5,7 +5,7 @@
 	import { onDestroy, untrack } from 'svelte';
 	import { player } from '$lib/audio/player.svelte';
 	import TabPreview from '$lib/components/TabPreview.svelte';
-	import { stringHue } from '$lib/tab/highlight';
+	import { fillerParts, stringHue } from '$lib/tab/highlight';
 	import { buildSchedule } from '$lib/tab/playback';
 	import type { MeasureLayout, TabLayout } from '$lib/tab/render';
 	import type { Tuning } from '$lib/tab/tuning';
@@ -47,21 +47,6 @@
 	}
 
 	const hint = 'Click to play · Shift+click to loop';
-
-	/** Splits the filler between notes into the string label, dashes and bar lines for styling. */
-	function fillerParts(text: string) {
-		return [...text.matchAll(/-+|\|+|\s+|[^-|\s]+/g)].map(([part]) => ({
-			text: part,
-			class:
-				part[0] === '-'
-					? 'hl-fill'
-					: part[0] === '|'
-						? 'hl-bar'
-						: /\S/.test(part)
-							? 'hl-string-name'
-							: ''
-		}));
-	}
 </script>
 
 {#snippet gutterButton(key: string, label: string, measures: MeasureLayout[])}
@@ -80,7 +65,7 @@
 {/snippet}
 
 {#if !layout.text}
-	<TabPreview text="" {placeholder} class={className} />
+	<TabPreview blocks={[]} {tuning} {placeholder} class={className} />
 {:else}
 	<div class="rounded-container tab-surface {className}">
 		<div
