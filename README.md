@@ -141,7 +141,7 @@ site-wide metadata, edit `src/lib/site.ts`.
 
 ### Sharing
 
-**Snapshot link** on a tab page copies a URL like
+**Snapshot link** on a local tab page copies a URL like
 `https://basstabs.bybear.dk/shared#<payload>` to the clipboard. The payload is
 the title, artist, tuning and shorthand, base64url encoded in the hash, so the
 whole tab travels inside the link and never touches a server. Opening the link
@@ -165,7 +165,10 @@ Visibility options:
 - **Unlisted:** anyone with the live link can read, but it is not listed publicly.
 - **Public:** anyone can read, and it appears under **Public tabs**.
 
-**Copy live link** produces `/shared?id=<random-token>`. The link is read-only,
+The **Visibility** segmented control offers **Public**, **Unlisted**, and **Private**
+and stays in sync with sharing actions. Both **Copy live link** buttons on a cloud
+tab produce `/shared?id=<random-token>`, automatically changing a private tab to
+unlisted first. Public tabs stay public when copying a link. The link is read-only,
 does not expire automatically, and shows successfully saved updates in real time.
 Anyone with an unlisted link can forward it; this is not friend-specific access
 control. Making the tab private or deleting it revokes the link. Sharing again

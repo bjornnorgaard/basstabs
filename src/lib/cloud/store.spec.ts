@@ -88,6 +88,49 @@ describe('optional cloud store', () => {
 		expect(cloud.dirty).toEqual([]);
 	});
 
+	it('enables unlisted visibility when preparing a private tab for link sharing', async () => {
+		const cloud = await store();
+		const { buildLiveShareUrl } = await import('./share');
+		const url = new URL(await buildLiveShareUrl('https://example.com/shared', tab.id));
+		expect(cloud.get(tab.id)?.visibility).toBe('unlisted');
+		expect(url.searchParams.get('id')).toBe(cloud.get(tab.id)?.shareId);
+		expect(url.hash).toBe('');
+		expect(mocks.set).toHaveBeenLastCalledWith(
+			`publishedTabs/${cloud.get(tab.id)?.shareId}`,
+			expect.objectContaining({ visibility: 'unlisted' })
+		);
+	});
+
+	it.each(['public', 'unlisted'] as const)(
+		'keeps %s visibility and the existing token when preparing a live link',
+		async (visibility) => {
+			const cloud = await store();
+			await cloud.setVisibility(tab.id, visibility);
+			const token = cloud.get(tab.id)?.shareId;
+			cloud.update(tab.id, { source: 'E5' });
+			const { buildLiveShareUrl } = await import('./share');
+			const url = new URL(await buildLiveShareUrl('https://example.com/shared', tab.id));
+			expect(cloud.get(tab.id)?.visibility).toBe(visibility);
+			expect(url.searchParams.get('id')).toBe(token);
+			expect(cloud.dirty).toEqual([]);
+			expect(mocks.set).toHaveBeenLastCalledWith(
+				`publishedTabs/${token}`,
+				expect.objectContaining({ visibility, source: 'E5' })
+			);
+		}
+	);
+
+	it('does not return a live link and restores visibility when enabling sharing fails', async () => {
+		const cloud = await store();
+		mocks.commit.mockResolvedValueOnce().mockRejectedValueOnce(new Error('offline'));
+		const { buildLiveShareUrl } = await import('./share');
+		await expect(buildLiveShareUrl('https://example.com/shared', tab.id)).rejects.toThrow(
+			'offline'
+		);
+		expect(cloud.get(tab.id)?.visibility).toBe('private');
+		expect(cloud.get(tab.id)?.shareId).toBeNull();
+	});
+
 	it('revokes the old link and generates a different token when sharing again', async () => {
 		const cloud = await store();
 		await cloud.setVisibility(tab.id, 'unlisted');

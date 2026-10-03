@@ -2,14 +2,17 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { SegmentedControl } from '@skeletonlabs/skeleton-svelte';
 	import { cloudStore } from '$lib/stores/cloud.svelte';
 	import type { BassTab } from '$lib/stores/tabs.svelte';
-	import { errorMessage, type Visibility } from '$lib/cloud/model';
+	import { errorMessage } from '$lib/cloud/model';
+	import { buildLiveShareUrl } from '$lib/cloud/share';
 	import { toaster } from '$lib/toaster';
 
-	let { tab }: { tab: BassTab } = $props();
+	let { tab, sharing = false }: { tab: BassTab; sharing?: boolean } = $props();
 	let busy = $state(false);
 	const cloud = $derived(cloudStore.get(tab.id));
+	const disabled = $derived(busy || sharing || cloudStore.saving.includes(tab.id));
 
 	async function perform(action: () => Promise<void>) {
 		busy = true;
@@ -33,19 +36,21 @@
 		});
 	}
 
-	async function visibility(value: string) {
-		if (!['private', 'unlisted', 'public'].includes(value)) return;
-		await perform(() => cloudStore.setVisibility(tab.id, value as Visibility));
+	async function visibility(value: string | null) {
+		await perform(async () => {
+			if (value !== 'private' && value !== 'unlisted' && value !== 'public')
+				throw new Error('Invalid visibility selection.');
+			await cloudStore.setVisibility(tab.id, value);
+		});
 	}
 
 	async function share() {
 		await perform(async () => {
-			await cloudStore.save(tab.id);
-			const token = cloudStore.get(tab.id)?.shareId;
-			if (!token) throw new Error('Enable unlisted or public sharing first.');
-			const url = new URL(resolve('/shared'), page.url.origin);
-			url.searchParams.set('id', token);
-			await navigator.clipboard.writeText(url.href);
+			const url = await buildLiveShareUrl(
+				new URL(resolve('/shared'), page.url.origin).href,
+				tab.id
+			);
+			await navigator.clipboard.writeText(url);
 			toaster.success({
 				title: 'Live link copied',
 				description: 'Anyone with this link can view saved updates. The link has no expiry.'
@@ -67,27 +72,31 @@
 			</span>
 			<button
 				class="btn preset-tonal btn-sm"
-				disabled={busy || cloudStore.saving.includes(tab.id)}
+				{disabled}
 				onclick={() => perform(() => cloudStore.save(tab.id))}>Save / retry</button
 			>
-			<label class="label min-w-0 basis-full sm:basis-auto">
-				<span class="label-text">Visibility</span>
-				<select
-					class="select w-full min-w-0 sm:w-auto"
-					value={cloud.visibility}
-					disabled={busy}
-					onchange={(event) => visibility(event.currentTarget.value)}
-				>
-					<option value="private">Private - only you</option>
-					<option value="unlisted">Unlisted - anyone with the link</option>
-					<option value="public">Public - visible to everyone</option>
-				</select>
-			</label>
-			{#if cloud.shareId}
-				<button class="btn preset-filled-primary-500 btn-sm" disabled={busy} onclick={share}
-					>Copy live link</button
-				>
-			{/if}
+			<SegmentedControl
+				class="min-w-0 basis-full sm:basis-auto"
+				value={cloud.visibility}
+				{disabled}
+				onValueChange={(details) => visibility(details.value)}
+			>
+				<SegmentedControl.Label>Visibility</SegmentedControl.Label>
+				<div class="flex flex-wrap items-center gap-3">
+					<SegmentedControl.Control>
+						<SegmentedControl.Indicator />
+						{#each [{ value: 'public', label: 'Public' }, { value: 'unlisted', label: 'Unlisted' }, { value: 'private', label: 'Private' }] as option (option.value)}
+							<SegmentedControl.Item value={option.value}>
+								<SegmentedControl.ItemText>{option.label}</SegmentedControl.ItemText>
+								<SegmentedControl.ItemHiddenInput />
+							</SegmentedControl.Item>
+						{/each}
+					</SegmentedControl.Control>
+					<button class="btn preset-filled-primary-500 btn-sm" {disabled} onclick={share}
+						>Copy live link</button
+					>
+				</div>
+			</SegmentedControl>
 		</div>
 		<p class="text-sm opacity-70">
 			Edits save automatically when online. Unlisted links can be forwarded; viewers cannot edit

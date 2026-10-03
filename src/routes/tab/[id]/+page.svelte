@@ -28,6 +28,7 @@
 	import CloudTabControls from '$lib/components/CloudTabControls.svelte';
 	import { cloudStore } from '$lib/stores/cloud.svelte';
 	import { errorMessage } from '$lib/cloud/model';
+	import { buildLiveShareUrl } from '$lib/cloud/share';
 
 	const cloud = $derived(cloudStore.get(page.params.id ?? ''));
 	const tab = $derived(cloud ?? tabStore.get(page.params.id ?? ''));
@@ -48,6 +49,7 @@
 
 	let editor = $state<EditorView>();
 	let focusedNote = $state<number>();
+	let sharing = $state(false);
 
 	const EDITOR_KEY = 'basstabs:editor';
 	let editorOpen = $state(localStorage.getItem(EDITOR_KEY) !== 'collapsed');
@@ -149,21 +151,25 @@
 
 	async function share() {
 		if (!tab) return;
-		const { title, artist, tuningId, source } = tab;
-		const url = buildShareUrl(new URL(resolve('/shared'), page.url.origin).href, {
-			title,
-			artist,
-			tuningId,
-			source
-		});
+		sharing = true;
 		try {
+			const base = new URL(resolve('/shared'), page.url.origin).href;
+			const { title, artist, tuningId, source } = tab;
+			const live = !!cloud;
+			const url = live
+				? await buildLiveShareUrl(base, tab.id)
+				: buildShareUrl(base, { title, artist, tuningId, source });
 			await navigator.clipboard.writeText(url);
 			toaster.success({
-				title: 'Share link copied',
-				description: 'Anyone with the link can open this tab.'
+				title: live ? 'Live link copied' : 'Share link copied',
+				description: live
+					? 'Anyone with this link can view saved updates. The link has no expiry.'
+					: 'Anyone with the link can open this tab.'
 			});
-		} catch {
-			toaster.error({ title: 'Could not access the clipboard' });
+		} catch (error) {
+			toaster.error({ title: 'Could not share tab', description: errorMessage(error) });
+		} finally {
+			sharing = false;
 		}
 	}
 
@@ -244,8 +250,14 @@
 				>
 					<Copy class="size-4" /> Copy tab
 				</button>
-				<button type="button" class="btn preset-tonal" onclick={share}>
-					<Share class="size-4" /> Snapshot link
+				<button
+					type="button"
+					class="btn preset-tonal"
+					onclick={share}
+					disabled={sharing || cloudStore.saving.includes(tab.id)}
+				>
+					<Share class="size-4" />
+					{cloud ? 'Copy live link' : 'Snapshot link'}
 				</button>
 				<button type="button" class="btn preset-tonal" onclick={download} disabled={!result.text}>
 					<Download class="size-4" /> .txt
@@ -259,7 +271,7 @@
 			</div>
 		</div>
 
-		<CloudTabControls {tab} />
+		<CloudTabControls {tab} {sharing} />
 
 		<div class="grid gap-4 md:grid-cols-[2fr_2fr_1fr]">
 			<label class="label min-w-0">
