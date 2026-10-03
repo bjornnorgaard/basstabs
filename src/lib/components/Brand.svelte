@@ -5,7 +5,7 @@
 </script>
 
 <a href={resolve('/')} class="group flex items-center gap-2" aria-label="basstabs by bear – home">
-	<Guitar class="size-6 text-primary-500" />
+	<Guitar class="size-6 -translate-y-1 text-primary-500" />
 	<span class="flex items-baseline text-xl font-bold">
 		<span>bass<span class="text-primary-500">tabs</span></span>
 		<span
