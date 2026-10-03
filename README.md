@@ -281,12 +281,59 @@ runtime. It idles at a few MiB of RAM.
 ## Deploy (Mimir)
 
 - `.github/workflows/webapp.yml`: pull requests are built and tested only. On `main`,
-  CI builds and tests, pushes `ghcr.io/bjornnorgaard/basstabs/webapp:<yy.mm.dd-HH.MM-sha>`,
+  CI builds and tests (including Firestore emulator rules/integration tests),
+  pushes `ghcr.io/bjornnorgaard/basstabs/webapp:<yy.mm.dd-HH.MM-sha>`,
+  deploys Firestore rules from the same commit to `basstabs-by-bear`,
   and pins that tag into `deploy/mimir/services.test.yaml` (service key `web`).
+  A failed rules deployment blocks the image pin. Runs are not canceled midway
+  through a release. Manual webapp runs on other branches cannot deploy rules.
 - `.github/workflows/production.yml`: run it manually to copy the test tag into
   `deploy/mimir/services.prod.yaml`. It never runs automatically.
 - `deploy/` is excluded from Prettier because the pin script requires
   `tag: "..."` in double quotes.
+
+### Automated Firestore deployment
+
+Test and production currently share the Firebase project `basstabs-by-bear`.
+Rules are therefore deployed on trusted `main` releases **before** pinning the
+test image, not during production promotion. Production promotion only copies
+the already-tested image tag; redeploying rules from the current branch there
+could mismatch the promoted image's code. Rules changes must remain compatible
+with the currently running production client. For isolated testing of breaking
+rules changes, provision a separate test Firebase project and client config first.
+Firestore indexes remain a separate manual deployment using the Firebase command
+above; this pipeline does not change or delete indexes.
+
+One-time Google Cloud/GitHub setup is required before the deployment job can run:
+
+1. Create a dedicated deployment service account in `basstabs-by-bear`, with
+   Firebase Security Rules Admin (`roles/firebaserules.admin`) and Service Usage
+   Consumer (`roles/serviceusage.serviceUsageConsumer`). The Firebase CLI also
+   needs project/database metadata access; grant `firebase.projects.get`,
+   `resourcemanager.projects.get`, and `datastore.databases.get` using a custom
+   role rather than Owner/Editor or access to tab contents. Enable the Firestore
+   and Firebase Rules APIs beforehand; this account should not enable APIs,
+   create databases, or change indexes.
+2. Configure a Workload Identity Federation pool and OIDC provider for GitHub
+   Actions (`https://token.actions.githubusercontent.com`). Map the repository
+   and ref claims and restrict the provider to this repository's numeric
+   repository/owner IDs and `refs/heads/main`. Do not trust all GitHub repositories
+   or pull-request refs.
+3. Allow that restricted repository identity to impersonate the service account
+   with Workload Identity User (`roles/iam.workloadIdentityUser`).
+4. Set these **repository variables** under GitHub Settings → Secrets and
+   variables → Actions → Variables:
+   - `FIREBASE_WORKLOAD_IDENTITY_PROVIDER`: the full
+     `projects/<number>/locations/global/workloadIdentityPools/<pool>/providers/<provider>` name.
+   - `FIREBASE_DEPLOY_SERVICE_ACCOUNT`: the deployment service account email.
+
+The workflow uses `google-github-actions/auth` and a short-lived GitHub OIDC token.
+No service-account key or personal Firebase login token should be stored in the
+repository or CI secrets. Only the deployment job has `id-token: write`; PR tests
+use the `demo-basstabs` emulator and have no deployment credentials. Missing
+variables or denied authentication fail explicitly and prevent the image pin.
+See [Google's authentication action setup guide](https://github.com/google-github-actions/auth#workload-identity-federation-through-a-service-account)
+for the federation commands and permissions.
 
 ```sh
 docker build -t basstabs .
