@@ -39,7 +39,8 @@
 				</div>
 			</div>
 			<p class="text-sm opacity-70">
-				Local tabs stay in this browser. Cloud tabs are available while signed in.
+				Tabs save to the cloud by default while signed in. Choose “Keep browser only” on a tab to
+				keep it on this device instead. That choice persists after signing out.
 			</p>
 			<div>
 				<button
@@ -62,7 +63,10 @@
 				</div>
 				<div>
 					<h2 class="h4">Not signed in</h2>
-					<p class="text-sm opacity-70">Sign in to save tabs to the cloud.</p>
+					<p class="text-sm opacity-70">
+						Signing in saves your browser tabs to the cloud automatically, except those marked
+						browser-only.
+					</p>
 				</div>
 			</div>
 			<button

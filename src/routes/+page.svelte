@@ -6,19 +6,28 @@
 	import Plus from '@lucide/svelte/icons/plus';
 	import Search from '@lucide/svelte/icons/search';
 	import Trash from '@lucide/svelte/icons/trash';
+	import Cloud from '@lucide/svelte/icons/cloud';
+	import HardDrive from '@lucide/svelte/icons/hard-drive';
 	import TabPreview from '$lib/components/TabPreview.svelte';
 	import { tabStore, type BassTab } from '$lib/stores/tabs.svelte';
 	import { EXAMPLE_SOURCE } from '$lib/tab/example';
 	import { renderTab } from '$lib/tab/render';
 	import { getTuning } from '$lib/tab/tuning';
 	import { cloudStore } from '$lib/stores/cloud.svelte';
+	import { errorMessage } from '$lib/cloud/model';
+	import { toaster } from '$lib/toaster';
 
 	let query = $state('');
 
+	const tabs = $derived(
+		[...tabStore.tabs.filter((tab) => !cloudStore.get(tab.id)), ...cloudStore.tabs].sort(
+			(a, b) => b.updatedAt - a.updatedAt
+		)
+	);
 	const filtered = $derived.by(() => {
 		const q = query.trim().toLowerCase();
-		if (!q) return tabStore.sorted;
-		return tabStore.sorted.filter((t) => `${t.title} ${t.artist}`.toLowerCase().includes(q));
+		if (!q) return tabs;
+		return tabs.filter((t) => `${t.title} ${t.artist}`.toLowerCase().includes(q));
 	});
 
 	function preview(tab: BassTab) {
@@ -31,16 +40,30 @@
 	}
 
 	function create(source = EXAMPLE_SOURCE, title?: string) {
-		open(tabStore.create({ source, ...(title ? { title } : {}) }).id);
+		open(cloudStore.create({ source, ...(title ? { title } : {}) }).id);
 	}
 
 	function duplicate(id: string) {
-		const copy = tabStore.duplicate(id);
+		const original = cloudStore.get(id) ?? tabStore.get(id);
+		const copy = original
+			? cloudStore.create({
+					title: `${original.title} (copy)`,
+					artist: original.artist,
+					tuningId: original.tuningId,
+					source: original.source
+				})
+			: undefined;
 		if (copy) open(copy.id);
 	}
 
-	function remove(tab: BassTab) {
-		if (confirm(`Delete "${tab.title}"? This cannot be undone.`)) tabStore.remove(tab.id);
+	async function remove(tab: BassTab) {
+		if (!confirm(`Delete "${tab.title}"? This cannot be undone.`)) return;
+		try {
+			if (cloudStore.get(tab.id)) await cloudStore.remove(tab.id);
+			else tabStore.remove(tab.id);
+		} catch (error) {
+			toaster.error({ title: 'Could not delete tab', description: errorMessage(error) });
+		}
 	}
 
 	const dateFormat = new Intl.DateTimeFormat(undefined, {
@@ -55,7 +78,7 @@
 			<h1 class="h2">Your tabs</h1>
 			<p class="opacity-70">Write bass lines in shorthand, get classic text tabs.</p>
 		</div>
-		{#if tabStore.tabs.length > 0}
+		{#if tabs.length > 0}
 			<div class="field-group w-full grid-cols-[auto_1fr] sm:w-72">
 				<span class="label preset-tonal"><Search class="size-4" /></span>
 				<input
@@ -70,8 +93,7 @@
 	</header>
 
 	{#if cloudStore.user}
-		<section class="space-y-3">
-			<h2 class="h4">Your cloud tabs</h2>
+		<section class="space-y-3" aria-label="Cloud connection">
 			{#if cloudStore.loading}
 				<p role="status">Loading cloud tabs...</p>
 			{:else if cloudStore.connectionFailed}
@@ -81,39 +103,20 @@
 				<button class="btn preset-tonal btn-sm" onclick={() => cloudStore.connect()}
 					>Reconnect cloud</button
 				>
-			{:else if cloudStore.tabs.length === 0}
-				<p class="opacity-70">
-					No cloud tabs yet. Open a local tab and choose “Save a cloud copy”.
-				</p>
-			{:else}
-				<ul class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-					{#each cloudStore.sorted.filter((t) => `${t.title} ${t.artist}`
-							.toLowerCase()
-							.includes(query.trim().toLowerCase())) as tab (tab.id)}
-						<li class="min-w-0 space-y-2 card preset-outlined-surface-200-800 p-4">
-							<a class="block space-y-1" href={resolve('/tab/[id]', { id: tab.id })}>
-								<h3 class="h5">{tab.title || 'Untitled tab'}</h3>
-								<p class="text-sm opacity-70">
-									{tab.artist || 'Unknown artist'} · {tab.visibility} · {cloudStore.dirty.includes(
-										tab.id
-									)
-										? 'Unsaved changes'
-										: 'Cloud'}
-								</p>
-								<TabPreview text={preview(tab)} placeholder="Empty tab" class="max-h-40 text-xs" />
-							</a>
-						</li>
-					{/each}
-				</ul>
 			{/if}
 		</section>
 	{/if}
-	<h2 class="h4">In this browser</h2>
 	<p class="text-sm opacity-70">
-		Local tabs are not uploaded automatically and remain available when signed out.
+		{#if cloudStore.user}
+			Tabs save to your account automatically. Choose “Keep browser only” on a tab to opt out.
+			Browser-only tabs stay on this device, including when signed out.
+		{:else}
+			Tabs stay in this browser without an account. Sign in to save them to the cloud automatically,
+			unless you choose “Keep browser only”.
+		{/if}
 	</p>
 
-	{#if tabStore.tabs.length === 0}
+	{#if tabs.length === 0 && !cloudStore.loading && !cloudStore.connectionFailed}
 		<section class="flex flex-col items-center gap-4 card preset-tonal-surface p-10 text-center">
 			<FileMusic class="size-12 text-primary-500" />
 			<h2 class="h4">No tabs yet</h2>
@@ -133,7 +136,7 @@
 				</button>
 			</div>
 		</section>
-	{:else if filtered.length === 0}
+	{:else if filtered.length === 0 && tabs.length > 0}
 		<p class="opacity-70">No tabs match “{query}”.</p>
 	{:else}
 		<ul class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -146,6 +149,31 @@
 						<p class="truncate text-sm opacity-70">
 							{tab.artist || 'Unknown artist'} · {getTuning(tab.tuningId).label}
 						</p>
+						<span class="inline-flex items-center gap-1 text-xs" role="status">
+							{#if cloudStore.get(tab.id)}
+								<Cloud class="size-4" />
+								{cloudStore.movingToBrowser.includes(tab.id)
+									? 'Moving to browser...'
+									: cloudStore.saving.includes(tab.id)
+										? 'Saving to cloud...'
+										: cloudStore.dirty.includes(tab.id)
+											? 'Cloud · Unsaved changes'
+											: 'Saved to cloud'}
+								· {cloudStore.get(tab.id)?.visibility}
+							{:else}
+								{#if cloudStore.user && !tab.browserOnly && (!tab.cloudOwnerId || tab.cloudOwnerId === cloudStore.user.uid)}
+									<Cloud class="size-4" />
+									{cloudStore.saving.includes(tab.id)
+										? 'Saving to cloud...'
+										: cloudStore.uploadErrors[tab.id]
+											? 'Cloud save failed · Browser backup kept'
+											: 'Cloud save pending · Browser backup kept'}
+								{:else}
+									<HardDrive class="size-4" />
+									{tab.cloudOwnerId ? 'Pending save for another account' : 'Browser only'}
+								{/if}
+							{/if}
+						</span>
 					</a>
 					<a href={resolve('/tab/[id]', { id: tab.id })} tabindex="-1" class="block">
 						<TabPreview text={preview(tab)} placeholder="Empty tab" class="max-h-40 text-xs" />
@@ -168,6 +196,8 @@
 								title="Delete"
 								aria-label="Delete {tab.title}"
 								onclick={() => remove(tab)}
+								disabled={cloudStore.saving.includes(tab.id) ||
+									cloudStore.movingToBrowser.includes(tab.id)}
 							>
 								<Trash class="size-4" />
 							</button>

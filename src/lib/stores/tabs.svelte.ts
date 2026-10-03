@@ -12,6 +12,8 @@ export interface BassTab {
 	syntaxVersion: 2;
 	createdAt: number;
 	updatedAt: number;
+	browserOnly?: boolean;
+	cloudOwnerId?: string;
 }
 
 const STORAGE_KEY = 'basstabs:tabs';
@@ -88,8 +90,31 @@ class TabStore {
 		return this.create({ title: `${title} (copy)`, artist, tuningId, source });
 	}
 
+	put(tab: BassTab) {
+		const tabs = [...this.tabs.filter((existing) => existing.id !== tab.id), tab];
+		if (browser) localStorage.setItem(STORAGE_KEY, JSON.stringify(tabs));
+		this.tabs = tabs;
+	}
+
+	keepBrowserOnly(tab: BassTab) {
+		const { id, title, artist, tuningId, source, syntaxVersion, createdAt, updatedAt } = tab;
+		this.put({
+			id,
+			title,
+			artist,
+			tuningId,
+			source,
+			syntaxVersion,
+			createdAt,
+			updatedAt,
+			browserOnly: true
+		});
+	}
+
 	remove(id: string) {
-		this.tabs = this.tabs.filter((t) => t.id !== id);
+		const remaining = this.tabs.filter((t) => t.id !== id);
+		if (browser) localStorage.setItem(STORAGE_KEY, JSON.stringify(remaining));
+		this.tabs = remaining;
 	}
 }
 

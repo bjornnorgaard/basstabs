@@ -62,8 +62,12 @@
 
 	function set<K extends 'title' | 'artist' | 'tuningId' | 'source'>(key: K, value: string) {
 		if (tab) {
-			if (cloud) cloudStore.update(tab.id, { [key]: value });
-			else tabStore.update(tab.id, { [key]: value });
+			try {
+				if (cloud) cloudStore.update(tab.id, { [key]: value });
+				else tabStore.update(tab.id, { [key]: value });
+			} catch (error) {
+				toaster.error({ title: 'Could not save edit', description: errorMessage(error) });
+			}
 		}
 	}
 
@@ -185,14 +189,12 @@
 
 	function duplicate() {
 		if (!tab) return;
-		const copy = cloud
-			? tabStore.create({
-					title: `${tab.title} (copy)`,
-					artist: tab.artist,
-					tuningId: tab.tuningId,
-					source: tab.source
-				})
-			: tabStore.duplicate(tab.id);
+		const copy = cloudStore.create({
+			title: `${tab.title} (copy)`,
+			artist: tab.artist,
+			tuningId: tab.tuningId,
+			source: tab.source
+		});
 		if (copy) goto(resolve('/tab/[id]', { id: copy.id }));
 	}
 
@@ -265,7 +267,13 @@
 				<button type="button" class="btn preset-tonal" onclick={duplicate}>
 					<Files class="size-4" /> Duplicate
 				</button>
-				<button type="button" class="btn preset-tonal-error" onclick={remove}>
+				<button
+					type="button"
+					class="btn preset-tonal-error"
+					onclick={remove}
+					disabled={cloudStore.saving.includes(tab.id) ||
+						cloudStore.movingToBrowser.includes(tab.id)}
+				>
 					<Trash class="size-4" /> Delete
 				</button>
 			</div>

@@ -9,7 +9,6 @@
 	import UserRound from '@lucide/svelte/icons/user-round';
 	import Brand from '$lib/components/Brand.svelte';
 	import ModeToggle from '$lib/components/ModeToggle.svelte';
-	import { tabStore } from '$lib/stores/tabs.svelte';
 	import { toaster } from '$lib/toaster';
 	import AccountControls from '$lib/components/AccountControls.svelte';
 	import { cloudStore } from '$lib/stores/cloud.svelte';
@@ -17,7 +16,7 @@
 	let { children } = $props();
 
 	function newTab() {
-		const tab = tabStore.create();
+		const tab = cloudStore.create();
 		goto(resolve('/tab/[id]', { id: tab.id }));
 	}
 </script>

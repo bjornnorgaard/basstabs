@@ -101,7 +101,8 @@ Built with SvelteKit and Skeleton UI (`vintage` theme, with light and dark mode)
 Local tabs are saved in the browser's `localStorage`. You can create, search, duplicate
 and delete tabs, copy them to the clipboard, download them as `.txt`, or share
 them as a snapshot link. Google sign-in is optional: all existing local features
-work without an account. Sign-in does not automatically upload any local tabs.
+work without an account. When signed in, cloud saving is the default; each tab
+can opt out with **Keep browser only**.
 
 New tabs are prefilled with an editable walkthrough, not just a placeholder.
 Starting with an ascending C major scale, it explains sections and comments,
@@ -146,25 +147,53 @@ site-wide metadata, edit `src/lib/site.ts`.
 the title, artist, tuning and shorthand, base64url encoded in the hash, so the
 whole tab travels inside the link and never touches a server. Opening the link
 shows the rendered tab with a **Save to my tabs** button that stores an editable
-copy in that browser.
+copy. It stays in the browser without an account and saves to the cloud by default
+when signed in.
 
 ### Optional Google sign-in and cloud tabs
 
-Sign in with Google, open a local tab, and choose **Save a cloud copy**. This
-creates a separate private cloud tab and keeps the original local tab unchanged.
+Sign in with Google to automatically save existing browser tabs and newly created,
+duplicated or imported tabs to your account, privately by default. Each tab keeps
+the same ID. The app removes
+the browser-only entry only after saving succeeds. The overview is one library
+with **Browser only**, **Saved to cloud**, **Saving to cloud...**, or **Cloud ·
+Unsaved changes** status badges, not separate local and cloud lists. Future
+edits update the same cloud-backed tab, rather than creating more copies.
+Cloud-backed tabs require sign-in to access; browser-only tabs remain available
+without an account.
+
+**Keep browser only** opts a tab out of automatic cloud saving. On a cloud-backed
+tab, confirmation explains that this removes the cloud tab and revokes its live
+link. The app durably stores the latest contents locally before deleting the
+cloud tab and its published projection together. Failed conversions are reported;
+the local backup is kept and the cloud tab is not presented as successfully removed.
+The preference survives reloads, sign-out and later sign-in. **Enable cloud saving**
+reverses the opt-out. New duplicates and imported copies use the normal cloud default.
+
+Automatic uploads wait for the account library to load. Failed saves remain in the
+browser with a pending/failed status and **Save / retry**; editing or reconnecting
+also retries. Pending uploads are bound to the account they were created for, so
+switching accounts does not upload those tabs to someone else's account. New tabs
+created while signed in receive a distinct title if necessary, so repeated
+**New tab**, duplicate and import actions do not conflict with existing titles.
 Cloud titles must be unique within your account, ignoring capitalization and
-leading/trailing spaces; other accounts can use the same titles. Rename a local
-tab before uploading a variation, or open the existing cloud tab to update it.
-An existing title shows a warning next to **Save a cloud copy** and is checked
+leading/trailing spaces; other accounts can use the same titles. For older
+browser/cloud copies with the same title, **Update existing cloud tab** asks
+for confirmation before replacing the cloud contents with the browser version.
+It preserves the cloud ID, creation date, visibility and live link, and removes
+the browser entry only after a successful save. **Open existing cloud tab**
+lets you inspect that version first; rename the browser tab to keep both as
+separate variations. Nothing is automatically merged or deleted based on title.
+An existing title shows a warning next to the save controls and is checked
 again when clicked, before contacting Firestore. Server validation still checks
-for conflicts with tabs saved on other devices. Failed uploads also show their
+for conflicts with tabs saved on other devices. Failed saves also show their
 message next to the button; access failures explain that signing in again or
 deploying the latest rules may be necessary rather than implying a title conflict.
 Cloud renames also check for duplicates; a conflicting draft stays unsaved until
 you give it a different title. Existing duplicate titles are not automatically
 renamed or deleted.
-Cloud tabs appear separately on the home page, are available across devices, and
-save edits automatically after a short delay. **Save / retry** explicitly retries
+Cloud-backed tabs are available across devices and save edits automatically
+after a short delay. **Save / retry** explicitly retries
 a failed save. Sign-out waits for pending edits to save; if saving fails, the
 account stays signed in. Unsaved drafts are backed up in browser storage under
 the account's UID and restored only for that account. Browser storage errors are

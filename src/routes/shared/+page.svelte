@@ -7,7 +7,7 @@
 	import Copy from '@lucide/svelte/icons/copy';
 	import Save from '@lucide/svelte/icons/save';
 	import PlayableTab from '$lib/components/PlayableTab.svelte';
-	import { tabStore } from '$lib/stores/tabs.svelte';
+	import { cloudStore } from '$lib/stores/cloud.svelte';
 	import { renderTab } from '$lib/tab/render';
 	import { decodeSharedTab, payloadFromHash } from '$lib/tab/share';
 	import { getTuning } from '$lib/tab/tuning';
@@ -61,7 +61,7 @@
 	function save() {
 		if (!shared) return;
 		const { title, artist, tuningId, source } = shared;
-		const tab = tabStore.create({ title, artist, tuningId, source });
+		const tab = cloudStore.create({ title, artist, tuningId, source });
 		toaster.success({ title: 'Saved to your tabs' });
 		goto(resolve('/tab/[id]', { id: tab.id }));
 	}
@@ -131,7 +131,10 @@
 				{token
 					? 'Live read-only tab. Saved updates appear here automatically.'
 					: 'Snapshot shared with you.'}
-				Save it to keep your own independent editable copy in this browser.
+				Save it to keep your own independent editable copy.
+				{cloudStore.user
+					? 'It will save to your cloud account automatically.'
+					: 'It stays in this browser until you sign in.'}
 			</p>
 		</header>
 

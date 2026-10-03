@@ -26,4 +26,9 @@ describe('tab creation', () => {
 			source
 		});
 	});
+
+	it('duplicates an opted-out tab using default storage, not inheriting its opt-out', () => {
+		const tab = tabStore.create({ title: 'Browser riff', browserOnly: true });
+		expect(tabStore.duplicate(tab.id)?.browserOnly).toBeUndefined();
+	});
 });

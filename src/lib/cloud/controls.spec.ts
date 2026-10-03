@@ -1,13 +1,17 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'svelte/server';
 import type { BassTab } from '$lib/stores/tabs.svelte';
+import type { CloudTab } from './model';
 
 const mocks = vi.hoisted(() => ({
 	cloud: {
 		user: { uid: 'owner' },
 		tabs: [{ id: 'saved', title: 'Riff' }],
-		saving: [],
-		get: () => undefined
+		saving: [] as string[],
+		dirty: [] as string[],
+		movingToBrowser: [] as string[],
+		uploadErrors: {} as Record<string, string>,
+		get: vi.fn<(id: string) => CloudTab | undefined>(() => undefined)
 	}
 }));
 vi.mock('$lib/stores/cloud.svelte', () => ({ cloudStore: mocks.cloud }));
@@ -29,20 +33,84 @@ const tab: BassTab = {
 	updatedAt: 1
 };
 
-describe('cloud copy controls', () => {
+describe('cloud saving controls', () => {
 	it('shows an accessible duplicate warning beside the upload button', () => {
 		const { body } = render(CloudTabControls, { props: { tab } });
-		expect(body).toContain('Save a cloud copy');
-		expect(body).toContain('aria-describedby="cloud-copy-error"');
+		expect(body).toContain('Update existing cloud tab');
+		expect(body).toContain('aria-describedby="cloud-save-error"');
 		expect(body).toContain('role="alert"');
 		expect(body).toContain('two cloud saves with the same title');
+		expect(body).toContain('Update existing cloud tab');
+		expect(body).toContain('Open existing cloud tab');
 	});
 
 	it('removes the duplicate warning for a distinct title', () => {
 		const { body } = render(CloudTabControls, {
 			props: { tab: { ...tab, title: 'Riff 2' } }
 		});
-		expect(body).not.toContain('cloud-copy-error');
+		expect(body).not.toContain('cloud-save-error');
 		expect(body).not.toContain('two cloud saves with the same title');
+		expect(body).not.toContain('Update existing cloud tab');
+		expect(body).toContain('Cloud save pending');
+		expect(body).toContain('Save / retry');
+		expect(body).toContain('Keep browser only');
+	});
+
+	it('remembers explicit browser-only storage while signed in', () => {
+		const { body } = render(CloudTabControls, {
+			props: { tab: { ...tab, title: 'Local riff', browserOnly: true } }
+		});
+		expect(body).toContain('Saved in this browser');
+		expect(body).toContain('Enable cloud saving');
+		expect(body).not.toContain('Cloud save pending</strong>');
+	});
+
+	it('shows automatic save failures beside retry', () => {
+		mocks.cloud.uploadErrors.local = 'offline';
+		try {
+			const { body } = render(CloudTabControls, {
+				props: { tab: { ...tab, title: 'New riff' } }
+			});
+			expect(body).toContain('offline');
+			expect(body).toContain('role="alert"');
+			expect(body).toContain('Save / retry');
+		} finally {
+			mocks.cloud.uploadErrors = {};
+		}
+	});
+
+	it('keeps account-free browser editing clear', () => {
+		const previous = mocks.cloud.user;
+		Object.assign(mocks.cloud, { user: null });
+		try {
+			const { body } = render(CloudTabControls, { props: { tab } });
+			expect(body).toContain('Saved in this browser');
+			expect(body).toContain('Sign in for cloud saving');
+			expect(body).not.toContain('Enable cloud saving</button>');
+			expect(body).not.toContain('Update existing cloud tab');
+		} finally {
+			mocks.cloud.user = previous;
+		}
+	});
+
+	it.each([
+		{ saving: [], dirty: [], label: 'Saved to cloud' },
+		{ saving: ['local'], dirty: ['local'], label: 'Saving...' },
+		{ saving: [], dirty: ['local'], label: 'Unsaved changes' }
+	])('shows the status of a cloud-backed tab: $label', ({ saving, dirty, label }) => {
+		mocks.cloud.get.mockReturnValue({ ...tab, visibility: 'private', shareId: null });
+		mocks.cloud.saving = saving;
+		mocks.cloud.dirty = dirty;
+		try {
+			const { body } = render(CloudTabControls, { props: { tab } });
+			expect(body).toContain('Cloud saving enabled');
+			expect(body).toContain(label);
+			expect(body).toContain('Keep browser only');
+			expect(body).not.toContain('Enable cloud saving</button>');
+		} finally {
+			mocks.cloud.get.mockReturnValue(undefined);
+			mocks.cloud.saving = [];
+			mocks.cloud.dirty = [];
+		}
 	});
 });

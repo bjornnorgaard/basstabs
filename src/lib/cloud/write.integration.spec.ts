@@ -7,10 +7,12 @@ import {
 	connectFirestoreEmulator,
 	deleteDoc,
 	doc,
+	getDoc,
 	getDocs,
 	getFirestore,
 	setDoc,
-	setLogLevel
+	setLogLevel,
+	writeBatch
 } from 'firebase/firestore';
 import { cloudData, type CloudTab } from './model';
 import { writeCloudTab } from './write';
@@ -107,6 +109,34 @@ describe.skipIf(!process.env.FIRESTORE_EMULATOR_HOST)(
 			await writeCloudTab(database(), { ...tab, id: 'replacement' }, 'owner', null);
 			const library = await getDocs(collection(database(), 'users', 'owner', 'tabs'));
 			expect(library.docs.map((entry) => entry.id)).toEqual(['replacement']);
+		});
+
+		it('promotes a browser tab under its existing ID without allowing accidental overwrites', async () => {
+			await writeCloudTab(database(), tab, 'owner', null, true);
+			await expect(
+				writeCloudTab(database(), { ...tab, source: 'E9' }, 'owner', null, true)
+			).rejects.toThrow('already saved');
+			const library = await getDocs(collection(database(), 'users', 'owner', 'tabs'));
+			expect(library.docs.map((entry) => entry.id)).toEqual([tab.id]);
+			expect(library.docs[0].data().source).toBe('E0');
+		});
+
+		it('supports opting out by removing the cloud tab and its live projection atomically', async () => {
+			const db = database();
+			const shareId = 'abcdef0123456789abcdef0123456789';
+			await writeCloudTab(db, { ...tab, visibility: 'unlisted', shareId }, 'owner', null);
+			const canonical = doc(db, 'users', 'owner', 'tabs', tab.id);
+			const projection = doc(db, 'publishedTabs', shareId);
+			const backup = (await getDoc(canonical)).data();
+			expect(backup?.source).toBe(tab.source);
+			const batch = writeBatch(db);
+			batch.delete(canonical);
+			batch.delete(projection);
+			await batch.commit();
+			expect((await getDoc(canonical)).exists()).toBe(false);
+			expect((await getDoc(projection)).exists()).toBe(false);
+			await writeCloudTab(db, tab, 'owner', null, true);
+			expect((await getDoc(canonical)).data()?.shareId).toBeNull();
 		});
 	}
 );

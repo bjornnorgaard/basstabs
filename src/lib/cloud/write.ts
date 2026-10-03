@@ -12,12 +12,16 @@ export async function writeCloudTab(
 	db: Firestore,
 	tab: CloudTab,
 	uid: string,
-	oldShareId: string | null
+	oldShareId: string | null,
+	createOnly = false
 ) {
 	readCloudTab(tab.id, cloudData(tab));
 	await runTransaction(db, async (transaction) => {
 		const reference = doc(db, 'users', uid, 'tabs', tab.id);
 		const previous = await transaction.get(reference);
+		if (createOnly && previous.exists()) {
+			throw new Error('This tab is already saved in the cloud. Reload and open the existing tab.');
+		}
 		if (!previous.exists() || previous.data().title !== tab.title) {
 			// Every create/rename reads and advances this revision, so concurrent title
 			// checks retry against the latest library rather than both accepting a name.
