@@ -160,7 +160,7 @@
 					/>
 				{/if}
 				<select
-					class="select w-full min-w-0 pl-10"
+					class="select h-12 w-full min-w-0 pl-10"
 					value={location}
 					onchange={(event) => {
 						const value = event.currentTarget.value;
@@ -224,14 +224,14 @@
 	<div class="min-w-0 space-y-2">
 		{#if cloud}
 			<SegmentedControl
-				class="min-w-0"
+				class="min-w-0 gap-1"
 				value={cloud.visibility}
 				{disabled}
 				onValueChange={(details) => visibility(details.value)}
 			>
-				<SegmentedControl.Label>Visibility</SegmentedControl.Label>
+				<SegmentedControl.Label class="label-text">Visibility</SegmentedControl.Label>
 				<div class="flex w-full flex-wrap items-center gap-3">
-					<SegmentedControl.Control>
+					<SegmentedControl.Control class="h-12 items-center py-1">
 						<SegmentedControl.Indicator />
 						{#each [{ value: 'public', label: 'Public' }, { value: 'unlisted', label: 'Unlisted' }, { value: 'private', label: 'Private' }] as option (option.value)}
 							<SegmentedControl.Item value={option.value}>

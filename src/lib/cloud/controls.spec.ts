@@ -136,6 +136,9 @@ describe('cloud saving controls', () => {
 			expect(body).not.toContain('Enable cloud saving</button>');
 			expect(body).toContain('Visibility');
 			expect(body).toContain('Copy live link');
+			expect(body).toContain('select h-12 w-full min-w-0 pl-10');
+			expect(body).toContain('class="min-w-0 gap-1"');
+			expect(body).toContain('class="h-12 items-center py-1"');
 			if (dirty.length) expect(body).toContain('Retry save');
 			else expect(body).not.toContain('Retry save</button>');
 		} finally {
