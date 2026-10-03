@@ -11,8 +11,10 @@
 	import Copy from '@lucide/svelte/icons/copy';
 	import Download from '@lucide/svelte/icons/download';
 	import Files from '@lucide/svelte/icons/files';
+	import FoldVertical from '@lucide/svelte/icons/fold-vertical';
 	import Share from '@lucide/svelte/icons/share-2';
 	import Trash from '@lucide/svelte/icons/trash';
+	import UnfoldVertical from '@lucide/svelte/icons/unfold-vertical';
 	import ShorthandEditor from '$lib/components/ShorthandEditor.svelte';
 	import SyntaxHelp from '$lib/components/SyntaxHelp.svelte';
 	import PlayableTab from '$lib/components/PlayableTab.svelte';
@@ -57,6 +59,14 @@
 		editorOpen = open;
 		if (!open) focusedNote = undefined;
 		localStorage.setItem(EDITOR_KEY, open ? 'open' : 'collapsed');
+	}
+
+	const EDITOR_GROW_KEY = 'basstabs:editor-grow';
+	let editorGrow = $state(localStorage.getItem(EDITOR_GROW_KEY) === 'grow');
+
+	function toggleEditorGrow() {
+		editorGrow = !editorGrow;
+		localStorage.setItem(EDITOR_GROW_KEY, editorGrow ? 'grow' : 'fixed');
 	}
 
 	function set<K extends 'title' | 'artist' | 'tuningId' | 'source'>(key: K, value: string) {
@@ -358,7 +368,21 @@
 							>
 							<button
 								type="button"
-								class="ml-8 btn preset-tonal-error font-tab btn-sm"
+								class="ml-8 btn-icon preset-tonal btn-icon-sm"
+								title={editorGrow
+									? 'Limit the editor to five lines'
+									: 'Expand the editor to fit its content'}
+								aria-label="Expand editor to fit content"
+								aria-pressed={editorGrow}
+								onclick={toggleEditorGrow}
+							>
+								{#if editorGrow}<FoldVertical class="size-4" />{:else}<UnfoldVertical
+										class="size-4"
+									/>{/if}
+							</button>
+							<button
+								type="button"
+								class="btn preset-tonal-error font-tab btn-sm"
 								title="Clear shorthand editor"
 								aria-label="Clear shorthand editor"
 								onclick={clearSource}
@@ -372,6 +396,7 @@
 					<ShorthandEditor
 						bind:editor
 						bind:focusedNote
+						autoGrow={editorGrow}
 						value={tab.source}
 						tokens={result.tokens}
 						{tuning}

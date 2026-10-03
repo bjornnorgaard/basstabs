@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { EditorState, StateEffect, StateField } from '@codemirror/state';
+	import { Compartment, EditorState, StateEffect, StateField } from '@codemirror/state';
 	import {
 		addCursorAbove,
 		addCursorBelow,
@@ -31,6 +31,8 @@
 		placeholder?: string;
 		/** The note under the main cursor, in playing order. Cleared when the editor loses focus. */
 		focusedNote?: number;
+		/** Grow with the content instead of a fixed five-line height that scrolls. */
+		autoGrow?: boolean;
 		editor?: EditorView;
 		oninput: (value: string) => void;
 	}
@@ -42,12 +44,22 @@
 		invalid = false,
 		placeholder,
 		focusedNote = $bindable(),
+		autoGrow = false,
 		editor = $bindable(),
 		oninput
 	}: Props = $props();
 
 	let host: HTMLDivElement;
 	const refreshHighlight = StateEffect.define<void>();
+	const sizing = new Compartment();
+
+	function sizingTheme(grow: boolean) {
+		return EditorView.theme(
+			grow
+				? { '.cm-scroller': { overflow: 'visible' } }
+				: { '&': { height: '5lh' }, '.cm-scroller': { overflow: 'auto' } }
+		);
+	}
 
 	function tokenDecorations(state: EditorState): DecorationSet {
 		const marks = tokens.flatMap((token) => {
@@ -100,6 +112,7 @@
 					EditorView.lineWrapping,
 					placeholderExtension(placeholder ?? ''),
 					highlightField,
+					sizing.of(sizingTheme(autoGrow)),
 					keymap.of([
 						{ key: 'Mod-d', run: selectNextOccurrence },
 						{ key: 'Mod-Alt-ArrowUp', run: addCursorAbove },
@@ -133,10 +146,7 @@
 							lineHeight: 'inherit',
 							color: 'inherit'
 						},
-						'.cm-scroller': {
-							overflow: 'visible',
-							fontFamily: 'inherit'
-						},
+						'.cm-scroller': { fontFamily: 'inherit' },
 						'.cm-content': {
 							minHeight: '3.25rem',
 							padding: '0',
@@ -169,6 +179,10 @@
 		void player.activeNoteId;
 		void tuning;
 		editor?.dispatch({ effects: refreshHighlight.of() });
+	});
+
+	$effect(() => {
+		editor?.dispatch({ effects: sizing.reconfigure(sizingTheme(autoGrow)) });
 	});
 
 	$effect(() => {
