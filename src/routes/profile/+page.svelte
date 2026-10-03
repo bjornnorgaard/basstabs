@@ -39,8 +39,8 @@
 				</div>
 			</div>
 			<p class="text-sm opacity-70">
-				Tabs save to the cloud by default while signed in. Choose “Keep browser only” on a tab to
-				keep it on this device instead. That choice persists after signing out.
+				Tabs save to the cloud by default while signed in. Set a tab's save location to “Browser
+				only” to keep it on this device instead. That choice persists after signing out.
 			</p>
 			<div>
 				<button

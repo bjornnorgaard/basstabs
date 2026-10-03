@@ -3,6 +3,11 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { SegmentedControl } from '@skeletonlabs/skeleton-svelte';
+	import Cloud from '@lucide/svelte/icons/cloud';
+	import HardDrive from '@lucide/svelte/icons/hard-drive';
+	import CircleCheck from '@lucide/svelte/icons/circle-check';
+	import CircleAlert from '@lucide/svelte/icons/circle-alert';
+	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import { cloudStore } from '$lib/stores/cloud.svelte';
 	import type { BassTab } from '$lib/stores/tabs.svelte';
 	import { cloudTitleConflict, cloudTitleKey, errorMessage } from '$lib/cloud/model';
@@ -32,6 +37,32 @@
 			cloudStore.saving.includes(tab.id) ||
 			cloudStore.movingToBrowser.includes(tab.id)
 	);
+	const working = $derived(
+		busy || cloudStore.saving.includes(tab.id) || cloudStore.movingToBrowser.includes(tab.id)
+	);
+	const location = $derived(cloud || (cloudStore.user && !tab.browserOnly) ? 'cloud' : 'browser');
+	const status = $derived(
+		cloudStore.movingToBrowser.includes(tab.id)
+			? 'Moving to browser...'
+			: working
+				? 'Saving...'
+				: cloud
+					? cloudStore.dirty.includes(tab.id)
+						? 'Unsaved changes'
+						: 'Saved to cloud'
+					: location === 'cloud'
+						? uploadMessage
+							? 'Cloud save needs attention'
+							: 'Cloud save pending'
+						: 'Saved in this browser'
+	);
+
+	async function changeLocation(value: string) {
+		if (value === location) return;
+		if (value === 'browser') await keepBrowserOnly();
+		else if (!cloudStore.user) await cloudStore.login();
+		else await upload(existing?.id);
+	}
 
 	async function keepBrowserOnly() {
 		if (
@@ -111,29 +142,89 @@
 	}
 </script>
 
-<section class="space-y-3 card preset-tonal-surface p-4">
-	{#if cloud}
-		<div class="flex flex-wrap items-center gap-3">
-			<strong>Cloud saving enabled</strong>
-			<span role="status" class="text-sm">
-				{cloudStore.movingToBrowser.includes(tab.id)
-					? 'Moving to browser...'
-					: cloudStore.saving.includes(tab.id)
-						? 'Saving...'
-						: cloudStore.dirty.includes(tab.id)
-							? 'Unsaved changes'
-							: 'Saved to cloud'}
+<section
+	aria-label="Storage and sharing"
+	class="grid min-w-0 gap-4 border-t border-surface-200-800 pt-4 md:grid-cols-[2fr_3fr]"
+>
+	<div class="min-w-0 space-y-2">
+		<label class="label min-w-0">
+			<span class="label-text">Save location</span>
+			<div class="relative">
+				{#if location === 'cloud'}
+					<Cloud
+						class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 opacity-60"
+					/>
+				{:else}
+					<HardDrive
+						class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 opacity-60"
+					/>
+				{/if}
+				<select
+					class="select w-full min-w-0 pl-10"
+					value={location}
+					onchange={(event) => {
+						const value = event.currentTarget.value;
+						event.currentTarget.value = location;
+						void changeLocation(value);
+					}}
+					disabled={disabled || cloudStore.busy}
+					aria-describedby="tab-save-status"
+				>
+					<option
+						value="cloud"
+						disabled={!!cloudStore.user && (cloudStore.loading || cloudStore.connectionFailed)}
+						>Cloud account</option
+					>
+					<option value="browser">Browser only</option>
+				</select>
+			</div>
+		</label>
+		<div class="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1">
+			<span
+				id="tab-save-status"
+				role="status"
+				class="inline-flex min-w-0 items-center gap-1.5 text-xs opacity-70"
+			>
+				{#if working}
+					<LoaderCircle class="size-3.5 shrink-0 animate-spin" />
+				{:else if (cloud && cloudStore.dirty.includes(tab.id)) || (location === 'cloud' && uploadMessage)}
+					<CircleAlert class="size-3.5 shrink-0" />
+				{:else if cloud || location === 'browser'}
+					<CircleCheck class="size-3.5 shrink-0" />
+				{/if}
+				{status}
 			</span>
-			<button
-				class="btn preset-tonal btn-sm"
-				{disabled}
-				onclick={() => perform(() => cloudStore.save(tab.id))}>Save / retry</button
-			>
-			<button class="btn preset-tonal btn-sm" {disabled} onclick={keepBrowserOnly}
-				>Keep browser only</button
-			>
+			{#if cloud && cloudStore.dirty.includes(tab.id)}
+				<button
+					class="btn preset-tonal btn-sm"
+					{disabled}
+					onclick={() => perform(() => cloudStore.save(tab.id))}>Retry save</button
+				>
+			{:else if !cloud && cloudStore.user && uploadMessage}
+				<button
+					class="btn preset-tonal btn-sm"
+					disabled={disabled || cloudStore.loading || cloudStore.connectionFailed}
+					aria-describedby="cloud-save-error"
+					onclick={() => upload(existing?.id)}
+					>{existing ? 'Update existing cloud tab' : 'Retry save'}</button
+				>
+			{/if}
+		</div>
+		{#if !cloud && cloudStore.user && uploadMessage}
+			<p id="cloud-save-error" role="alert" class="text-sm text-error-500">{uploadMessage}</p>
+			{#if existing}
+				<a
+					class="text-sm underline underline-offset-4"
+					href={resolve('/tab/[id]', { id: existing.id })}>Open existing cloud tab</a
+				>
+			{/if}
+		{/if}
+	</div>
+
+	<div class="min-w-0 space-y-2">
+		{#if cloud}
 			<SegmentedControl
-				class="min-w-0 basis-full sm:basis-auto"
+				class="min-w-0"
 				value={cloud.visibility}
 				{disabled}
 				onValueChange={(details) => visibility(details.value)}
@@ -156,62 +247,37 @@
 					>
 				</div>
 			</SegmentedControl>
-		</div>
-		<p class="text-sm opacity-70">
-			Edits save to this same tab automatically when online. Sign in to access it on any device.
-			Unlisted links can be forwarded; viewers cannot edit your original. Making this tab private
-			revokes its live link. Re-enabling sharing creates a new link. Titles must be unique within
-			your cloud library.
-		</p>
-	{:else}
-		<div class="flex flex-wrap items-center gap-3">
-			<strong
-				>{cloudStore.user && !tab.browserOnly
-					? 'Cloud save pending'
-					: 'Saved in this browser'}</strong
-			>
-			{#if cloudStore.user}
-				<button
-					class="btn preset-filled-primary-500 btn-sm"
-					disabled={disabled || cloudStore.loading || cloudStore.connectionFailed}
-					aria-describedby={uploadMessage ? 'cloud-save-error' : undefined}
-					onclick={() => upload(existing?.id)}
-					>{existing
-						? 'Update existing cloud tab'
-						: tab.browserOnly
-							? 'Enable cloud saving'
-							: 'Save / retry'}</button
-				>
-				{#if existing}
-					<a class="btn preset-tonal btn-sm" href={resolve('/tab/[id]', { id: existing.id })}
-						>Open existing cloud tab</a
-					>
-				{/if}
-			{:else}
+		{:else}
+			<div class="label">
+				<span class="label-text">Sharing</span>
+				<p class="text-sm opacity-70">
+					Snapshot links share a fixed copy. Save to your cloud account to enable visibility
+					settings and live links.
+				</p>
+			</div>
+			{#if !cloudStore.user}
 				<button
 					class="btn preset-tonal btn-sm"
 					disabled={cloudStore.busy}
 					onclick={() => cloudStore.login()}>Sign in for cloud saving</button
 				>
 			{/if}
-			{#if !tab.browserOnly}
-				<button class="btn preset-tonal btn-sm" {disabled} onclick={keepBrowserOnly}
-					>Keep browser only</button
-				>
-			{/if}
-		</div>
-		{#if cloudStore.user && uploadMessage}
-			<p id="cloud-save-error" role="alert" class="text-sm text-error-500">
-				{uploadMessage}
-			</p>
 		{/if}
-		<p class="text-sm opacity-70">
-			Google sign-in is optional. Local editing, playback, export and snapshot sharing work without
-			it. When signed in, new tabs and existing browser tabs save to your account automatically
-			unless you choose “Keep browser only”. That choice is remembered, including after sign-out.
-			Cloud-backed tabs require sign-in; browser-only tabs remain available when signed out. Pending
-			or failed saves keep a browser backup until saving succeeds. If an older cloud copy has the
-			same title, you can update it after confirmation, or rename this tab to keep both.
+	</div>
+
+	<details class="min-w-0 text-xs opacity-70 md:col-span-2">
+		<summary class="w-fit cursor-pointer hover:underline">About storage and sharing</summary>
+		<p class="mt-2 max-w-3xl leading-relaxed">
+			Tabs save automatically to your account when signed in. Choose Browser only to keep a tab on
+			this device instead; moving a cloud tab here removes its cloud version and revokes its live
+			link after confirmation. This choice is remembered after sign-out. Pending saves keep a
+			browser backup. Cloud titles must be unique within your account.
+			{#if cloud}
+				Live links show saved updates and can be forwarded. Making a tab private revokes its link;
+				sharing again creates a new link. Viewers cannot edit your original.
+			{:else}
+				Sign-in is optional: editing, playback, export and snapshot sharing work without it.
+			{/if}
 		</p>
-	{/if}
+	</details>
 </section>

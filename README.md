@@ -102,7 +102,7 @@ Local tabs are saved in the browser's `localStorage`. You can create, search, du
 and delete tabs, copy them to the clipboard, download them as `.txt`, or share
 them as a snapshot link. Google sign-in is optional: all existing local features
 work without an account. When signed in, cloud saving is the default; each tab
-can opt out with **Keep browser only**.
+can opt out by choosing **Browser only** under **Save location**.
 
 New tabs are prefilled with an editable walkthrough, not just a placeholder.
 Starting with an ascending C major scale, it explains sections and comments,
@@ -162,16 +162,20 @@ edits update the same cloud-backed tab, rather than creating more copies.
 Cloud-backed tabs require sign-in to access; browser-only tabs remain available
 without an account.
 
-**Keep browser only** opts a tab out of automatic cloud saving. On a cloud-backed
+The editor's **Save location** setting sits below Title, Artist and Tuning, alongside
+visibility and sharing. Select **Browser only** to opt out of automatic cloud saving,
+or **Cloud account** to enable it again. A compact status shows save progress;
+**Retry save** appears only for pending changes or failed uploads. Storage/sharing
+details are available in an expandable help section. On a cloud-backed
 tab, confirmation explains that this removes the cloud tab and revokes its live
 link. The app durably stores the latest contents locally before deleting the
 cloud tab and its published projection together. Failed conversions are reported;
 the local backup is kept and the cloud tab is not presented as successfully removed.
-The preference survives reloads, sign-out and later sign-in. **Enable cloud saving**
-reverses the opt-out. New duplicates and imported copies use the normal cloud default.
+The preference survives reloads, sign-out and later sign-in.
+New duplicates and imported copies use the normal cloud default.
 
 Automatic uploads wait for the account library to load. Failed saves remain in the
-browser with a pending/failed status and **Save / retry**; editing or reconnecting
+browser with a pending/failed status and **Retry save**; editing or reconnecting
 also retries. Pending uploads are bound to the account they were created for, so
 switching accounts does not upload those tabs to someone else's account. New tabs
 created while signed in receive a distinct title if necessary, so repeated
@@ -193,7 +197,7 @@ Cloud renames also check for duplicates; a conflicting draft stays unsaved until
 you give it a different title. Existing duplicate titles are not automatically
 renamed or deleted.
 Cloud-backed tabs are available across devices and save edits automatically
-after a short delay. **Save / retry** explicitly retries
+after a short delay. **Retry save** explicitly retries
 a failed save. Sign-out waits for pending edits to save; if saving fails, the
 account stays signed in. Unsaved drafts are backed up in browser storage under
 the account's UID and restored only for that account. Browser storage errors are
@@ -217,7 +221,7 @@ keeps the existing link. Snapshot links remain independent, immutable copies and
 cannot be revoked. Viewers can save a local editable copy without signing in.
 
 Cloud edits need a connection to save. Recovered drafts can be saved with
-**Save / retry**. Simultaneous edits from multiple devices use last-write-wins,
+**Retry save**. Simultaneous edits from multiple devices use last-write-wins,
 not collaborative merging. The app warns before closing with pending changes.
 On shared computers, sign out after successful saving; local tabs and sound
 settings still belong to the browser.

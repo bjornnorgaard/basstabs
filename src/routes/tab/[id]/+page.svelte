@@ -279,8 +279,6 @@
 			</div>
 		</div>
 
-		<CloudTabControls {tab} {sharing} />
-
 		<div class="grid gap-4 md:grid-cols-[2fr_2fr_1fr]">
 			<label class="label min-w-0">
 				<span class="label-text">Title</span>
@@ -312,6 +310,8 @@
 				</select>
 			</label>
 		</div>
+
+		<CloudTabControls {tab} {sharing} />
 
 		<!-- Side by side from wide desktop width up; stacked on smaller screens. Wide tabs scroll within their column. -->
 		<div class="grid grid-cols-1 gap-6 {editorOpen ? 'xl:grid-cols-2' : ''}">

@@ -108,11 +108,11 @@
 	{/if}
 	<p class="text-sm opacity-70">
 		{#if cloudStore.user}
-			Tabs save to your account automatically. Choose “Keep browser only” on a tab to opt out.
-			Browser-only tabs stay on this device, including when signed out.
+			Tabs save to your account automatically. Set a tab's save location to “Browser only” to opt
+			out. Browser-only tabs stay on this device, including when signed out.
 		{:else}
 			Tabs stay in this browser without an account. Sign in to save them to the cloud automatically,
-			unless you choose “Keep browser only”.
+			unless you choose “Browser only” as the save location.
 		{/if}
 	</p>
 

@@ -52,8 +52,9 @@ describe('cloud saving controls', () => {
 		expect(body).not.toContain('two cloud saves with the same title');
 		expect(body).not.toContain('Update existing cloud tab');
 		expect(body).toContain('Cloud save pending');
-		expect(body).toContain('Save / retry');
-		expect(body).toContain('Keep browser only');
+		expect(body).toContain('Save location');
+		expect(body).toContain('Browser only');
+		expect(body).not.toContain('Retry save</button>');
 	});
 
 	it('remembers explicit browser-only storage while signed in', () => {
@@ -61,8 +62,9 @@ describe('cloud saving controls', () => {
 			props: { tab: { ...tab, title: 'Local riff', browserOnly: true } }
 		});
 		expect(body).toContain('Saved in this browser');
-		expect(body).toContain('Enable cloud saving');
-		expect(body).not.toContain('Cloud save pending</strong>');
+		expect(body).toContain('value="browser" selected');
+		expect(body).toContain('Cloud account');
+		expect(body).not.toContain('Cloud save pending');
 	});
 
 	it('shows automatic save failures beside retry', () => {
@@ -73,9 +75,33 @@ describe('cloud saving controls', () => {
 			});
 			expect(body).toContain('offline');
 			expect(body).toContain('role="alert"');
-			expect(body).toContain('Save / retry');
+			expect(body).toContain('Retry save');
 		} finally {
 			mocks.cloud.uploadErrors = {};
+		}
+	});
+
+	it('labels the save location and keeps detailed help collapsed by default', () => {
+		const { body } = render(CloudTabControls, {
+			props: { tab: { ...tab, title: 'Local riff', browserOnly: true } }
+		});
+		expect(body).toContain('aria-label="Storage and sharing"');
+		expect(body).toContain('aria-describedby="tab-save-status"');
+		expect(body).toContain('About storage and sharing');
+		expect(body).not.toMatch(/<details[^>]*\bopen\b/);
+	});
+
+	it('disables storage changes and shows progress while moving to browser storage', () => {
+		mocks.cloud.get.mockReturnValue({ ...tab, visibility: 'private', shareId: null });
+		mocks.cloud.movingToBrowser = [tab.id];
+		try {
+			const { body } = render(CloudTabControls, { props: { tab } });
+			expect(body).toContain('Moving to browser...');
+			expect(body).toMatch(/<select[^>]*disabled/);
+			expect(body).not.toContain('Saved to cloud');
+		} finally {
+			mocks.cloud.get.mockReturnValue(undefined);
+			mocks.cloud.movingToBrowser = [];
 		}
 	});
 
@@ -103,10 +129,15 @@ describe('cloud saving controls', () => {
 		mocks.cloud.dirty = dirty;
 		try {
 			const { body } = render(CloudTabControls, { props: { tab } });
-			expect(body).toContain('Cloud saving enabled');
+			expect(body).toContain('Save location');
+			expect(body).toContain('value="cloud" selected');
 			expect(body).toContain(label);
-			expect(body).toContain('Keep browser only');
+			expect(body).toContain('Browser only');
 			expect(body).not.toContain('Enable cloud saving</button>');
+			expect(body).toContain('Visibility');
+			expect(body).toContain('Copy live link');
+			if (dirty.length) expect(body).toContain('Retry save');
+			else expect(body).not.toContain('Retry save</button>');
 		} finally {
 			mocks.cloud.get.mockReturnValue(undefined);
 			mocks.cloud.saving = [];

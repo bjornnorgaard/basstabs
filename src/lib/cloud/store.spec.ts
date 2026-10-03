@@ -177,7 +177,7 @@ describe('optional cloud store', () => {
 		await cloud.logout();
 		expect(cloud.uploadErrors[second.id]).toBe('offline');
 		expect(mocks.signOut).not.toHaveBeenCalled();
-		expect(cloud.error).toContain('Keep browser only');
+		expect(cloud.error).toContain('Browser only under Save location');
 		await cloud.keepBrowserOnly(second.id);
 		await cloud.logout();
 		expect(mocks.signOut).toHaveBeenCalledTimes(1);

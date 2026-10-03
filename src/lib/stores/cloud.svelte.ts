@@ -321,7 +321,7 @@ class CloudStore {
 				)
 			)
 				throw new Error(
-					'Save your remaining cloud changes, or choose Keep browser only, before signing out.'
+					'Save your remaining cloud changes, or choose Browser only under Save location, before signing out.'
 				);
 			if (this.generation !== generation)
 				throw new Error(
@@ -371,7 +371,7 @@ class CloudStore {
 		if (conflict) throw new Error(conflict);
 		if (local.cloudOwnerId && local.cloudOwnerId !== user.uid) {
 			throw new Error(
-				'This pending cloud save belongs to another account. Sign into that account, or choose Keep browser only first.'
+				'This pending cloud save belongs to another account. Sign into that account, or choose Browser only under Save location first.'
 			);
 		}
 		if (tabStore.get(local.id)) {
@@ -409,7 +409,7 @@ class CloudStore {
 			throw new Error('Sign in and load the existing cloud tab first.');
 		if (local.cloudOwnerId && local.cloudOwnerId !== this.user.uid) {
 			throw new Error(
-				'This pending save belongs to another account. Choose Keep browser only before moving it to this account.'
+				'This pending save belongs to another account. Choose Browser only under Save location before moving it to this account.'
 			);
 		}
 		const generation = this.generation;
