@@ -203,7 +203,7 @@
 	bind:this={host}
 	class={[
 		'textarea min-w-0 tab-surface-bg font-tab text-base leading-relaxed',
-		!autoGrow && 'box-content w-auto min-h-[2lh] resize-y overflow-hidden'
+		!autoGrow && 'box-content min-h-[2lh] w-auto resize-y overflow-hidden'
 	]}
 	style:height={autoGrow ? undefined : '5lh'}
 	aria-invalid={invalid}
