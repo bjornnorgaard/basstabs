@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { cloudStore } from '$lib/stores/cloud.svelte';
+	import UserRound from '@lucide/svelte/icons/user-round';
 </script>
 
 {#if !cloudStore.ready}
@@ -11,10 +12,19 @@
 {:else if cloudStore.user}
 	<a
 		href={resolve('/profile')}
-		class="max-w-40 truncate text-sm hover:underline"
-		title={cloudStore.user.email ?? ''}
+		class="btn-icon shrink-0 overflow-hidden rounded-full p-0 hover:preset-tonal"
+		title="Profile"
+		aria-label="Profile"
 	>
-		{cloudStore.user.displayName ?? 'Profile'}
+		{#if cloudStore.user.photoURL}
+			<img
+				src={cloudStore.user.photoURL}
+				alt=""
+				class="size-7 shrink-0 rounded-full object-cover"
+			/>
+		{:else}
+			<UserRound class="size-5" />
+		{/if}
 	</a>
 {:else}
 	<button

@@ -64,7 +64,6 @@
 				</div>
 				<div class="hidden items-center gap-2 lg:flex">
 					<a href={resolve('/public')} class="btn preset-tonal btn-sm">Public tabs</a>
-					<AccountControls />
 					<a
 						href={resolve('/sound')}
 						class="btn-icon hover:preset-tonal"
@@ -73,10 +72,11 @@
 					>
 						<SlidersHorizontal class="size-5" />
 					</a>
-					<button type="button" class="btn preset-filled-primary-500" onclick={newTab}>
+					<ModeToggle />
+					<AccountControls />
+					<button type="button" class="ml-2 btn preset-filled-primary-500" onclick={newTab}>
 						<Plus class="size-4" /> New tab
 					</button>
-					<ModeToggle />
 				</div>
 			</AppBar.Trail>
 			<div class="col-span-2 flex items-center gap-2 lg:hidden">
