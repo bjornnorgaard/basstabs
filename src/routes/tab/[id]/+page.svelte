@@ -63,7 +63,7 @@
 	}
 
 	const EDITOR_GROW_KEY = 'basstabs:editor-grow';
-	let editorGrow = $state(localStorage.getItem(EDITOR_GROW_KEY) === 'grow');
+	let editorGrow = $state(localStorage.getItem(EDITOR_GROW_KEY) !== 'fixed');
 
 	function toggleEditorGrow() {
 		editorGrow = !editorGrow;
