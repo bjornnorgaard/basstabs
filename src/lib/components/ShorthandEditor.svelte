@@ -201,6 +201,6 @@
 
 <div
 	bind:this={host}
-	class="min-w-0 rounded-base bg-transparent font-tab text-base leading-relaxed"
+	class="textarea min-w-0 tab-surface-bg font-tab text-base leading-relaxed"
 	aria-invalid={invalid}
 ></div>

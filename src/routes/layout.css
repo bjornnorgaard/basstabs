@@ -57,12 +57,18 @@
 }
 
 /* Backdrop for rendered tabs: a touch lighter than the page in light mode, recessed in dark mode. */
-@utility tab-surface {
+@utility tab-surface-bg {
 	background-color: oklch(97.5% 0.006 75deg);
-	box-shadow: inset 0 0 0 1px var(--color-surface-100);
 
 	@variant dark {
 		background-color: var(--color-surface-900);
+	}
+}
+@utility tab-surface {
+	@apply tab-surface-bg;
+	box-shadow: inset 0 0 0 1px var(--color-surface-100);
+
+	@variant dark {
 		box-shadow: none;
 	}
 }
