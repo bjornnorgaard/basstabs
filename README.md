@@ -152,6 +152,17 @@ copy in that browser.
 
 Sign in with Google, open a local tab, and choose **Save a cloud copy**. This
 creates a separate private cloud tab and keeps the original local tab unchanged.
+Cloud titles must be unique within your account, ignoring capitalization and
+leading/trailing spaces; other accounts can use the same titles. Rename a local
+tab before uploading a variation, or open the existing cloud tab to update it.
+An existing title shows a warning next to **Save a cloud copy** and is checked
+again when clicked, before contacting Firestore. Server validation still checks
+for conflicts with tabs saved on other devices. Failed uploads also show their
+message next to the button; access failures explain that signing in again or
+deploying the latest rules may be necessary rather than implying a title conflict.
+Cloud renames also check for duplicates; a conflicting draft stays unsaved until
+you give it a different title. Existing duplicate titles are not automatically
+renamed or deleted.
 Cloud tabs appear separately on the home page, are available across devices, and
 save edits automatically after a short delay. **Save / retry** explicitly retries
 a failed save. Sign-out waits for pending edits to save; if saving fails, the
@@ -204,7 +215,8 @@ npx firebase login
 npx firebase deploy --project basstabs-by-bear --only firestore:rules,firestore:indexes
 ```
 
-Rules tests use the Firestore emulator and require Java 21 or newer:
+Rules and cloud-title integration tests (including simultaneous uploads) use the
+Firestore emulator and require Java 21 or newer:
 
 ```sh
 npm run test:rules
@@ -220,7 +232,13 @@ publish, then create the collection-scope composite index for `publishedTabs`
 with `visibility` ascending and `updatedAt` descending in **Indexes**. Wait for
 the index to finish building before using the public library.
 
-Canonical tabs live at `users/{uid}/tabs/{tabId}`. Shared content is mirrored
+Canonical tabs live at `users/{uid}/tabs/{tabId}`.
+Create/rename transactions use an owner-only revision document at
+`users/{uid}/cloudState/tabNames` to serialize duplicate-name checks across
+devices. Checks read the server library, including tabs saved before this feature.
+Deploy the updated rules with the client: older clients cannot create or rename
+cloud tabs without participating in this coordination.
+Shared content is mirrored
 atomically at `publishedTabs/{unguessableToken}`. Rules require the projection
 to match its canonical tab, enforce owner-only writes, and require deletion of
 the projection on revocation/deletion. Guests may get a shared document by its

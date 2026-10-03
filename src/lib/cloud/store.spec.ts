@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
 	commit: vi.fn<() => Promise<void>>(),
 	set: vi.fn(),
 	delete: vi.fn(),
+	get: vi.fn(),
+	library: vi.fn(),
 	signOut: vi.fn(),
 	onSnapshot: vi.fn<
 		(path: unknown, next: unknown, error: (error: { code: string }) => void) => () => void
@@ -26,6 +28,20 @@ vi.mock('firebase/firestore', () => ({
 	collection: (_db: unknown, ...segments: string[]) => segments.join('/'),
 	doc: (_db: unknown, ...segments: string[]) => segments.join('/'),
 	onSnapshot: mocks.onSnapshot,
+	getDocsFromServer: mocks.library,
+	increment: (value: number) => ({ increment: value }),
+	runTransaction: async (_db: unknown, action: (transaction: unknown) => Promise<void>) => {
+		const writes: unknown[][] = [];
+		const deletes: unknown[][] = [];
+		await action({
+			get: mocks.get,
+			set: (...args: unknown[]) => writes.push(args),
+			delete: (...args: unknown[]) => deletes.push(args)
+		});
+		await mocks.commit();
+		for (const args of writes) mocks.set(...args);
+		for (const args of deletes) mocks.delete(...args);
+	},
 	writeBatch: () => ({ set: mocks.set, delete: mocks.delete, commit: mocks.commit })
 }));
 
@@ -55,6 +71,12 @@ describe('optional cloud store', () => {
 			removeItem: (key: string) => storage.delete(key)
 		});
 		mocks.commit.mockResolvedValue();
+		mocks.get.mockReset();
+		mocks.get.mockImplementation(async (path: string) => ({
+			exists: () => path === `users/owner/tabs/${tab.id}`,
+			data: () => (path === `users/owner/tabs/${tab.id}` ? tab : undefined)
+		}));
+		mocks.library.mockResolvedValue({ docs: [] });
 	});
 
 	async function store() {
@@ -66,11 +88,15 @@ describe('optional cloud store', () => {
 
 	it('uploads a separate private copy, leaving the original untouched', async () => {
 		const cloud = await store();
+		cloud.tabs = [];
 		const id = await cloud.upload(tab);
 		expect(id).not.toBe(tab.id);
 		expect(tab.visibility).toBe('private');
-		expect(mocks.set.mock.calls[0][0]).toBe(`users/owner/tabs/${id}`);
-		expect(mocks.set.mock.calls[0][1]).toMatchObject({ visibility: 'private', shareId: null });
+		expect(mocks.set).toHaveBeenCalledWith(
+			`users/owner/tabs/${id}`,
+			expect.objectContaining({ visibility: 'private', shareId: null })
+		);
+		expect(mocks.library).toHaveBeenCalledWith('users/owner/tabs');
 		expect(mocks.delete).not.toHaveBeenCalled();
 	});
 
@@ -164,6 +190,7 @@ describe('optional cloud store', () => {
 		);
 		const saving = cloud.save(tab.id);
 		cloud.update(tab.id, { source: 'E2' });
+		await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
 		finish();
 		await saving;
 		expect(cloud.dirty).toContain(tab.id);
@@ -177,6 +204,81 @@ describe('optional cloud store', () => {
 		mocks.authChange?.(null);
 		expect(cloud.tabs).toEqual([]);
 		await expect(cloud.upload(tab)).rejects.toThrow('Sign in');
+	});
+
+	it.each(['Riff', ' riff ', 'RIFF'])(
+		'rejects duplicate upload title %s from the server',
+		async (title) => {
+			const cloud = await store();
+			cloud.tabs = [];
+			mocks.library.mockResolvedValue({ docs: [{ id: tab.id, data: () => tab }] });
+			await expect(cloud.upload({ ...tab, title })).rejects.toThrow('different title');
+			expect(mocks.commit).not.toHaveBeenCalled();
+			expect(cloud.tabs).toEqual([]);
+		}
+	);
+
+	it('rejects a known duplicate before any Firestore request, even if access is denied', async () => {
+		const cloud = await store();
+		mocks.get.mockRejectedValueOnce(
+			Object.assign(new Error('Missing or insufficient permissions.'), {
+				code: 'permission-denied'
+			})
+		);
+		await expect(cloud.upload({ ...tab, id: 'local-id', title: ' riff ' })).rejects.toThrow(
+			"You can't have two cloud saves with the same title"
+		);
+		expect(mocks.get).not.toHaveBeenCalled();
+		expect(mocks.library).not.toHaveBeenCalled();
+		expect(mocks.commit).not.toHaveBeenCalled();
+	});
+
+	it('allows a local variation once its title changes, while keeping server validation', async () => {
+		const cloud = await store();
+		await expect(cloud.upload(tab)).rejects.toThrow('different title');
+		const id = await cloud.upload({ ...tab, title: 'Riff 2' });
+		expect(cloud.get(id)?.title).toBe('Riff 2');
+		expect(mocks.library).toHaveBeenCalledWith('users/owner/tabs');
+	});
+
+	it('rejects duplicate cloud renames and preserves the unsaved draft', async () => {
+		const cloud = await store();
+		mocks.library.mockResolvedValue({
+			docs: [
+				{ id: tab.id, data: () => tab },
+				{ id: 'other-tab', data: () => ({ ...tab, title: 'Variation' }) }
+			]
+		});
+		cloud.update(tab.id, { title: ' variation ' });
+		await expect(cloud.save(tab.id)).rejects.toThrow('different title');
+		expect(cloud.dirty).toContain(tab.id);
+		expect(mocks.commit).not.toHaveBeenCalled();
+		cloud.update(tab.id, { title: 'Variation 2' });
+		await cloud.save(tab.id);
+		expect(cloud.dirty).toEqual([]);
+	});
+
+	it('allows a case-only rename of the same tab', async () => {
+		const cloud = await store();
+		mocks.library.mockResolvedValue({ docs: [{ id: tab.id, data: () => tab }] });
+		cloud.update(tab.id, { title: 'RIFF' });
+		await cloud.save(tab.id);
+		expect(cloud.dirty).toEqual([]);
+	});
+
+	it('does not scan the library for content-only edits', async () => {
+		const cloud = await store();
+		cloud.update(tab.id, { source: 'E4' });
+		await cloud.save(tab.id);
+		expect(mocks.library).not.toHaveBeenCalled();
+	});
+
+	it('surfaces failed server checks without creating a copy', async () => {
+		const cloud = await store();
+		cloud.tabs = [];
+		mocks.library.mockRejectedValueOnce(new Error('offline'));
+		await expect(cloud.upload(tab)).rejects.toThrow('offline');
+		expect(mocks.commit).not.toHaveBeenCalled();
 	});
 
 	it('restores unsaved drafts only for the matching account', async () => {

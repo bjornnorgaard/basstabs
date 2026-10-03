@@ -21,6 +21,30 @@ export function cloudData(tab: CloudTab) {
 	};
 }
 
+export function cloudTitleKey(title: string): string {
+	return title.trim().toLowerCase();
+}
+
+export function cloudTitleConflict(
+	title: string,
+	tabs: Pick<CloudTab, 'id' | 'title'>[],
+	excludeId?: string
+): string {
+	return tabs.some(
+		(other) => other.id !== excludeId && cloudTitleKey(other.title) === cloudTitleKey(title)
+	)
+		? `You already have a cloud tab named "${title.trim() || 'Untitled tab'}". You can't have two cloud saves with the same title. Choose a different title, or open the existing cloud tab to edit it.`
+		: '';
+}
+
+export function assertUniqueCloudTitle(
+	tab: Pick<CloudTab, 'id' | 'title'>,
+	tabs: Pick<CloudTab, 'id' | 'title'>[]
+) {
+	const conflict = cloudTitleConflict(tab.title, tabs, tab.id);
+	if (conflict) throw new Error(conflict);
+}
+
 export function readCloudTab(id: string, data: Record<string, unknown>): CloudTab {
 	if (
 		typeof data.title !== 'string' ||
@@ -67,5 +91,13 @@ export function shareToken(): string {
 }
 
 export function errorMessage(error: unknown): string {
+	if (
+		typeof error === 'object' &&
+		error !== null &&
+		'code' in error &&
+		error.code === 'permission-denied'
+	) {
+		return 'Cloud access was denied. Your tab has not been saved. Try signing in again. If this continues, the site administrator needs to deploy the latest Firestore rules; changing the title will not fix an access problem.';
+	}
 	return error instanceof Error ? error.message : String(error);
 }

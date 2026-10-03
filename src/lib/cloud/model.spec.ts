@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { cloudData, readCloudTab, shareToken } from './model';
+import {
+	assertUniqueCloudTitle,
+	cloudData,
+	cloudTitleConflict,
+	errorMessage,
+	readCloudTab,
+	shareToken
+} from './model';
 
 const data = {
 	title: 'Riff',
@@ -14,6 +21,33 @@ const data = {
 };
 
 describe('cloud tab data', () => {
+	it('provides the same clear duplicate message for inline and save validation', () => {
+		const library = [{ id: 'saved', title: 'Riff' }];
+		const message = cloudTitleConflict(' riff ', library);
+		expect(message).toContain("You can't have two cloud saves with the same title");
+		expect(() => assertUniqueCloudTitle({ id: 'copy', title: ' riff ' }, library)).toThrow(message);
+		expect(cloudTitleConflict('Riff', library, 'saved')).toBe('');
+		expect(cloudTitleConflict('Riff 2', library)).toBe('');
+	});
+
+	it('explains access failures without mislabeling them as duplicate names', () => {
+		const denied = Object.assign(new Error('Missing or insufficient permissions.'), {
+			code: 'permission-denied'
+		});
+		expect(errorMessage(denied)).toContain('deploy the latest Firestore rules');
+		expect(errorMessage(denied)).not.toContain('insufficient permissions');
+		expect(errorMessage(new Error('offline'))).toBe('offline');
+	});
+
+	it('compares titles without artist and treats blank titles as the same name', () => {
+		expect(() =>
+			assertUniqueCloudTitle({ id: 'copy', title: '  ' }, [{ id: 'saved', title: '' }])
+		).toThrow('Untitled tab');
+		expect(() =>
+			assertUniqueCloudTitle({ id: 'copy', title: 'Riff 2' }, [{ id: 'saved', title: 'Riff' }])
+		).not.toThrow();
+	});
+
 	it('round trips canonical tabs without storing their document id', () => {
 		const tab = readCloudTab('id', data);
 		expect(tab.id).toBe('id');

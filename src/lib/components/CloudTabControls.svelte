@@ -5,13 +5,20 @@
 	import { SegmentedControl } from '@skeletonlabs/skeleton-svelte';
 	import { cloudStore } from '$lib/stores/cloud.svelte';
 	import type { BassTab } from '$lib/stores/tabs.svelte';
-	import { errorMessage } from '$lib/cloud/model';
+	import { cloudTitleConflict, errorMessage } from '$lib/cloud/model';
 	import { buildLiveShareUrl } from '$lib/cloud/share';
 	import { toaster } from '$lib/toaster';
 
 	let { tab, sharing = false }: { tab: BassTab; sharing?: boolean } = $props();
 	let busy = $state(false);
+	let uploadFailure = $state<{ title: string; message: string } | null>(null);
 	const cloud = $derived(cloudStore.get(tab.id));
+	const titleConflict = $derived(
+		cloudStore.user && !cloud ? cloudTitleConflict(tab.title, cloudStore.tabs) : ''
+	);
+	const uploadMessage = $derived(
+		titleConflict || (uploadFailure?.title === tab.title ? uploadFailure.message : '')
+	);
 	const disabled = $derived(busy || sharing || cloudStore.saving.includes(tab.id));
 
 	async function perform(action: () => Promise<void>) {
@@ -27,7 +34,14 @@
 
 	async function upload() {
 		await perform(async () => {
-			const id = await cloudStore.upload(tab);
+			uploadFailure = null;
+			let id: string;
+			try {
+				id = await cloudStore.upload(tab);
+			} catch (error) {
+				uploadFailure = { title: tab.title, message: errorMessage(error) };
+				throw error;
+			}
 			toaster.success({
 				title: 'Saved a private cloud copy',
 				description: 'Your original local tab is unchanged.'
@@ -103,14 +117,17 @@
 		<p class="text-sm opacity-70">
 			Edits save automatically when online. Unlisted links can be forwarded; viewers cannot edit
 			your original. Making this tab private revokes its live link. Re-enabling sharing creates a
-			new link.
+			new link. Titles must be unique within your cloud library.
 		</p>
 	{:else}
 		<div class="flex flex-wrap items-center gap-3">
 			<strong>Saved in this browser</strong>
 			{#if cloudStore.user}
-				<button class="btn preset-filled-primary-500 btn-sm" disabled={busy} onclick={upload}
-					>Save a cloud copy</button
+				<button
+					class="btn preset-filled-primary-500 btn-sm"
+					disabled={busy}
+					aria-describedby={uploadMessage ? 'cloud-copy-error' : undefined}
+					onclick={upload}>Save a cloud copy</button
 				>
 			{:else}
 				<button
@@ -120,9 +137,16 @@
 				>
 			{/if}
 		</div>
+		{#if cloudStore.user && uploadMessage}
+			<p id="cloud-copy-error" role="alert" class="text-sm text-error-500">
+				{uploadMessage}
+			</p>
+		{/if}
 		<p class="text-sm opacity-70">
 			Google sign-in is optional. Local editing, playback, export and snapshot sharing work without
-			it. Uploading is your choice; signing in does not upload your tabs.
+			it. Uploading is your choice; signing in does not upload your tabs. Each cloud copy needs a
+			different title within your account (ignoring capitalization and surrounding spaces). To
+			update a saved copy, open that cloud tab instead.
 		</p>
 	{/if}
 </section>

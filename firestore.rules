@@ -68,15 +68,30 @@ service cloud.firestore {
         || getAfter(publishedPath(previous.shareId)) == null;
     }
 
+    function coordinatedTitleWrite(uid) {
+      let path = /databases/$(database)/documents/users/$(uid)/cloudState/tabNames;
+      return getAfter(path).data.revision == (exists(path) ? get(path).data.revision : 0) + 1;
+    }
+
+    match /users/{uid}/cloudState/tabNames {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['revision'])
+        && request.resource.data.revision is int
+        && request.resource.data.revision == (resource == null ? 0 : resource.data.revision) + 1;
+    }
+
     match /users/{uid}/tabs/{tabId} {
       allow read: if isOwner(uid);
       allow create: if isOwner(uid)
         && validCanonical(request.resource.data)
+        && coordinatedTitleWrite(uid)
         && hasMirror(request.resource.data, uid, tabId);
       allow update: if isOwner(uid)
         && validCanonical(request.resource.data)
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.updatedAt >= resource.data.updatedAt
+        && (request.resource.data.title == resource.data.title || coordinatedTitleWrite(uid))
         && hasMirror(request.resource.data, uid, tabId)
         && removedPreviousMirror(resource.data, request.resource.data);
       allow delete: if isOwner(uid)

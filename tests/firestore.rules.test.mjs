@@ -65,8 +65,24 @@ function mirror(data, uid = ownerId, id = tabId) {
 	return { ...content, ownerId: uid, tabId: id };
 }
 
-function writeShared(database, data, uid = ownerId, id = tabId) {
+async function coordinateTitle(batch, database, uid, id, data) {
+	const previous = await getDoc(canonical(database, uid, id));
+	if (previous.exists() && previous.data().title === data.title) return;
+	const reference = doc(database, 'users', uid, 'cloudState', 'tabNames');
+	const state = await getDoc(reference);
+	batch.set(reference, { revision: (state.data()?.revision ?? 0) + 1 });
+}
+
+async function writeCanonical(database, data, uid = ownerId, id = tabId) {
 	const batch = writeBatch(database);
+	await coordinateTitle(batch, database, uid, id, data);
+	batch.set(canonical(database, uid, id), data);
+	return batch.commit();
+}
+
+async function writeShared(database, data, uid = ownerId, id = tabId) {
+	const batch = writeBatch(database);
+	await coordinateTitle(batch, database, uid, id, data);
 	batch.set(canonical(database, uid, id), data);
 	batch.set(published(database, data.shareId), mirror(data, uid, id));
 	return batch.commit();
@@ -97,7 +113,7 @@ after(async () => {
 test('guests cannot read, list or write canonical tabs, including shared canonical tabs', async () => {
 	const owner = authenticated();
 	const guest = environment.unauthenticatedContext().firestore();
-	await assertSucceeds(setDoc(canonical(owner), tab()));
+	await assertSucceeds(writeCanonical(owner, tab()));
 	await assertFails(getDoc(canonical(guest)));
 	await assertFails(getDocs(collection(guest, 'users', ownerId, 'tabs')));
 	await assertFails(setDoc(canonical(guest), tab()));
@@ -110,11 +126,11 @@ test('guests cannot read, list or write canonical tabs, including shared canonic
 
 test('owners can create, read, list, update and delete private tabs', async () => {
 	const owner = authenticated();
-	await assertSucceeds(setDoc(canonical(owner), tab()));
+	await assertSucceeds(writeCanonical(owner, tab()));
 	await assertSucceeds(getDoc(canonical(owner)));
 	const result = await assertSucceeds(getDocs(collection(owner, 'users', ownerId, 'tabs')));
 	assert.equal(result.size, 1);
-	await assertSucceeds(updateDoc(canonical(owner), { title: 'Updated', updatedAt: now + 1 }));
+	await assertSucceeds(writeCanonical(owner, tab({ title: 'Updated', updatedAt: now + 1 })));
 	await assertSucceeds(deleteDoc(canonical(owner)));
 });
 
@@ -296,19 +312,19 @@ test('canonical schema rejects missing, extra, invalid or out-of-range fields', 
 		{ visibility: 'public', shareId: shareId.toUpperCase() }
 	];
 	for (const overrides of invalid) {
-		await assertFails(setDoc(canonical(owner), tab(overrides)));
+		await assertFails(writeCanonical(owner, tab(overrides)));
 	}
 	for (const field of Object.keys(tab())) {
 		const data = tab();
 		delete data[field];
-		await assertFails(setDoc(canonical(owner), data));
+		await assertFails(writeCanonical(owner, data));
 	}
 	for (const tuningId of ['standard-4', 'standard-5', 'standard-6']) {
-		await assertSucceeds(setDoc(canonical(owner), tab({ tuningId })));
+		await assertSucceeds(writeCanonical(owner, tab({ tuningId })));
 	}
 	await assertSucceeds(
-		setDoc(
-			canonical(owner),
+		writeCanonical(
+			owner,
 			tab({ title: 'x'.repeat(200), artist: 'x'.repeat(200), source: 'x'.repeat(200000) })
 		)
 	);
@@ -335,9 +351,34 @@ test('published projections reject extra, missing and invalid fields, including 
 
 test('updatedAt cannot go backwards and unrelated collections are denied', async () => {
 	const owner = authenticated();
-	await assertSucceeds(setDoc(canonical(owner), tab({ updatedAt: now + 10 })));
+	await assertSucceeds(writeCanonical(owner, tab({ updatedAt: now + 10 })));
 	await assertFails(updateDoc(canonical(owner), { updatedAt: now + 1 }));
 	await assertFails(setDoc(doc(owner, 'users', ownerId), { name: 'Owner' }));
 	await assertFails(setDoc(doc(owner, 'otherCollection', 'document'), { title: 'No' }));
 	await assertFails(getDoc(doc(owner, 'otherCollection', 'document')));
+});
+
+test('title coordination is owner-only and required for creates and renames', async () => {
+	const owner = authenticated();
+	const reference = doc(owner, 'users', ownerId, 'cloudState', 'tabNames');
+	await assertFails(setDoc(canonical(owner), tab()));
+	await assertSucceeds(writeCanonical(owner, tab()));
+	assert.equal((await getDoc(reference)).data().revision, 1);
+	await assertFails(updateDoc(canonical(owner), { title: 'Renamed' }));
+	await assertSucceeds(writeCanonical(owner, tab({ title: 'Renamed' })));
+	assert.equal((await getDoc(reference)).data().revision, 2);
+	await assertSucceeds(updateDoc(canonical(owner), { source: 'E3' }));
+	await assertFails(setDoc(reference, { revision: 2 }));
+	await assertFails(setDoc(reference, { revision: 4 }));
+	await assertFails(setDoc(reference, { revision: 3, extra: true }));
+	await assertFails(deleteDoc(reference));
+	for (const database of [
+		authenticated(otherId),
+		environment.unauthenticatedContext().firestore()
+	]) {
+		const otherReference = doc(database, 'users', ownerId, 'cloudState', 'tabNames');
+		await assertFails(getDoc(otherReference));
+		await assertFails(setDoc(otherReference, { revision: 3 }));
+	}
+	await assertSucceeds(writeCanonical(authenticated(otherId), tab(), otherId));
 });

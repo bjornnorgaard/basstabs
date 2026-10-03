@@ -10,12 +10,14 @@ import { collection, doc, onSnapshot, writeBatch, type Unsubscribe } from 'fireb
 import { auth, db } from '$lib/firebase';
 import {
 	cloudData,
+	cloudTitleConflict,
 	errorMessage,
 	readCloudTab,
 	shareToken,
 	type CloudTab,
 	type Visibility
 } from '$lib/cloud/model';
+import { writeCloudTab } from '$lib/cloud/write';
 import type { BassTab } from './tabs.svelte';
 
 class CloudStore {
@@ -213,22 +215,11 @@ class CloudStore {
 		);
 	}
 
-	private async write(tab: CloudTab, uid: string, oldShareId: string | null) {
-		readCloudTab(tab.id, cloudData(tab));
-		const batch = writeBatch(db);
-		batch.set(doc(db, 'users', uid, 'tabs', tab.id), cloudData(tab));
-		if (oldShareId && oldShareId !== tab.shareId)
-			batch.delete(doc(db, 'publishedTabs', oldShareId));
-		const { shareId, ...data } = cloudData(tab);
-		if (shareId) {
-			batch.set(doc(db, 'publishedTabs', shareId), { ...data, ownerId: uid, tabId: tab.id });
-		}
-		await batch.commit();
-	}
-
 	async upload(local: BassTab): Promise<string> {
 		const user = this.user;
 		if (!user) throw new Error('Sign in to save tabs to the cloud.');
+		const conflict = cloudTitleConflict(local.title, this.tabs);
+		if (conflict) throw new Error(conflict);
 		const generation = this.generation;
 		const tab: CloudTab = {
 			...local,
@@ -236,7 +227,7 @@ class CloudStore {
 			visibility: 'private',
 			shareId: null
 		};
-		await this.write(tab, user.uid, null);
+		await writeCloudTab(db, tab, user.uid, null);
 		if (this.generation === generation && !this.get(tab.id)) {
 			this.tabs.push(tab);
 			this.savedShareIds.set(tab.id, null);
@@ -259,7 +250,8 @@ class CloudStore {
 		const generation = this.generation;
 		const snapshot = { ...tab };
 		this.saving.push(id);
-		const operation = this.write(
+		const operation = writeCloudTab(
+			db,
 			snapshot,
 			user.uid,
 			oldShareId === undefined ? (this.savedShareIds.get(id) ?? snapshot.shareId) : oldShareId
