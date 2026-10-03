@@ -31,7 +31,7 @@
 		placeholder?: string;
 		/** The note under the main cursor, in playing order. Cleared when the editor loses focus. */
 		focusedNote?: number;
-		/** Grow with the content instead of a fixed five-line height that scrolls. */
+		/** Grow with the content instead of a resizable height (five lines initially) that scrolls. */
 		autoGrow?: boolean;
 		editor?: EditorView;
 		oninput: (value: string) => void;
@@ -57,7 +57,7 @@
 		return EditorView.theme(
 			grow
 				? { '.cm-scroller': { overflow: 'visible' } }
-				: { '&': { height: '5lh' }, '.cm-scroller': { overflow: 'auto' } }
+				: { '&': { height: '100%' }, '.cm-scroller': { overflow: 'auto' } }
 		);
 	}
 
@@ -201,6 +201,10 @@
 
 <div
 	bind:this={host}
-	class="textarea min-w-0 tab-surface-bg font-tab text-base leading-relaxed"
+	class={[
+		'textarea min-w-0 tab-surface-bg font-tab text-base leading-relaxed',
+		!autoGrow && 'box-content w-auto min-h-[2lh] resize-y overflow-hidden'
+	]}
+	style:height={autoGrow ? undefined : '5lh'}
 	aria-invalid={invalid}
 ></div>
