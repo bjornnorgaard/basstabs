@@ -82,7 +82,7 @@
 				onValueChange={(details) => visibility(details.value)}
 			>
 				<SegmentedControl.Label>Visibility</SegmentedControl.Label>
-				<div class="flex flex-wrap items-center gap-3">
+				<div class="flex w-full flex-wrap items-center gap-3">
 					<SegmentedControl.Control>
 						<SegmentedControl.Indicator />
 						{#each [{ value: 'public', label: 'Public' }, { value: 'unlisted', label: 'Unlisted' }, { value: 'private', label: 'Private' }] as option (option.value)}
@@ -92,8 +92,10 @@
 							</SegmentedControl.Item>
 						{/each}
 					</SegmentedControl.Control>
-					<button class="btn preset-filled-primary-500 btn-sm" {disabled} onclick={share}
-						>Copy live link</button
+					<button
+						class="btn w-full preset-filled-primary-500 btn-sm sm:w-auto"
+						{disabled}
+						onclick={share}>Copy live link</button
 					>
 				</div>
 			</SegmentedControl>
