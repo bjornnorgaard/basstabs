@@ -157,7 +157,9 @@
 										style:--string-hue={stringHue(tuning.strings[line.string], line.string)}
 									>
 										{#each line.segments as segment, s (s)}{#if segment.noteId !== undefined}<span
-													class="rounded-xs {player.activeNoteId === segment.noteId
+													class="rounded-xs {segment.text.length > 1
+														? 'hl-multi-digit'
+														: ''} {player.activeNoteId === segment.noteId
 														? 'preset-filled-primary-500'
 														: segment.noteId === focusedNote
 															? 'hl-string hl-focus'

@@ -38,7 +38,8 @@
 							style:--string-hue={stringHue(tuning.strings[line.string], line.string)}
 						>
 							{#each line.segments as segment, s (s)}{#if segment.noteId !== undefined}<span
-										class="hl-string">{segment.text}</span
+										class="hl-string {segment.text.length > 1 ? 'hl-multi-digit' : ''}"
+										>{segment.text}</span
 									>{:else}{#each fillerParts(segment.text) as part, p (p)}<span class={part.class}
 											>{part.text}</span
 										>{/each}{/if}{/each}

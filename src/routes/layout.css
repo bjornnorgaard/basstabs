@@ -41,6 +41,17 @@
 	text-decoration-skip-ink: none;
 	text-underline-offset: 3px;
 }
+/*
+ * Underlines a fret of two or more digits in the rendered tab, so `12` next to `3` can't be read
+ * as frets 1, 2, 3. Drawn as a background inset from both ends (a border always spans the full
+ * width) and so it never changes line height or glyph widths.
+ */
+.hl-multi-digit {
+	background-image: linear-gradient(currentColor, currentColor);
+	background-size: calc(100% - 0.5ch) 1.5px;
+	background-position: center bottom;
+	background-repeat: no-repeat;
+}
 .hl-focus {
 	outline: 1.5px solid currentColor;
 	outline-offset: 1px;
