@@ -88,8 +88,7 @@ The shorthand editor is colour-coded, and the rendered tab uses the same colours
 you can see which shorthand produced which part of the tab. Each string has its own
 colour, and a bare fret takes the colour of the string it plays on. Sections are
 tinted, comments are muted and invalid tokens are underlined. Put the caret on a
-note to outline it in the tab. The highlighter icon in the header turns the colours
-off; the choice is saved in the browser.
+note to outline it in the tab.
 
 Click the **Shorthand** heading to collapse the editor so the tab takes the full
 width. While collapsed, the heading shows a badge if the shorthand has errors. The
