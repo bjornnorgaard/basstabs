@@ -10,6 +10,7 @@
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
 	import Copy from '@lucide/svelte/icons/copy';
 	import Download from '@lucide/svelte/icons/download';
+	import Eraser from '@lucide/svelte/icons/eraser';
 	import Files from '@lucide/svelte/icons/files';
 	import FoldVertical from '@lucide/svelte/icons/fold-vertical';
 	import Share from '@lucide/svelte/icons/share-2';
@@ -368,17 +369,17 @@
 							>
 							<button
 								type="button"
-								class="ml-8 btn-icon preset-tonal btn-icon-sm"
+								class="ml-8 btn preset-tonal font-tab btn-sm"
 								title={editorGrow
 									? 'Limit the editor to five lines'
 									: 'Expand the editor to fit its content'}
-								aria-label="Expand editor to fit content"
-								aria-pressed={editorGrow}
 								onclick={toggleEditorGrow}
 							>
-								{#if editorGrow}<FoldVertical class="size-4" />{:else}<UnfoldVertical
-										class="size-4"
-									/>{/if}
+								{#if editorGrow}
+									<FoldVertical class="size-4" /> Shrink editor
+								{:else}
+									<UnfoldVertical class="size-4" /> Expand editor
+								{/if}
 							</button>
 							<button
 								type="button"
@@ -387,7 +388,8 @@
 								aria-label="Clear shorthand editor"
 								onclick={clearSource}
 								disabled={!tab.source}
-								>Clear editor
+							>
+								<Eraser class="size-4" /> Clear editor
 							</button>
 						</div>
 					{/if}
