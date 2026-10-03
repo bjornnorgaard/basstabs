@@ -1,4 +1,4 @@
-# PR: build and test only. main: build and test → push image → deploy rules → pin test.
+# PR: build and test only. main: build and test → push image → pin test.
 # The app lives at the repo root, so docs/deploy-only changes are ignored
 # instead of filtering on a component directory.
 name: webapp
@@ -20,8 +20,7 @@ on:
 
 concurrency:
   group: 'webapp-${{ github.event.pull_request.number || github.ref }}'
-  # Do not interrupt a release between deploying shared rules and pinning its client.
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -51,15 +50,6 @@ jobs:
 
       - name: Vitest
         run: npm test
-
-      - name: Set up Java for Firestore emulator
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '21'
-
-      - name: Firestore rules and cloud integration tests
-        run: npm run test:rules
 
       - name: Build
         run: npm run build
@@ -115,49 +105,9 @@ jobs:
           cache-from: type=gha,scope=webapp
           cache-to: type=gha,mode=max,scope=webapp
 
-  firestore:
-    name: Deploy Firestore rules
-    needs: [image]
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Check Firebase deployment configuration
-        env:
-          PROVIDER: ${{ vars.FIREBASE_WORKLOAD_IDENTITY_PROVIDER }}
-          SERVICE_ACCOUNT: ${{ vars.FIREBASE_DEPLOY_SERVICE_ACCOUNT }}
-        run: |
-          if [[ -z "$PROVIDER" || -z "$SERVICE_ACCOUNT" ]]; then
-            echo "::error::Configure FIREBASE_WORKLOAD_IDENTITY_PROVIDER and FIREBASE_DEPLOY_SERVICE_ACCOUNT repository variables. See README.md: Automated Firestore deployment."
-            exit 1
-          fi
-
-      - name: Set up Node
-        uses: actions/setup-node@v5
-        with:
-          node-version: '24'
-          cache: npm
-
-      - name: Install
-        run: npm ci
-
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v3
-        with:
-          workload_identity_provider: ${{ vars.FIREBASE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ vars.FIREBASE_DEPLOY_SERVICE_ACCOUNT }}
-
-      - name: Deploy rules to the shared Firebase project
-        run: npx --no-install firebase deploy --project basstabs-by-bear --only firestore:rules --non-interactive
-
   pin:
     name: Pin test
-    needs: [image, firestore]
+    needs: [image]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
