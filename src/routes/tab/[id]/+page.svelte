@@ -14,7 +14,6 @@
 	import Share from '@lucide/svelte/icons/share-2';
 	import Trash from '@lucide/svelte/icons/trash';
 	import ShorthandEditor from '$lib/components/ShorthandEditor.svelte';
-	import HighlightToggle from '$lib/components/HighlightToggle.svelte';
 	import SyntaxHelp from '$lib/components/SyntaxHelp.svelte';
 	import PlayableTab from '$lib/components/PlayableTab.svelte';
 	import { formatErrorReport } from '$lib/error-report';
@@ -339,7 +338,6 @@
 								{/if}
 							</Collapsible.Trigger>
 						</h2>
-						<HighlightToggle />
 					</div>
 					{#if editorOpen}
 						<div class="flex flex-wrap gap-1" aria-label="Quick insert">

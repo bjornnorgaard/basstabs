@@ -56,14 +56,6 @@
 	}
 }
 
-/* Syntax highlighting can be switched off from the header; errors and the caret outline stay. */
-[data-highlight='off']
-	:is(.hl-string, .hl-string-name, .hl-bar, .hl-fill, .hl-section, .hl-comment) {
-	color: inherit;
-	background-color: transparent;
-	opacity: 1;
-}
-
 /* Backdrop for rendered tabs: a touch lighter than the page in light mode, recessed in dark mode. */
 @utility tab-surface {
 	background-color: oklch(97.5% 0.006 75deg);

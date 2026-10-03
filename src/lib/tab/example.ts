@@ -49,6 +49,6 @@ export const EXAMPLE_SOURCE = `[C Major Scale]
 # Use Play all, or hover a section, row, or bar and click its play button.
 # Shift+click loops a selection; the Loop button makes looping the default.
 # Colours match the editor to the tab. Place the caret on a note to outline it.
-# Click Shorthand editor to collapse it; the header highlighter toggles colours.
+# Click Shorthand editor to collapse it and focus on the tab.
 # Copy tab, download .txt, or Share link to keep the headings and comments.
 # Tabs save automatically in this browser. Sound design in the header shapes the bass.`;
