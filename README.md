@@ -241,39 +241,6 @@ the user gesture when the SDK has resolved. Snapshot share links
 (`/shared#<payload>`) remain fully local and do not load Firebase; live links,
 the public library and the profile page load Firebase on demand.
 
-Firebase App Check is client-ready but inert until configured.
-**Enforcement state: OFF**. Test and production share the Firebase project
-`basstabs-by-bear`, so enforcement affects both sites immediately. The staged
-rollout is:
-
-1. Ship the client with App Check token support while enforcement stays off.
-2. Monitor Firebase App Check metrics until deployed clients are near-100%
-   verified.
-3. Enable Firestore enforcement only after the metrics window confirms clients
-   are sending valid tokens.
-
-To configure App Check, the project owner must:
-
-1. In the Firebase console for `basstabs-by-bear`, open **App Check**.
-2. Register the web app with the reCAPTCHA Enterprise provider for the test and
-   production site domains.
-3. Copy the reCAPTCHA Enterprise site key. This is a public browser key, not a
-   secret.
-4. Add it as `PUBLIC_FIREBASE_APPCHECK_SITE_KEY` for local builds or in
-   `.env.local`. The app reads it at build time through a namespace
-   import of SvelteKit's `$env/static/public`, so the variable is optional
-   (unset builds remain valid and behave as before) and no runtime
-   `/_app/env.js` request is needed, which would break offline loads. Changing
-   the key requires a rebuild.
-5. Add the same value as the GitHub Actions repository variable
-   `PUBLIC_FIREBASE_APPCHECK_SITE_KEY` if CI-produced builds and images should
-   include App Check. The workflow and `Dockerfile` pass it as an optional build
-   environment value/build argument; leaving it unset keeps App Check disabled.
-6. For local development only, optionally set
-   `PUBLIC_FIREBASE_APPCHECK_DEBUG_TOKEN` to a Firebase debug token. If the site
-   key is configured and the debug token is omitted, dev builds ask the SDK to
-   generate and log a debug token. Never commit a real debug token.
-
 The editor's **Save location** setting sits below Title, Artist and Tuning, alongside
 visibility and sharing. Select **Browser only** to opt out of automatic cloud saving,
 or **Cloud account** to enable it again. A compact status shows save progress;

@@ -1,6 +1,6 @@
 # 04 · Firebase App Check
 
-- **Status:** Blocked — client code shipped (inert until a site key is configured); waiting on the owner to do the console setup, monitor metrics and decide on enforcement. See Outcome.
+- **Status:** Not started _(deferred by the owner on 2026-10-05)_
 - **Area:** Security / cost control
 - **Size:** Medium
 - **Depends on:** [01](./01-lazy-load-firebase.md) _(soft — same file)_
@@ -99,65 +99,25 @@ Touches [`src/lib/firebase.ts`](../src/lib/firebase.ts), shared with
 [01](./01-lazy-load-firebase.md) and [02](./02-firestore-offline-persistence.md).
 Do not run those in parallel — see [ROADMAP.md](./ROADMAP.md).
 
-## Outcome
+## History — attempted and reverted
 
-- Client implementation is ready in [`src/lib/firebase.ts`](../src/lib/firebase.ts).
-  App Check is initialized inside the existing lazy Firebase path, after the app
-  is available and before Auth or Firestore are used. The `firebase/app-check`
-  module is dynamically imported only when a site key is configured, so the root
-  bundle does not gain a static Firebase import and unset builds behave as before.
-- The optional build-time public env var is
-  `PUBLIC_FIREBASE_APPCHECK_SITE_KEY`. The app reads it through
-  a namespace import of `$env/static/public`, so the key can be absent without a
-  missing named export or build failure. (PM integration fix: the agent first used
-  `$env/dynamic/public`, but that makes every page load fetch `/_app/env.js`,
-  which the task 03 service worker does not precache, and offline reloads broke.
-  Static env inlines the key at build time, which is when CI and the Dockerfile
-  provide it anyway.)
-- Dev-only debug token support uses
-  `PUBLIC_FIREBASE_APPCHECK_DEBUG_TOKEN` when set. If the site key is configured
-  in dev and no explicit debug token is provided, `self.FIREBASE_APPCHECK_DEBUG_TOKEN`
-  is set to `true` so the SDK generates and logs a token. Production builds never
-  set the debug token. [`/.env.example`](../.env.example) documents empty values;
-  [`.gitignore`](../.gitignore) already keeps real `.env` files ignored.
-- CI and image builds accept the optional site key through the GitHub Actions
-  repository variable `PUBLIC_FIREBASE_APPCHECK_SITE_KEY`. The
-  [`Dockerfile`](../Dockerfile) receives it as `ARG`/`ENV` for the static build.
-  Leaving it unset keeps App Check disabled.
-- If App Check initialization fails, including when reCAPTCHA is blocked, the app
-  logs a warning and continues without App Check. Enforcement is still off, so
-  Firestore/Auth behavior is unchanged in that failure mode.
-- **Enforcement state: OFF.** Test and production share Firebase project
-  `basstabs-by-bear`; enabling enforcement would affect both immediately.
+A client-only implementation was built and merged on `improvements/roadmap`
+(see PR #2's history), then removed before merging to `main` because the owner
+decided App Check and reCAPTCHA are not needed yet. Lessons for whoever picks
+this up again:
 
-Owner console steps still pending:
-
-1. In the Firebase console for project `basstabs-by-bear`, open **App Check**.
-2. Register the web app with the reCAPTCHA Enterprise provider for the test and
-   production site domains.
-3. Copy the reCAPTCHA Enterprise site key. It is public by design; do not create
-   or commit a secret key.
-4. Add the key as `PUBLIC_FIREBASE_APPCHECK_SITE_KEY` locally and as the GitHub
-   Actions repository variable `PUBLIC_FIREBASE_APPCHECK_SITE_KEY` if CI builds
-   should include App Check.
-5. Keep Firestore enforcement off. Ship the client first, then monitor Firebase
-   App Check metrics until deployed clients are near-100% verified.
-6. Only after that metrics window should the owner enable Firestore enforcement.
-
-Validation performed:
-
-- `npm run test:unit -- --run --project server src/lib/firebase.spec.ts`: 8
-  passed.
-- `npm run lint`: passed.
-- `npm run check`: 0 errors, 0 warnings.
-- `npm test`: 20 test files passed, 1 skipped; 205 tests passed, 7 skipped.
-- `npm run build`: passed.
-- `PUBLIC_FIREBASE_APPCHECK_SITE_KEY=dummy npm run build`: passed.
-  App Check compiled when configured.
-- Manifest inspection after the dummy-key build: 10 entry chunks, 0 entry App
-  Check matches; App Check appears only as one dynamic entry
-  (`node_modules/firebase/app-check/dist/esm/index.esm.js`).
-- `docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:latest -color`:
-  passed.
-- `bash /home/bjorn/.copilot/session-state/fda041df-3d4b-48f0-86a8-5b05eefa76bf/files/test-rules.sh /home/bjorn/Code/basstabs.worktrees/04-firebase-app-check 8240`:
-  passed: 16 node rules tests passed and 7 Vitest integration tests passed.
+- Initialize App Check inside the lazy `getFirebase()` path in
+  `src/lib/firebase.ts` (task 01), via a dynamic `import('firebase/app-check')`,
+  before Auth and Firestore are created, and keep the persistent Firestore cache
+  from task 02.
+- Read the site key with a namespace import of `$env/static/public`, **not**
+  `$env/dynamic/public`. The dynamic variant fetches `/_app/env.js` on every
+  page load, which the task 03 service worker does not precache, so offline
+  reloads break.
+- Make the key optional (unset → App Check not initialized), pass it to CI as a
+  repository _variable_ and to the Dockerfile as a build arg, and register dev
+  debug tokens only under `import.meta.env.DEV`.
+- Owner console steps: create a score-based (no checkbox) reCAPTCHA Enterprise
+  web key for `basstabs.bybear.dk` and `basstabs-test.bybear.dk`, register the
+  web app in Firebase App Check with it, keep enforcement off, monitor, then
+  enforce Cloud Firestore only.

@@ -55,8 +55,6 @@ jobs:
         run: npm test
 
       - name: Build
-        env:
-          PUBLIC_FIREBASE_APPCHECK_SITE_KEY: ${{ vars.PUBLIC_FIREBASE_APPCHECK_SITE_KEY }}
         run: npm run build
 
       # The cluster may run the image as a different non-root UID than its USER 101.
@@ -141,8 +139,6 @@ jobs:
           provenance: false
           sbom: false
           tags: ${{ env.IMAGE }}:${{ steps.tag.outputs.value }}
-          build-args: |
-            PUBLIC_FIREBASE_APPCHECK_SITE_KEY=${{ vars.PUBLIC_FIREBASE_APPCHECK_SITE_KEY }}
           cache-from: type=gha,scope=webapp
           cache-to: type=gha,mode=max,scope=webapp
 
