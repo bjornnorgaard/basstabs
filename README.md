@@ -120,6 +120,12 @@ them as `.txt`, or share them as a snapshot link. Google sign-in is optional: al
 work without an account. When signed in, cloud saving is the default; each tab
 can opt out by choosing **Browser only** under **Save location**.
 
+Production builds register a service worker that caches the static app shell and
+same-origin app assets. After the app has loaded once, browser-only tabs, the
+editor, playback and `/sound` continue to open offline; Firebase, Google APIs and
+other cross-origin requests are never intercepted. When a new build is available,
+the app shows a toast asking you to refresh so the updated shell is used.
+
 New tabs are prefilled with an editable walkthrough, not just a placeholder.
 Starting with an ascending C major scale, it explains sections and comments,
 strings and frets, visual spacing and silent bars, joined notes, multi-digit
@@ -337,7 +343,8 @@ there is no Node runtime. It idles at a few MiB of RAM.
 - `GET /healthz` (liveness) and `GET /readyz` (readiness) return `200 ok` without
   authentication.
 - `/_app/immutable/*` is cached for a year. Every other path gets `no-cache` and
-  falls back to the app (`200.html`).
+  falls back to the app (`200.html`); `/service-worker.js` is explicitly served
+  with `no-cache` so browsers check for app-shell updates.
 - The runtime base image is pinned in `Dockerfile` with a readable tag plus a
   digest. CI derives its nginx config test image from the same `Dockerfile`
   reference via `.github/scripts/runtime-image.sh`, so the checked image cannot
