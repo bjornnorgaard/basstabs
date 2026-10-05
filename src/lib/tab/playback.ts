@@ -31,6 +31,7 @@ export function buildSchedule(measures: MeasureLayout[], tuning: Tuning): Schedu
 		groups.forEach((group, slotIndex) => {
 			const length = slot / group.length;
 			group.forEach((note, i) => {
+				if (note.fret === undefined) return;
 				notes.push({
 					noteId: note.id,
 					measureId: measure.id,

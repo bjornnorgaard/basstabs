@@ -42,6 +42,7 @@ export function stringHue(name: string, index = 0): number {
 export function tokenClass(token: SourceToken): string {
 	if (token.kind === 'string') return 'hl-string-name';
 	if (token.kind === 'fret') return 'hl-string';
+	if (token.kind === 'technique') return 'hl-technique';
 	return `hl-${token.kind}`;
 }
 

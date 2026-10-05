@@ -29,6 +29,9 @@
 .hl-bar {
 	color: color-mix(in oklab, currentColor 70%, transparent);
 }
+.hl-technique {
+	color: var(--color-secondary-700);
+}
 .hl-fill {
 	opacity: 0.4;
 }
@@ -64,6 +67,9 @@
 	.hl-string-name {
 		color: oklch(84% 0.13 var(--string-hue));
 		background-color: oklch(70% 0.12 var(--string-hue) / 0.22);
+	}
+	.hl-technique {
+		color: var(--color-secondary-300);
 	}
 }
 
