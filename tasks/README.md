@@ -16,7 +16,7 @@ can safely run in parallel.
 | [04](./04-firebase-app-check.md)            | Firebase App Check                 | Security / cost      | Medium | Blocked     | 01 _(soft)_ |
 | [05](./05-rules-tests-in-ci.md)             | Run Firestore rules tests in CI    | CI / safety          | Small  | Done        | –           |
 | [06](./06-component-interaction-tests.md)   | Component and interaction tests    | Testing              | Medium | Done        | –           |
-| [07](./07-split-cloud-store.md)             | Split the cloud store              | Maintainability      | Medium | In progress | 01 _(soft)_ |
+| [07](./07-split-cloud-store.md)             | Split the cloud store              | Maintainability      | Medium | Done        | 01 _(soft)_ |
 | [08](./08-pin-container-base-image.md)      | Pin the container base image       | Build / supply chain | Small  | Done        | –           |
 | [09](./09-articulation-notation.md)         | Articulation notation              | Notation / parser    | Large  | Done        | –           |
 | [10](./10-rhythm-and-durations.md)          | Rhythm and note durations          | Notation / playback  | Large  | Done        | 09 _(soft)_ |
