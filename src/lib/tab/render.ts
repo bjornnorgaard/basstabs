@@ -1,17 +1,19 @@
-import { parse, type System, type TabBlock, type TabEvent } from './parser';
+import { parse, type System, type TabBlock } from './parser';
 import type { Tuning } from './tuning';
 
 const FILL = '-';
 const BAR = '|';
+
+function repeatCountText(count: number): string {
+	return count === 2 ? '' : `x${count}`;
+}
 
 /**
  * Splits a measure's events into runs of notes that were written back-to-back with no
  * whitespace between them (see `NoteEvent.joinedToPrevious`). Playback uses the runs
  * to schedule quickly successive notes within one slot.
  */
-export function groupJoinedEvents<T extends Pick<TabEvent, 'joinedToPrevious'>>(
-	events: T[]
-): T[][] {
+export function groupJoinedEvents<T extends { joinedToPrevious: boolean }>(events: T[]): T[][] {
 	const groups: T[][] = [];
 	for (const event of events) {
 		const previousGroup = groups[groups.length - 1];
@@ -29,12 +31,21 @@ export interface NoteLayout {
 	/** Unique across the whole layout, in playing order. */
 	id: number;
 	string: number;
-	fret: number;
+	fret?: number;
 	digits: string;
+	display?: string;
+	ghost?: boolean;
+	dead?: boolean;
 	joinedToPrevious: boolean;
 	/** 0-based column of the note's first digit within its row's lines. */
 	column: number;
 	width: number;
+}
+
+export interface TimingSlot {
+	notes: NoteLayout[];
+	/** Length in bars. A quarter note in 4/4 is 0.25. */
+	duration: number;
 }
 
 export interface MeasureLayout {
@@ -45,12 +56,24 @@ export interface MeasureLayout {
 	/** Number of characters between the surrounding bar lines. */
 	width: number;
 	notes: NoteLayout[];
+	/** True when this bar uses explicit rhythm markers instead of legacy even spacing. */
+	timed?: boolean;
+	/** Timed note/rest slots in source order. Empty notes represent rests or silent dead-note slots. */
+	timingSlots: TimingSlot[];
+	/** True when this measure starts a repeated phrase. */
+	repeatStart?: boolean;
+	/** Repeat count when this measure ends a repeated phrase. */
+	repeatEnd?: { count: number };
+	/** Absolute BPM in effect for this measure when the source contains tempo markers. */
+	tempoBpm?: number;
 }
 
 /** A run of characters on one rendered line; notes get their own segment so they can be highlighted. */
 export interface LineSegment {
 	text: string;
 	noteId?: number;
+	class?: string;
+	multiDigit?: boolean;
 }
 
 export interface SystemLine {
@@ -83,7 +106,13 @@ export interface AnnotationLayout {
 	text: string;
 }
 
-export type BlockLayout = SystemLayout | SectionLayout | AnnotationLayout;
+export interface TempoLayout {
+	kind: 'tempo';
+	bpm: number;
+	text: string;
+}
+
+export type BlockLayout = SystemLayout | SectionLayout | AnnotationLayout | TempoLayout;
 
 export interface TabLayout {
 	blocks: BlockLayout[];
@@ -95,46 +124,117 @@ export interface TabLayout {
 function layoutSystem(
 	system: System,
 	tuning: Tuning,
-	counters: { note: number; measure: number }
+	counters: { note: number; measure: number },
+	tempoBpm?: number
 ): Omit<SystemLayout, 'index' | 'section'> {
 	const nameWidth = Math.max(...tuning.strings.map((s) => s.length));
 	let column = nameWidth + BAR.length;
 
 	const measures: MeasureLayout[] = system.measures.map((measure) => {
+		if (measure.repeatStart) column += 1;
 		const start = column;
-		const notes: NoteLayout[] = measure.events.map((event) => ({
-			id: counters.note++,
-			string: event.string,
-			fret: event.fret,
-			digits: event.digits,
-			joinedToPrevious: event.joinedToPrevious,
-			column: start + event.column,
-			width: event.digits.length
-		}));
-		const layout = { id: counters.measure++, column: start, width: measure.width, notes };
-		column += measure.width + BAR.length;
+		const notes: NoteLayout[] = [];
+		const timingSlots: TimingSlot[] = [];
+		for (const event of measure.events) {
+			if (event.kind === 'technique') continue;
+			if (event.kind === 'rest') {
+				timingSlots.push({ notes: [], duration: event.duration.bars });
+				continue;
+			}
+			const text = event.kind === 'dead-note' ? event.digits : (event.display ?? event.digits);
+			const note = {
+				id: counters.note++,
+				string: event.string,
+				fret: event.kind === 'note' ? event.fret : undefined,
+				digits: event.digits,
+				display: event.kind === 'note' ? event.display : undefined,
+				ghost: event.kind === 'note' ? event.ghost : undefined,
+				dead: event.kind === 'dead-note' ? true : undefined,
+				joinedToPrevious: event.joinedToPrevious,
+				column: start + event.column,
+				width: text.length
+			};
+			notes.push(note);
+			if (event.joinedToPrevious && timingSlots.length > 0) {
+				timingSlots[timingSlots.length - 1].notes.push(note);
+			} else {
+				timingSlots.push({ notes: [note], duration: event.duration?.bars ?? 1 / 4 });
+			}
+		}
+		const layout = {
+			id: counters.measure++,
+			column: start,
+			width: measure.width,
+			notes,
+			...(measure.timed ? { timed: true } : {}),
+			timingSlots,
+			...(measure.repeatStart ? { repeatStart: true } : {}),
+			...(measure.repeatEnd ? { repeatEnd: measure.repeatEnd } : {}),
+			...(tempoBpm !== undefined ? { tempoBpm } : {})
+		};
+		column +=
+			measure.width + (measure.repeatEnd ? 2 + repeatCountText(measure.repeatEnd.count).length : 1);
 		return layout;
 	});
 
 	const lineLength = column;
+	const notesByMeasure = measures.map((measure) => measure.notes);
+	const allNotes = notesByMeasure.flat();
 	const lines = tuning.strings
 		.map((name, string) => {
 			const segments: LineSegment[] = [{ text: name.padEnd(nameWidth) + BAR }];
 			let cursor = segments[0].text.length;
+			const structuralCharAt = (target: number) => {
+				for (const measure of measures) {
+					if (measure.repeatStart && target === measure.column - 1) return ':';
+					const measureEnd = measure.column + measure.width;
+					if (!measure.repeatEnd) {
+						if (target === measureEnd) return BAR;
+						continue;
+					}
+					if (target === measureEnd) return ':';
+					if (target === measureEnd + 1) return BAR;
+					const countText = repeatCountText(measure.repeatEnd.count);
+					const countOffset = target - (measureEnd + 2);
+					if (countOffset >= 0 && countOffset < countText.length) return countText[countOffset];
+				}
+				return undefined;
+			};
 			const fillTo = (target: number) => {
 				let text = '';
 				while (cursor < target) {
-					const atBar = measures.some((m) => cursor === m.column + m.width);
-					text += atBar ? BAR : FILL;
+					text += structuralCharAt(cursor) ?? FILL;
 					cursor++;
 				}
 				if (text) segments.push({ text });
 			};
-			for (const note of measures.flatMap((m) => m.notes)) {
-				if (note.string !== string) continue;
-				fillTo(note.column);
-				segments.push({ text: note.digits, noteId: note.id });
-				cursor += note.width;
+			let nextNote = 0;
+			for (const [measureIndex, measure] of system.measures.entries()) {
+				const measureStart = measures[measureIndex].column;
+				let lastNoteId: number | undefined;
+				for (const event of measure.events) {
+					if (event.kind === 'rest') continue;
+					if (event.string !== string) {
+						if (event.kind !== 'technique') nextNote++;
+						continue;
+					}
+					if (event.kind === 'technique') {
+						fillTo(measureStart + event.column);
+						segments.push({ text: event.symbol, noteId: lastNoteId, class: 'hl-technique' });
+						cursor += event.symbol.length;
+						continue;
+					}
+					const note = allNotes[nextNote];
+					nextNote++;
+					lastNoteId = note.id;
+					fillTo(note.column);
+					const text = note.display ?? note.digits;
+					const segment: LineSegment = { text, noteId: note.id };
+					if (note.digits.length > 1) segment.multiDigit = true;
+					if (note.dead) segment.class = 'hl-technique';
+					segments.push(segment);
+					cursor += note.width;
+				}
 			}
 			fillTo(lineLength);
 			return { string, text: segments.map((s) => s.text).join(''), segments };
@@ -149,11 +249,12 @@ export function layoutBlocks(blocks: TabBlock[], tuning: Tuning): TabLayout {
 	const counters = { note: 0, measure: 0 };
 	let systemIndex = 0;
 	let sectionIndex = -1;
+	let currentTempo: number | undefined;
 
 	const layouts: BlockLayout[] = blocks.map((block) => {
 		if (block.kind === 'system') {
 			return {
-				...layoutSystem(block, tuning, counters),
+				...layoutSystem(block, tuning, counters, currentTempo),
 				index: systemIndex++,
 				section: sectionIndex >= 0 ? sectionIndex : undefined
 			};
@@ -161,6 +262,10 @@ export function layoutBlocks(blocks: TabBlock[], tuning: Tuning): TabLayout {
 		if (block.kind === 'section') {
 			sectionIndex++;
 			return { kind: 'section', index: sectionIndex, title: block.title, text: `[${block.title}]` };
+		}
+		if (block.kind === 'tempo') {
+			currentTempo = block.bpm;
+			return { kind: 'tempo', bpm: block.bpm, text: `@${block.bpm}` };
 		}
 		return { kind: 'annotation', text: `#${block.text ? ` ${block.text}` : ''}` };
 	});

@@ -11,8 +11,8 @@
 	import TabPreview from '$lib/components/TabPreview.svelte';
 	import { tabStore, type BassTab } from '$lib/stores/tabs.svelte';
 	import { EXAMPLE_SOURCE } from '$lib/tab/example';
-	import { renderTab } from '$lib/tab/render';
 	import { getTuning } from '$lib/tab/tuning';
+	import { firstSystemPreview } from '$lib/tab/preview';
 	import { cloudStore } from '$lib/stores/cloud.svelte';
 	import { errorMessage } from '$lib/cloud/model';
 	import { toaster } from '$lib/toaster';
@@ -29,14 +29,6 @@
 		if (!q) return tabs;
 		return tabs.filter((t) => `${t.title} ${t.artist}`.toLowerCase().includes(q));
 	});
-
-	function preview(tab: BassTab) {
-		// Only the first row (and any headings above it) keeps the cards compact.
-		const tuning = getTuning(tab.tuningId);
-		const { blocks } = renderTab(tab.source, tuning).layout;
-		const firstSystem = blocks.findIndex((block) => block.kind === 'system');
-		return { tuning, blocks: firstSystem < 0 ? blocks : blocks.slice(0, firstSystem + 1) };
-	}
 
 	function open(id: string) {
 		goto(resolve('/tab/[id]', { id }));
@@ -106,6 +98,12 @@
 				<button class="btn preset-tonal btn-sm" onclick={() => cloudStore.connect()}
 					>Reconnect cloud</button
 				>
+			{:else if cloudStore.offline || cloudStore.pendingSync}
+				<p role="status">
+					{cloudStore.pendingSync
+						? 'Offline — changes will sync when the connection returns.'
+						: 'Offline — showing cached cloud tabs.'}
+				</p>
 			{/if}
 		</section>
 	{/if}
@@ -158,9 +156,13 @@
 								{cloudStore.movingToBrowser.includes(tab.id)
 									? 'Moving to browser...'
 									: cloudStore.saving.includes(tab.id)
-										? 'Saving to cloud...'
+										? cloudStore.offline
+											? 'Offline — changes will sync'
+											: 'Saving to cloud...'
 										: cloudStore.dirty.includes(tab.id)
-											? 'Cloud · Unsaved changes'
+											? cloudStore.offline
+												? 'Offline — changes will sync'
+												: 'Cloud · Unsaved changes'
 											: 'Saved to cloud'}
 								· {cloudStore.get(tab.id)?.visibility}
 							{:else}
@@ -179,7 +181,11 @@
 						</span>
 					</a>
 					<a href={resolve('/tab/[id]', { id: tab.id })} tabindex="-1" class="block">
-						<TabPreview {...preview(tab)} placeholder="Empty tab" class="max-h-40 text-xs" />
+						<TabPreview
+							{...firstSystemPreview(tab)}
+							placeholder="Empty tab"
+							class="max-h-40 text-xs"
+						/>
 					</a>
 					<footer class="mt-auto flex items-center justify-between text-xs">
 						<span class="opacity-60">Edited {dateFormat.format(tab.updatedAt)}</span>

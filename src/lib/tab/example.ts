@@ -29,15 +29,34 @@ export const EXAMPLE_SOURCE = `[C Major Scale]
 # A whole line like [12] is a section heading; use |[12]| for a lone bare fret.
 |D[10] [12] G[12] [14]|E[12]3|E123|
 
+[Articulations]
+# Conventional tab marks are supported: h, p, /, \\, b, ~, x, and ghost notes.
+# Connectors such as E5h7 render as 5h7; each articulation character is a column.
+# Playback treats connected and ghost notes as plain notes for now; x is silent.
+|E5h7 E7p5|A3/5 D5\\3|G5b G5~|Ex E(5)|
+
 [Bar Lines and Rows]
 # The | character separates measures (bars); their written widths can differ.
-# Playback gives each bar four beats at the chosen BPM, regardless of its width.
-# Note groups divide that time evenly; the syntax does not specify note durations.
+# Unmarked bars keep the original playback: note groups divide the bar evenly.
 |E0A2|E0 0 3 A2|A3 3 3 3  |A2E320    |
 
 # Newlines start a new row of tab.
 # Bare frets still use the previous string (E here). A final | is optional.
 3 2 0
+
+[Rhythm and Rests]
+# Duration markers are explicit and do not render: :q quarter, :e eighth, :h half.
+# Markers are sticky within a bar. :r rests for the current duration; :re is an eighth rest.
+# Under-filled marked bars leave the remaining time silent.
+|:q E0 0 :e 0 0 :r 0|:h A2E320 :q E0 :r|
+
+[Repeats and Tempo]
+# |: starts a repeat and :| ends it. Add x3 for three total plays.
+# Tempo markers such as @120 use their own line and apply from that point onward.
+@120
+|: :q E0 0 A2 2 | :e E3 3 A2 2 :|x3
+@90
+|: :h E0 :q A2 :r :|
 
 [Verse]
 # Original lyric sketch: Footsteps settle into time

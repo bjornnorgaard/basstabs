@@ -42,20 +42,23 @@ export function stringHue(name: string, index = 0): number {
 export function tokenClass(token: SourceToken): string {
 	if (token.kind === 'string') return 'hl-string-name';
 	if (token.kind === 'fret') return 'hl-string';
+	if (token.kind === 'technique') return 'hl-technique';
 	return `hl-${token.kind}`;
 }
 
 /** Splits the filler between rendered notes into the string label, dashes and bar lines for styling. */
 export function fillerParts(text: string): { text: string; class: string }[] {
-	return [...text.matchAll(/-+|\|+|\s+|[^-|\s]+/g)].map(([part]) => ({
+	return [...text.matchAll(/:\|x\d+|:\||\|:|-+|\|+|\s+|[^-|\s]+/g)].map(([part]) => ({
 		text: part,
 		class:
 			part[0] === '-'
 				? 'hl-fill'
-				: part[0] === '|'
-					? 'hl-bar'
-					: /\S/.test(part)
-						? 'hl-string-name'
-						: ''
+				: part === '|:' || part.startsWith(':|')
+					? 'hl-repeat'
+					: part[0] === '|'
+						? 'hl-bar'
+						: /\S/.test(part)
+							? 'hl-string-name'
+							: ''
 	}));
 }

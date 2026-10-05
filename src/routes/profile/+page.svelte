@@ -2,6 +2,11 @@
 	import { site } from '$lib/site';
 	import { cloudStore } from '$lib/stores/cloud.svelte';
 	import UserRound from '@lucide/svelte/icons/user-round';
+	import { onMount } from 'svelte';
+
+	onMount(() => {
+		void cloudStore.ensure();
+	});
 </script>
 
 <svelte:head>
@@ -73,7 +78,10 @@
 				type="button"
 				class="btn preset-filled-primary-500"
 				disabled={cloudStore.busy}
+				onfocus={() => cloudStore.prewarmLogin()}
 				onclick={() => cloudStore.login()}
+				onpointerdown={() => cloudStore.prewarmLogin()}
+				onpointerenter={() => cloudStore.prewarmLogin()}
 			>
 				{cloudStore.busy ? 'Signing in...' : 'Sign in with Google'}
 			</button>

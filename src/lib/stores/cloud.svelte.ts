@@ -1,89 +1,80 @@
 import { browser } from '$app/environment';
 import { untrack } from 'svelte';
+import type { User } from 'firebase/auth';
+import { type FirebaseServices } from '$lib/firebase';
+import { CloudAuthSession } from '$lib/cloud/auth-session.svelte';
+import { isOfflineError } from '$lib/cloud/errors';
+import { CloudLibraryListener } from '$lib/cloud/library-listener.svelte';
 import {
-	GoogleAuthProvider,
-	onAuthStateChanged,
-	signInWithPopup,
-	signOut,
-	type User
-} from 'firebase/auth';
-import { collection, doc, onSnapshot, writeBatch, type Unsubscribe } from 'firebase/firestore';
-import { auth, db } from '$lib/firebase';
-import {
-	cloudData,
-	cloudTitleConflict,
 	cloudTitleKey,
 	errorMessage,
-	readCloudTab,
 	shareToken,
 	type CloudTab,
 	type Visibility
 } from '$lib/cloud/model';
-import { writeCloudTab } from '$lib/cloud/write';
+import { CloudUploadQueue } from '$lib/cloud/upload-queue.svelte';
+import { queueCloudTabWrite, writeCloudTab } from '$lib/cloud/write';
 import { tabStore, type BassTab } from './tabs.svelte';
 
 class CloudStore {
-	user = $state<User | null>(null);
-	ready = $state(false);
-	loading = $state(false);
-	connectionFailed = $state(false);
-	busy = $state(false);
+	private auth: CloudAuthSession;
+	private library: CloudLibraryListener;
+	private uploads: CloudUploadQueue;
 	error = $state('');
-	tabs = $state<CloudTab[]>([]);
 	dirty = $state<string[]>([]);
 	saving = $state<string[]>([]);
 	movingToBrowser = $state<string[]>([]);
-	uploadErrors = $state<Record<string, string>>({});
-	private unsubscribe?: Unsubscribe;
 	private timers = new Map<string, ReturnType<typeof setTimeout>>();
 	private writes = new Map<string, Promise<void>>();
 	private revisions = new Map<string, number>();
-	private savedShareIds = new Map<string, string | null>();
-	private generation = 0;
-	private uploadAttempts = new Map<string, string>();
-	private syncTask?: { generation: number; promise: Promise<void> };
 	sorted = $derived([...this.tabs].sort((a, b) => b.updatedAt - a.updatedAt));
 
 	constructor() {
+		this.auth = new CloudAuthSession({
+			onUserChanged: (user) => this.handleUserChanged(user),
+			beforeSignOut: (generation) => this.prepareSignOut(generation),
+			afterSignOut: () => this.library.disconnect(),
+			setError: (message) => (this.error = message)
+		});
+		this.library = new CloudLibraryListener({
+			ensure: () => this.ensure(),
+			getGeneration: () => this.generation,
+			getDirty: () => this.dirty,
+			getSaving: () => this.saving,
+			setError: (message) => (this.error = message)
+		});
+		this.uploads = new CloudUploadQueue({
+			ensure: () => this.ensure(),
+			getUser: () => this.user,
+			getGeneration: () => this.generation,
+			getLoading: () => this.loading,
+			getConnectionFailed: () => this.connectionFailed,
+			getBusy: () => this.busy,
+			getTabs: () => this.tabs,
+			setTabs: (tabs) => (this.tabs = tabs),
+			getWrites: () => this.writes,
+			get: (id) => this.get(id),
+			addSaving: (id) => this.addSaving(id),
+			removeSaving: (id, generation) => this.removeSaving(id, generation),
+			save: (id) => this.save(id),
+			update: (id, changes) => this.update(id, changes),
+			setSavedShareId: (id, shareId) => this.library.setSavedShareId(id, shareId),
+			setSavedTitleKey: (id, titleKey) => this.library.setSavedTitleKey(id, titleKey),
+			setError: (message) => (this.error = message)
+		});
+
 		if (!browser) return;
-		onAuthStateChanged(
-			auth,
-			(user) => {
-				if (this.user?.uid === user?.uid && this.ready) return;
-				if (this.dirty.length) {
-					this.error =
-						'Your account changed before cloud edits were saved. Sign back into the previous account to restore drafts if the browser backup succeeded.';
-				}
-				this.generation += 1;
-				this.unsubscribe?.();
-				for (const timer of this.timers.values()) clearTimeout(timer);
-				this.timers.clear();
-				this.revisions.clear();
-				this.savedShareIds.clear();
-				this.tabs = [];
-				this.dirty = [];
-				this.saving = [];
-				this.movingToBrowser = [];
-				this.uploadErrors = {};
-				this.uploadAttempts.clear();
-				this.user = user;
-				this.ready = true;
-				this.loading = !!user;
-				this.connectionFailed = false;
-				if (!user) return;
-				this.restoreDrafts(user.uid);
-				this.connect();
-			},
-			(error) => {
-				this.error = errorMessage(error);
-				this.ready = true;
-			}
-		);
 		window.addEventListener('beforeunload', (event) => {
 			if (this.dirty.length || this.saving.length || this.movingToBrowser.length) {
 				event.preventDefault();
 				event.returnValue = '';
 			}
+		});
+		window.addEventListener('online', () => {
+			if (!this.user) return;
+			if (this.connectionFailed) this.connect();
+			void this.syncBrowserTabs();
+			this.retryDirtySaves();
 		});
 		$effect.root(() => {
 			$effect(() => {
@@ -100,96 +91,85 @@ class CloudStore {
 		});
 	}
 
+	get user() {
+		return this.auth.user;
+	}
+	set user(value: User | null) {
+		this.auth.user = value;
+	}
+	get ready() {
+		return this.auth.ready;
+	}
+	set ready(value: boolean) {
+		this.auth.ready = value;
+	}
+	get busy() {
+		return this.auth.busy;
+	}
+	set busy(value: boolean) {
+		this.auth.busy = value;
+	}
+	get loading() {
+		return this.library.loading;
+	}
+	set loading(value: boolean) {
+		this.library.loading = value;
+	}
+	get connectionFailed() {
+		return this.library.connectionFailed;
+	}
+	set connectionFailed(value: boolean) {
+		this.library.connectionFailed = value;
+	}
+	get offline() {
+		return this.library.offline;
+	}
+	set offline(value: boolean) {
+		this.library.offline = value;
+	}
+	get pendingSync() {
+		return this.library.pendingSync;
+	}
+	set pendingSync(value: boolean) {
+		this.library.pendingSync = value;
+	}
+	get tabs() {
+		return this.library.tabs;
+	}
+	set tabs(value: CloudTab[]) {
+		this.library.tabs = value;
+	}
+	get uploadErrors() {
+		return this.uploads.uploadErrors;
+	}
+	set uploadErrors(value: Record<string, string>) {
+		this.uploads.uploadErrors = value;
+	}
+	private get generation() {
+		return this.auth.generation;
+	}
+
+	startFromSessionHint() {
+		this.auth.startFromSessionHint();
+	}
+
+	skipInitialSessionCheck() {
+		this.auth.skipInitialSessionCheck();
+	}
+
+	prewarmLogin() {
+		this.auth.prewarmLogin();
+	}
+
+	ensure(): Promise<FirebaseServices> {
+		return this.auth.ensure();
+	}
+
 	connect() {
 		const user = this.user;
 		if (!user) return;
-		this.unsubscribe?.();
-		this.loading = true;
-		if (this.connectionFailed) this.error = '';
-		this.connectionFailed = false;
-		this.uploadAttempts.clear();
-		const generation = this.generation;
-		this.unsubscribe = onSnapshot(
-			collection(db, 'users', user.uid, 'tabs'),
-			(snapshot) => {
-				if (this.generation !== generation) return;
-				try {
-					const remote = snapshot.docs.map((d) => readCloudTab(d.id, d.data()));
-					for (const tab of remote) {
-						if (!this.saving.includes(tab.id)) this.savedShareIds.set(tab.id, tab.shareId);
-					}
-					const drafts = this.tabs.filter((t) => this.dirty.includes(t.id));
-					this.tabs = [...remote.filter((t) => !this.dirty.includes(t.id)), ...drafts];
-					this.loading = false;
-				} catch (error) {
-					this.error = errorMessage(error);
-					this.connectionFailed = true;
-					this.loading = false;
-				}
-			},
-			(error) => {
-				if (this.generation !== generation) return;
-				this.error =
-					error.code === 'permission-denied'
-						? 'Google sign-in succeeded, but Firestore denied access to your cloud tabs. Publish the app-specific Firestore rules to the (default) database in Firebase project basstabs-by-bear, then choose Reconnect cloud. Do not enable blanket public access.'
-						: errorMessage(error);
-				this.connectionFailed = true;
-				this.loading = false;
-			}
-		);
-	}
-
-	private cacheDrafts() {
-		if (!this.user) return;
-		try {
-			const key = `basstabs:cloud-drafts:${this.user.uid}`;
-			const drafts = this.tabs
-				.filter((tab) => this.dirty.includes(tab.id))
-				.map((tab) => ({
-					...cloudData(tab),
-					id: tab.id,
-					oldShareId: this.savedShareIds.get(tab.id) ?? null
-				}));
-			if (drafts.length) localStorage.setItem(key, JSON.stringify(drafts));
-			else localStorage.removeItem(key);
-			return true;
-		} catch (error) {
-			this.error = `Could not back up unsaved cloud drafts in this browser: ${errorMessage(error)}`;
-			return false;
-		}
-	}
-
-	private restoreDrafts(uid: string) {
-		try {
-			const raw = localStorage.getItem(`basstabs:cloud-drafts:${uid}`);
-			if (!raw) return;
-			const drafts: unknown = JSON.parse(raw);
-			if (!Array.isArray(drafts)) throw new Error('Invalid draft cache.');
-			const restored = drafts.map((draft: unknown) => {
-				if (
-					!draft ||
-					typeof draft !== 'object' ||
-					!('id' in draft) ||
-					typeof draft.id !== 'string'
-				) {
-					throw new Error('Invalid draft cache entry.');
-				}
-				const data = { ...draft };
-				if (
-					!('oldShareId' in data) ||
-					(data.oldShareId !== null &&
-						(typeof data.oldShareId !== 'string' || !/^[a-f0-9]{32}$/.test(data.oldShareId)))
-				) {
-					throw new Error('Invalid draft sharing state.');
-				}
-				this.savedShareIds.set(draft.id, data.oldShareId);
-				return readCloudTab(draft.id, data);
-			});
-			this.tabs = restored;
-			this.dirty = restored.map((tab) => tab.id);
-		} catch (error) {
-			this.error = `Could not restore cloud drafts: ${errorMessage(error)}`;
-		}
+		this.uploads.clearAttempts();
+		this.library.connect(user);
 	}
 
 	get(id: string) {
@@ -211,52 +191,8 @@ class CloudStore {
 		});
 	}
 
-	async syncBrowserTabs(allowBusy = false): Promise<void> {
-		const user = this.user;
-		const generation = this.generation;
-		if (!user || this.loading || this.connectionFailed || (this.busy && !allowBusy)) return;
-		if (this.syncTask?.generation === generation) {
-			await this.syncTask.promise;
-			if (this.generation === generation) return this.syncBrowserTabs(allowBusy);
-			return;
-		}
-		const operation = this.promoteBrowserTabs(user, generation, allowBusy);
-		this.syncTask = { generation, promise: operation };
-		try {
-			await operation;
-		} finally {
-			if (this.syncTask?.promise === operation) this.syncTask = undefined;
-		}
-	}
-
-	private async promoteBrowserTabs(user: User, generation: number, allowBusy: boolean) {
-		for (const candidate of [...tabStore.tabs]) {
-			if (this.generation !== generation || this.connectionFailed || (this.busy && !allowBusy))
-				break;
-			const local = tabStore.get(candidate.id);
-			if (
-				!local ||
-				local.browserOnly ||
-				this.get(local.id) ||
-				this.writes.has(local.id) ||
-				(local.cloudOwnerId && local.cloudOwnerId !== user.uid)
-			)
-				continue;
-			const fingerprint = JSON.stringify(local);
-			if (this.uploadAttempts.get(local.id) === fingerprint) continue;
-			this.uploadAttempts.set(local.id, fingerprint);
-			try {
-				await this.upload(local);
-				if (this.generation === generation) delete this.uploadErrors[local.id];
-			} catch (error) {
-				if (this.generation !== generation) break;
-				const message = errorMessage(error);
-				this.uploadErrors[local.id] = message;
-				this.error = `Could not automatically save "${local.title}" to the cloud: ${message} Your browser version was kept.`;
-				const latest = tabStore.get(local.id);
-				if (latest) this.uploadAttempts.set(local.id, JSON.stringify(latest));
-			}
-		}
+	syncBrowserTabs(allowBusy = false): Promise<void> {
+		return this.uploads.syncBrowserTabs(allowBusy);
 	}
 
 	async keepBrowserOnly(id: string) {
@@ -291,53 +227,19 @@ class CloudStore {
 		}
 	}
 
-	async login() {
-		this.busy = true;
-		this.error = '';
-		try {
-			await signInWithPopup(auth, new GoogleAuthProvider());
-		} catch (error) {
-			this.error = errorMessage(error);
-		} finally {
-			this.busy = false;
-		}
+	login() {
+		return this.auth.login();
 	}
 
-	async logout() {
-		this.busy = true;
-		this.error = '';
-		const generation = this.generation;
-		try {
-			await this.syncBrowserTabs(true);
-			await Promise.all(this.writes.values());
-			await Promise.all(this.dirty.map((id) => this.save(id)));
-			if (
-				this.dirty.length ||
-				tabStore.tabs.some(
-					(tab) =>
-						!tab.browserOnly &&
-						(!tab.cloudOwnerId || tab.cloudOwnerId === this.user?.uid) &&
-						this.uploadErrors[tab.id]
-				)
-			)
-				throw new Error(
-					'Save your remaining cloud changes, or choose Browser only under Save location, before signing out.'
-				);
-			if (this.generation !== generation)
-				throw new Error(
-					'Your account changed while saving. Check the current account before signing out.'
-				);
-			await signOut(auth);
-		} catch (error) {
-			this.error = errorMessage(error);
-		} finally {
-			this.busy = false;
-		}
+	logout() {
+		return this.auth.logout();
 	}
 
 	update(id: string, changes: Partial<Pick<BassTab, 'title' | 'artist' | 'tuningId' | 'source'>>) {
 		const tab = this.get(id);
 		if (!tab || !this.user) throw new Error('Sign in to edit this cloud tab.');
+		if (!this.library.hasSavedTitleKey(id) && !this.dirty.includes(id))
+			this.library.setSavedTitleKey(id, cloudTitleKey(tab.title));
 		if (this.movingToBrowser.includes(id)) {
 			tabStore.keepBrowserOnly({
 				...tab,
@@ -355,93 +257,20 @@ class CloudStore {
 			id,
 			setTimeout(() => {
 				void this.save(id).catch((error) => {
-					this.error = errorMessage(error);
+					if (isOfflineError(error)) this.noteOfflineRetry();
+					else this.error = errorMessage(error);
 				});
 			}, 800)
 		);
 		return backedUp;
 	}
 
-	async upload(local: BassTab): Promise<string> {
-		const user = this.user;
-		if (!user) throw new Error('Sign in to save tabs to the cloud.');
-		if (this.writes.has(local.id))
-			throw new Error('This tab already has a cloud save in progress.');
-		const conflict = cloudTitleConflict(local.title, this.tabs);
-		if (conflict) throw new Error(conflict);
-		if (local.cloudOwnerId && local.cloudOwnerId !== user.uid) {
-			throw new Error(
-				'This pending cloud save belongs to another account. Sign into that account, or choose Browser only under Save location first.'
-			);
-		}
-		if (tabStore.get(local.id)) {
-			tabStore.put({ ...local, browserOnly: false, cloudOwnerId: user.uid });
-		}
-		const generation = this.generation;
-		const tab: CloudTab = {
-			...local,
-			visibility: 'private',
-			shareId: null
-		};
-		this.saving.push(tab.id);
-		const operation = writeCloudTab(db, tab, user.uid, null, true);
-		this.writes.set(tab.id, operation);
-		try {
-			await operation;
-			if (this.generation !== generation) {
-				throw new Error(
-					'Saved to the previous account. Your browser tab was kept; sign back in to continue.'
-				);
-			}
-			if (!this.get(tab.id)) this.tabs.push(tab);
-			this.savedShareIds.set(tab.id, null);
-			this.finishPromotion(local.id, tab);
-			delete this.uploadErrors[local.id];
-			return tab.id;
-		} finally {
-			if (this.writes.get(tab.id) === operation) this.writes.delete(tab.id);
-			if (this.generation === generation) this.saving = this.saving.filter((id) => id !== tab.id);
-		}
+	upload(local: BassTab): Promise<string> {
+		return this.uploads.upload(local);
 	}
 
-	async replaceFromLocal(local: BassTab, id: string): Promise<string> {
-		if (!this.get(id) || !this.user)
-			throw new Error('Sign in and load the existing cloud tab first.');
-		if (local.cloudOwnerId && local.cloudOwnerId !== this.user.uid) {
-			throw new Error(
-				'This pending save belongs to another account. Choose Browser only under Save location before moving it to this account.'
-			);
-		}
-		const generation = this.generation;
-		const snapshot = { ...local };
-		const { title, artist, tuningId, source } = snapshot;
-		this.update(id, { title, artist, tuningId, source });
-		await this.save(id);
-		if (this.generation !== generation) {
-			throw new Error(
-				'Saved to the previous account. Your browser tab was kept; sign back in to continue.'
-			);
-		}
-		this.finishPromotion(local.id, snapshot, id);
-		return id;
-	}
-
-	private finishPromotion(localId: string, snapshot: BassTab, cloudId = snapshot.id) {
-		const latest = tabStore.get(localId);
-		if (
-			latest &&
-			(['title', 'artist', 'tuningId', 'source'] as const).some(
-				(key) => latest[key] !== snapshot[key]
-			)
-		) {
-			const { title, artist, tuningId, source } = latest;
-			if (!this.update(cloudId, { title, artist, tuningId, source })) {
-				throw new Error(
-					'Cloud saving was enabled, but newer edits could not be backed up. Your browser tab was kept.'
-				);
-			}
-		}
-		tabStore.remove(localId);
+	replaceFromLocal(local: BassTab, id: string): Promise<string> {
+		return this.uploads.replaceFromLocal(local, id);
 	}
 
 	async save(id: string, oldShareId?: string | null): Promise<void> {
@@ -456,30 +285,42 @@ class CloudStore {
 		const tab = this.get(id);
 		const user = this.user;
 		if (!tab || !user) throw new Error('Sign in to save this cloud tab.');
+		const firebase = this.ensure();
 		clearTimeout(this.timers.get(id));
 		const revision = this.revisions.get(id) ?? 0;
 		const generation = this.generation;
 		const snapshot = { ...tab };
-		this.saving.push(id);
-		const operation = writeCloudTab(
-			db,
-			snapshot,
-			user.uid,
-			oldShareId === undefined ? (this.savedShareIds.get(id) ?? snapshot.shareId) : oldShareId
+		this.addSaving(id);
+		const resolvedOldShareId =
+			oldShareId === undefined
+				? (this.library.getSavedShareId(id) ?? snapshot.shareId)
+				: oldShareId;
+		const needsServerTitleCheck =
+			this.library.getSavedTitleKey(id) !== cloudTitleKey(snapshot.title);
+		const operation = firebase.then(({ db, firestoreSdk }) =>
+			needsServerTitleCheck
+				? writeCloudTab(db, snapshot, user.uid, resolvedOldShareId, false, firestoreSdk)
+				: queueCloudTabWrite(db, snapshot, user.uid, resolvedOldShareId, firestoreSdk)
 		);
 		this.writes.set(id, operation);
 		try {
 			await operation;
 			if (this.generation === generation) {
-				this.savedShareIds.set(id, snapshot.shareId);
+				this.library.setSavedShareId(id, snapshot.shareId);
+				this.library.setSavedTitleKey(id, cloudTitleKey(snapshot.title));
 				if (revision === (this.revisions.get(id) ?? 0)) {
 					this.dirty = this.dirty.filter((key) => key !== id);
 				}
 				this.cacheDrafts();
 			}
+		} catch (error) {
+			if (needsServerTitleCheck && isOfflineError(error) && this.generation === generation) {
+				this.noteOfflineRetry();
+			}
+			throw error;
 		} finally {
 			if (this.writes.get(id) === operation) this.writes.delete(id);
-			if (this.generation === generation) this.saving = this.saving.filter((key) => key !== id);
+			this.removeSaving(id, generation);
 		}
 	}
 
@@ -517,11 +358,14 @@ class CloudStore {
 		const tab = this.get(id);
 		const user = this.user;
 		if (!tab || !user) throw new Error('Sign in to delete this cloud tab.');
+		const { db, firestoreSdk } = await this.ensure();
 		const generation = this.generation;
-		const batch = writeBatch(db);
-		batch.delete(doc(db, 'users', user.uid, 'tabs', id));
-		const shareId = this.savedShareIds.has(id) ? this.savedShareIds.get(id) : tab.shareId;
-		if (shareId) batch.delete(doc(db, 'publishedTabs', shareId));
+		const batch = firestoreSdk.writeBatch(db);
+		batch.delete(firestoreSdk.doc(db, 'users', user.uid, 'tabs', id));
+		const shareId = this.library.hasSavedShareId(id)
+			? this.library.getSavedShareId(id)
+			: tab.shareId;
+		if (shareId) batch.delete(firestoreSdk.doc(db, 'publishedTabs', shareId));
 		clearTimeout(this.timers.get(id));
 		const operation = batch.commit();
 		this.writes.set(id, operation);
@@ -531,12 +375,84 @@ class CloudStore {
 				if (!keepBrowserBackup && tabStore.get(id)) tabStore.remove(id);
 				this.tabs = this.tabs.filter((t) => t.id !== id);
 				this.dirty = this.dirty.filter((key) => key !== id);
-				this.savedShareIds.delete(id);
+				this.library.deleteSavedShareId(id);
+				this.library.deleteSavedTitleKey(id);
 				this.cacheDrafts();
 			}
 		} finally {
 			if (this.writes.get(id) === operation) this.writes.delete(id);
 		}
+	}
+
+	private handleUserChanged(user: User | null) {
+		if (this.dirty.length) {
+			this.error =
+				'Your account changed before cloud edits were saved. Sign back into the previous account to restore drafts if the browser backup succeeded.';
+		}
+		this.library.reset();
+		for (const timer of this.timers.values()) clearTimeout(timer);
+		this.timers.clear();
+		this.revisions.clear();
+		this.dirty = [];
+		this.saving = [];
+		this.movingToBrowser = [];
+		this.uploads.reset();
+		if (!user) return;
+		const dirty = this.library.restoreDrafts(user.uid);
+		if (dirty) this.dirty = dirty;
+		this.loading = true;
+		this.connect();
+	}
+
+	private async prepareSignOut(generation: number) {
+		await this.syncBrowserTabs(true);
+		await Promise.all(this.writes.values());
+		await Promise.all(this.dirty.map((id) => this.save(id)));
+		if (
+			this.dirty.length ||
+			tabStore.tabs.some(
+				(tab) =>
+					!tab.browserOnly &&
+					(!tab.cloudOwnerId || tab.cloudOwnerId === this.user?.uid) &&
+					this.uploadErrors[tab.id]
+			)
+		)
+			throw new Error(
+				'Save your remaining cloud changes, or choose Browser only under Save location, before signing out.'
+			);
+		if (this.generation !== generation)
+			throw new Error(
+				'Your account changed while saving. Check the current account before signing out.'
+			);
+	}
+
+	private cacheDrafts() {
+		return this.library.cacheDrafts(this.user);
+	}
+
+	private retryDirtySaves() {
+		for (const id of this.dirty) {
+			if (this.writes.has(id) || this.saving.includes(id)) continue;
+			void this.save(id).catch((error) => {
+				if (isOfflineError(error)) this.noteOfflineRetry();
+				else this.error = errorMessage(error);
+			});
+		}
+	}
+
+	private noteOfflineRetry() {
+		this.offline = true;
+		this.pendingSync = true;
+		this.error =
+			'You appear to be offline. Cached cloud tabs remain editable; changes that need the server will retry when the connection returns.';
+	}
+
+	private addSaving(id: string) {
+		this.saving.push(id);
+	}
+
+	private removeSaving(id: string, generation: number) {
+		if (this.generation === generation) this.saving = this.saving.filter((key) => key !== id);
 	}
 }
 

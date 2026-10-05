@@ -29,23 +29,67 @@ E|0-0-----|0-0-3---|
 | `E[12]3`        | Fret 12 on E, immediately followed by fret 3                |
 | `E123`          | Joined frets 1, 2, and 3 on E                               |
 | `[12]` in a bar | Fret 12 on the previous string                              |
+| `E5h7`          | Hammer-on from fret 5 to fret 7                             |
+| `E7p5`          | Pull-off from fret 7 to fret 5                              |
+| `E3/5`, `E5\3`  | Slide up or down                                            |
+| `E5b`, `E5~`    | Bend or vibrato                                             |
+| `Ex`            | Dead / muted note                                           |
+| `E(5)`          | Ghost note                                                  |
+| `:q`, `:e`, ... | Duration marker: whole, half, quarter, eighth, sixteenth    |
+| `:q.`           | Dotted duration marker                                      |
+| `:r`, `:re.`    | Rest using the current duration, or an explicit dotted rest |
 | `\|`            | Bar line, which ends the current measure                    |
+| `\|: ... :\|`   | Repeat the marked phrase twice                              |
+| `\|: ... :\|x3` | Repeat the marked phrase three total times                  |
+| `@120`          | Tempo marker: play from here at 120 BPM (whole line only)   |
 | new line        | Starts a new row of tab                                     |
 | `[Intro]`       | Names the section that follows (whole line only)            |
 | `# Play softly` | Displays an annotation above the next row (whole line only) |
 
 Every fret digit and every space inside a bar occupies exactly one tab column;
-string letters, fret brackets, and bar lines occupy none. No extra columns are added. For
-example, `|E4320|` renders `E|4320|`, while `|E1       |` renders
-`E|1-------|`. Spaces before or between notes also become blank columns, and
-bars in the same row can have different widths. A row without a final bar line
-ends immediately after its last written character. Adjacent notes such as
-`A2E320` mean `A2 E3 2 0`. Every unbracketed digit is a separate fret:
-`E12` means `E1 E2`, while `E[12]` is one note at fret 12 and occupies two columns.
-Use `E[12]3` for joined frets 12 and 3, or `E[12] 3` to separate them.
+string letters, fret brackets, and bar lines occupy none. Articulation characters
+do occupy columns: `E5h7` is three columns, `E5b` is two, and `E(5)` is three.
+No extra columns are added. For example, `|E4320|` renders `E|4320|`, while
+`|E1       |` renders `E|1-------|`. Spaces before or between notes also become
+blank columns, and bars in the same row can have different widths. A row without
+a final bar line ends immediately after its last written character. Adjacent notes
+such as `A2E320` mean `A2 E3 2 0`. Every unbracketed digit is a separate fret:
+`E12` means `E1 E2`, while `E[12]` is one note at fret 12 and occupies two
+columns. Use `E[12]3` for joined frets 12 and 3, or `E[12] 3` to separate them.
 A bare bracketed fret reuses the previous string. Whole-line bracketed text is
 always a section heading, including `[12]`; use `|[12]|` for a lone bare fret.
+Hammer-ons, pull-offs, slides, bends and vibrato must be attached to the note
+they mark; `h7` at the start of a bar or `E5h` without a target is invalid.
 Supported tunings are 4-string (EADG), 5-string (BEADG) and 6-string (BEADGC).
+
+Rhythm is explicit and opt-in per bar. A bar with no duration or rest markers
+keeps the original playback behaviour. In a marked bar, `:w`, `:h`, `:q`, `:e`
+and `:s` set a sticky duration for following note groups in that bar (whole,
+half, quarter, eighth and sixteenth in 4/4). Add `.` for a dotted value, such as
+`:q.`. The marker itself is structural: it does not render and does not occupy a
+tab column, though any spaces you type around it still do. Rests are written
+`:r` for the current sticky duration, or with an explicit duration such as
+`:rq`, `:re` or `:re.`. Duration stickiness resets to quarter notes at each bar
+line. Joined notes and articulation groups use one duration slot and subdivide it
+as before: `:h E320` plays the three joined notes inside one half-note slot.
+Under-filled marked bars leave the remaining time silent; over-filled bars are
+reported as errors at the slot that exceeds the 4/4 bar.
+
+Repeats use conventional repeat barlines. `|:` starts a repeated phrase and `:|`
+ends it; add `x3`, `x4`, and so on after the repeat end for the total play count.
+Without a count, repeats play twice. Repeat barlines are structural barlines, so
+they do not consume note columns, but they do add visible `:` and optional `xN`
+characters in rendered tab and exports. Repeat markers may span rows and
+sections, but nested repeats are rejected. To preserve existing rhythm shorthand,
+`|:q`, `|:e`, `|:h`, `|:s`, `|:w` and `|:r` are parsed as a normal barline
+followed by a duration/rest marker. A repeated bar that starts with a duration
+marker therefore needs a space: write `|: :q E0 :|`, not `|:q E0 :|`.
+
+Tempo markers are whole lines such as `@120`, and apply from that point onwards
+until the next tempo marker. They are rendered as `@120` lines so copied tabs and
+`.txt` downloads keep the same playback tempo when pasted back in. Section titles
+are not parsed for tempos; put the marker on its own line before the section or
+row it should affect.
 
 Use section names and annotations for structure, playing reminders, or rough
 lyrics without aligning words to notes:
@@ -60,9 +104,9 @@ E0 0 A2 2 | E0 0 3 A2 |
 E3 3 A2 2 |
 ```
 
-Headings and annotations are displayed in previews, copied tabs, and `.txt`
-downloads. Both markers are recognized only at the start of their own line;
-inline notes and section repeats are not yet supported.
+Headings, annotations and tempo markers are displayed in previews, copied tabs,
+and `.txt` downloads. Whole-line markers are recognized only at the start of
+their own line; inline notes are not supported.
 
 ## Playback
 
@@ -71,10 +115,24 @@ a section heading, row or bar and click it to play just that part. Shift+click
 loops it; the loop button makes looping the default. The note currently sounding
 is highlighted.
 
-There is no rhythm in the syntax yet, so every bar lasts the same time (4 beats at
-the chosen BPM), regardless of its written width. Playback divides a bar evenly
-between its note groups, not its spaces; joined notes like `E320` share a group's
-slot. Fully blank bars are silent. Section headings and annotations are not played.
+Every bar lasts four beats. A bar with no rhythm markers keeps
+the original behaviour: playback divides the bar evenly between note groups, not
+its spaces, and joined notes like `E320` share a group's slot. A bar with any
+duration or rest marker is timed by those written durations instead. Rests are
+silent slots; if the written durations add up to less than four beats, the
+remaining time in the bar is silent. Fully blank bars are silent. Section
+headings and annotations are not played. Articulations are render-first:
+hammer-on, pull-off and slide targets play as normal joined notes, bends, vibrato
+and ghost notes play as the plain fret, and dead notes (`x`) are silent slots.
+There is not yet special slide, bend, vibrato or muted-string synthesis.
+
+When a tab has no tempo markers, the BPM control sets the global playback tempo.
+When a played selection includes tempo markers, those source tempos are absolute:
+they override the BPM control for that playback, the control is disabled, and it
+shows the source tempo currently in effect. Repeats are expanded for playback, so
+**Play all** plays every pass; the same source measure and note highlight on each
+pass. Playing or looping a single bar still plays that selected bar on its own
+unless the complete repeat start and end are inside the selection.
 
 The **Sound design** page (`/sound`, the sliders icon in the header) shapes the
 synthesised bass app-wide: exciter, Karplus–Strong string model (damping, decay,
@@ -89,9 +147,10 @@ JSON; to make a sound the default, paste its values into `DEFAULT_SOUND` in
 
 The shorthand editor is colour-coded, and the rendered tab uses the same colours so
 you can see which shorthand produced which part of the tab. Each string has its own
-colour, and a bare fret takes the colour of the string it plays on. Sections are
-tinted, comments are muted and invalid tokens are underlined. Put the caret on a
-note to outline it in the tab.
+colour, and a bare fret takes the colour of the string it plays on. Articulation
+marks use a separate technique colour, while duration, rest, repeat and tempo
+markers have their own rhythm colour. Sections are tinted, comments are muted and
+invalid tokens are underlined. Put the caret on a note to outline it in the tab.
 
 Click the **Shorthand** heading to collapse the editor so the tab takes the full
 width. While collapsed, the heading shows a badge if the shorthand has errors. The
@@ -101,10 +160,16 @@ choice is saved in the browser.
 
 Built with SvelteKit and Skeleton UI (`vintage` theme, with light and dark mode).
 Local tabs are saved in the browser's `localStorage`. You can create, search, duplicate
-and delete tabs, copy them to the clipboard, download them as `.txt`, or share
-them as a snapshot link. Google sign-in is optional: all existing local features
+and delete tabs, copy them to the clipboard, print clean paper copies, download
+them as `.txt`, or share them as a snapshot link. Google sign-in is optional: all existing local features
 work without an account. When signed in, cloud saving is the default; each tab
 can opt out by choosing **Browser only** under **Save location**.
+
+Production builds register a service worker that caches the static app shell and
+same-origin app assets. After the app has loaded once, browser-only tabs, the
+editor, playback and `/sound` continue to open offline; Firebase, Google APIs and
+other cross-origin requests are never intercepted. When a new build is available,
+the app shows a toast asking you to refresh so the updated shell is used.
 
 New tabs are prefilled with an editable walkthrough, not just a placeholder.
 Starting with an ascending C major scale, it explains sections and comments,
@@ -115,7 +180,9 @@ automatic saving, and sound design. String names are consistently uppercase in
 the music, with a comment explaining that casing does not matter. Duplicating or
 saving a shared tab preserves its source instead. Older saved tabs, sound-design riffs, and
 version 1 share links are automatically migrated to bracket notation, preserving
-their pitches, tab columns, and playback grouping. New share links use version 2.
+their pitches, tab columns, and playback grouping. New share links use the lowest
+compatible payload version: version 2 for bracket-era syntax, or version 3 when
+articulations, rhythm markers, repeats or tempo markers are present.
 
 - Parser: `src/lib/tab/parser.ts`. New indicators go in the `TabEvent` union.
 - Renderer: `src/lib/tab/render.ts`. `layoutBlocks` records where every note and bar
@@ -164,6 +231,16 @@ edits update the same cloud-backed tab, rather than creating more copies.
 Cloud-backed tabs require sign-in to access; browser-only tabs remain available
 without an account.
 
+Firebase Auth and Firestore are loaded lazily. Signed-out visitors without the
+`basstabs:had-session` browser hint skip the Firebase SDK on first load and see
+the signed-out controls immediately. Successful sign-in writes that hint so the
+next visit checks the existing Auth session and reconnects the cloud library;
+sign-out clears it. The sign-in buttons pre-warm the Firebase import on
+hover/focus/pointer-down so the click handler can call Google's popup API from
+the user gesture when the SDK has resolved. Snapshot share links
+(`/shared#<payload>`) remain fully local and do not load Firebase; live links,
+the public library and the profile page load Firebase on demand.
+
 The editor's **Save location** setting sits below Title, Artist and Tuning, alongside
 visibility and sharing. Select **Browser only** to opt out of automatic cloud saving,
 or **Cloud account** to enable it again. A compact status shows save progress;
@@ -199,10 +276,23 @@ Cloud renames also check for duplicates; a conflicting draft stays unsaved until
 you give it a different title. Existing duplicate titles are not automatically
 renamed or deleted.
 Cloud-backed tabs are available across devices and save edits automatically
-after a short delay. **Retry save** explicitly retries
-a failed save. Sign-out waits for pending edits to save; if saving fails, the
-account stays signed in. Unsaved drafts are backed up in browser storage under
-the account's UID and restored only for that account. Browser storage errors are
+after a short delay. Firestore keeps a persistent local cache when the browser
+supports it, so previously opened cloud tabs can render while offline or after a
+reload. Content edits to an already cached cloud tab are accepted offline and
+sync automatically when the connection returns; the UI labels these as
+**Offline — changes will sync** rather than failed saves. Creating a new cloud
+tab, enabling cloud saving for a browser-only tab, and changing a cloud title
+still need a connection because the app checks title uniqueness on the server;
+those drafts stay local and retry when the browser comes back online. Private
+browsing modes and restrictive webviews may fall back to a memory-only cache, so
+cloud features still work online but cached tabs may not survive a reload.
+**Retry save** explicitly retries a failed save. Sign-out waits for pending edits
+to save; if saving fails, the account stays signed in. After sign-out the app
+terminates Firestore and asks it to clear cached cloud tabs from IndexedDB. If
+another basstabs tab is still open and the browser refuses that cleanup, the app
+reports it so you can close the other tab and sign in/out again before leaving a
+shared computer. Unsaved drafts are backed up in browser storage under the
+account's UID and restored only for that account. Browser storage errors are
 shown explicitly. Local tabs remain available after sign-out.
 
 Visibility options:
@@ -295,15 +385,18 @@ work around this error by allowing all reads/writes.
 
 ```sh
 npm install
-npm run dev      # start the dev server
-npm test         # run the parser/renderer unit tests
-npm run build    # build a static site into build/
+npm run dev                              # start the dev server
+npm test                                 # run server and browser Vitest projects
+npm run test:unit -- --run --project server
+npm run test:unit -- --run --project client
+npx playwright install --with-deps chromium # install the browser used by client tests
+npm run build                            # build a static site into build/
 ```
 
 ## Container
 
-The image is a static build served by `nginx-unprivileged`, so there is no Node
-runtime. It idles at a few MiB of RAM.
+The image is a static build served by digest-pinned `nginx-unprivileged`, so
+there is no Node runtime. It idles at a few MiB of RAM.
 
 - Listens on port **3000** and runs as UID 101. It also works with any non-root
   `runAsUser` and `readOnlyRootFilesystem: true`, as long as `/tmp` is a
@@ -311,7 +404,13 @@ runtime. It idles at a few MiB of RAM.
 - `GET /healthz` (liveness) and `GET /readyz` (readiness) return `200 ok` without
   authentication.
 - `/_app/immutable/*` is cached for a year. Every other path gets `no-cache` and
-  falls back to the app (`200.html`).
+  falls back to the app (`200.html`); `/service-worker.js` is explicitly served
+  with `no-cache` so browsers check for app-shell updates.
+- The runtime base image is pinned in `Dockerfile` with a readable tag plus a
+  digest. CI derives its nginx config test image from the same `Dockerfile`
+  reference via `.github/scripts/runtime-image.sh`, so the checked image cannot
+  drift from the shipped image. Dependabot checks Docker digests weekly in
+  `.github/dependabot.yml`.
 
 ## Deploy (Mimir)
 

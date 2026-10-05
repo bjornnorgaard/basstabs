@@ -1,6 +1,6 @@
 # 04 · Firebase App Check
 
-- **Status:** Not started
+- **Status:** Not started _(deferred by the owner on 2026-10-05)_
 - **Area:** Security / cost control
 - **Size:** Medium
 - **Depends on:** [01](./01-lazy-load-firebase.md) _(soft — same file)_
@@ -98,3 +98,26 @@ procedure in [AGENTS.md](../AGENTS.md) **before** pushing the client.
 Touches [`src/lib/firebase.ts`](../src/lib/firebase.ts), shared with
 [01](./01-lazy-load-firebase.md) and [02](./02-firestore-offline-persistence.md).
 Do not run those in parallel — see [ROADMAP.md](./ROADMAP.md).
+
+## History — attempted and reverted
+
+A client-only implementation was built and merged on `improvements/roadmap`
+(see PR #2's history), then removed before merging to `main` because the owner
+decided App Check and reCAPTCHA are not needed yet. Lessons for whoever picks
+this up again:
+
+- Initialize App Check inside the lazy `getFirebase()` path in
+  `src/lib/firebase.ts` (task 01), via a dynamic `import('firebase/app-check')`,
+  before Auth and Firestore are created, and keep the persistent Firestore cache
+  from task 02.
+- Read the site key with a namespace import of `$env/static/public`, **not**
+  `$env/dynamic/public`. The dynamic variant fetches `/_app/env.js` on every
+  page load, which the task 03 service worker does not precache, so offline
+  reloads break.
+- Make the key optional (unset → App Check not initialized), pass it to CI as a
+  repository _variable_ and to the Dockerfile as a build arg, and register dev
+  debug tokens only under `import.meta.env.DEV`.
+- Owner console steps: create a score-based (no checkbox) reCAPTCHA Enterprise
+  web key for `basstabs.bybear.dk` and `basstabs-test.bybear.dk`, register the
+  web app in Firebase App Check with it, keep enforcement off, monitor, then
+  enforce Cloud Firestore only.

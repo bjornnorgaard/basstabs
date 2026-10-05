@@ -61,6 +61,69 @@ describe('layout', () => {
 });
 
 describe('buildSchedule', () => {
+	it.each([
+		{
+			name: 'the README example',
+			source: 'E0 0 A2 2 |E0 0 3 A2 |',
+			expected: [
+				[28, 0, 0.25, 0],
+				[28, 0.25, 0.25, 0],
+				[35, 0.5, 0.25, 0],
+				[35, 0.75, 0.25, 0],
+				[28, 1, 0.25, 1],
+				[28, 1.25, 0.25, 1],
+				[31, 1.5, 0.25, 1],
+				[35, 1.75, 0.25, 1]
+			]
+		},
+		{
+			name: 'joined notes and spacing',
+			source: '|E4320|A2      |E1         |',
+			expected: [
+				[32, 0, 0.25, 0],
+				[31, 0.25, 0.25, 0],
+				[30, 0.5, 0.25, 0],
+				[28, 0.75, 0.25, 0],
+				[35, 1, 1, 1],
+				[29, 2, 1, 2]
+			]
+		},
+		{
+			name: 'articulations and dead notes',
+			source: String.raw`E5h7 E5b E(5) Ex |`,
+			expected: [
+				[33, 0, 0.125, 0],
+				[35, 0.125, 0.125, 0],
+				[33, 0.25, 0.25, 0],
+				[33, 0.5, 0.25, 0]
+			]
+		},
+		{
+			name: 'blank bars',
+			source: '|    |E1|',
+			expected: [[29, 1, 1, 1]]
+		},
+		{
+			name: 'multi-row tabs and sections',
+			source: '[Verse]\nE0 | E1 |\n# soft\nA2E320 |',
+			expected: [
+				[28, 0, 1, 0],
+				[29, 1, 1, 1],
+				[35, 2, 0.25, 2],
+				[31, 2.25, 0.25, 2],
+				[30, 2.5, 0.25, 2],
+				[28, 2.75, 0.25, 2]
+			]
+		}
+	])('keeps unmarked playback unchanged for $name', ({ source, expected }) => {
+		const { layout, errors } = renderTab(source, bass4);
+		expect(errors).toEqual([]);
+		const { notes } = buildSchedule(layout.measures, bass4);
+		expect(notes.map((note) => [note.midi, note.start, note.length, note.measureId])).toEqual(
+			expected
+		);
+	});
+
 	it('gives every bar the same length and splits it evenly between columns', () => {
 		const { layout } = renderTab('E0 0 A2 2 | E5 |', bass4);
 		const { notes, length } = buildSchedule(layout.measures, bass4);
@@ -101,6 +164,127 @@ describe('buildSchedule', () => {
 		const { notes, length } = buildSchedule(layout.measures, bass4);
 		expect(length).toBe(2);
 		expect(notes.map((note) => note.start)).toEqual([1]);
+	});
+
+	it('plays connector targets and ghost notes as plain notes while dead notes are silent slots', () => {
+		const { layout } = renderTab('E5h7 E5b E(5) Ex |', bass4);
+		const { notes, length } = buildSchedule(layout.measures, bass4);
+		expect(length).toBe(1);
+		expect(notes.map((note) => [note.midi, note.start, note.length])).toEqual([
+			[33, 0, 0.125],
+			[35, 0.125, 0.125],
+			[33, 0.25, 0.25],
+			[33, 0.5, 0.25]
+		]);
+		expect(notes.some((note) => note.noteId === layout.measures[0].notes[4].id)).toBe(false);
+	});
+
+	it('uses explicit durations and rests in marked bars', () => {
+		const { layout, errors } = renderTab(':q E0 0 :e 0 :r 0 |', bass4);
+		expect(errors).toEqual([]);
+		const { notes, length } = buildSchedule(layout.measures, bass4);
+		expect(length).toBe(1);
+		expect(notes.map((note) => [note.midi, note.start, note.length])).toEqual([
+			[28, 0, 0.25],
+			[28, 0.25, 0.25],
+			[28, 0.5, 0.125],
+			[28, 0.75, 0.125]
+		]);
+	});
+
+	it('supports dotted explicit durations', () => {
+		const { layout, errors } = renderTab(':q. E0 :e 0 |', bass4);
+		expect(errors).toEqual([]);
+		const { notes } = buildSchedule(layout.measures, bass4);
+		expect(notes.map((note) => [note.start, note.length])).toEqual([
+			[0, 0.375],
+			[0.375, 0.125]
+		]);
+	});
+
+	it('lets joined notes subdivide one explicit duration slot', () => {
+		const { layout, errors } = renderTab(':h E320 :h A2 |', bass4);
+		expect(errors).toEqual([]);
+		const { notes } = buildSchedule(layout.measures, bass4);
+		expect(notes.map((note) => [note.midi, note.start, note.length])).toEqual([
+			[31, 0, 1 / 6],
+			[30, 1 / 6, 1 / 6],
+			[28, 2 / 6, 1 / 6],
+			[35, 0.5, 0.5]
+		]);
+	});
+
+	it('keeps unmarked bars on legacy even spacing beside marked bars', () => {
+		const { layout, errors } = renderTab('E0 0 0 0 | :h E0 :e 0 0 |', bass4);
+		expect(errors).toEqual([]);
+		const { notes } = buildSchedule(layout.measures, bass4);
+		expect(notes.map((note) => [note.start, note.length])).toEqual([
+			[0, 0.25],
+			[0.25, 0.25],
+			[0.5, 0.25],
+			[0.75, 0.25],
+			[1, 0.5],
+			[1.5, 0.125],
+			[1.625, 0.125]
+		]);
+	});
+
+	it('expands repeat ranges while keeping source note and measure ids for highlighting', () => {
+		const { layout, errors } = renderTab('|: E0 | A2 :|x3 E3 |', bass4);
+		expect(errors).toEqual([]);
+		const { notes, length } = buildSchedule(layout.measures, bass4);
+		expect(length).toBe(7);
+		expect(
+			notes.map((note) => [note.midi, note.start, note.length, note.measureId, note.noteId])
+		).toEqual([
+			[28, 0, 1, 0, 0],
+			[35, 1, 1, 1, 1],
+			[28, 2, 1, 0, 0],
+			[35, 3, 1, 1, 1],
+			[28, 4, 1, 0, 0],
+			[35, 5, 1, 1, 1],
+			[31, 6, 1, 2, 2]
+		]);
+	});
+
+	it('ignores partial repeat markers when scheduling a single selected bar', () => {
+		const { layout, errors } = renderTab('|: E0 | A2 :|x3', bass4);
+		expect(errors).toEqual([]);
+		const { notes, length } = buildSchedule([layout.measures[1]], bass4);
+		expect(length).toBe(1);
+		expect(notes.map((note) => [note.midi, note.start, note.measureId])).toEqual([[35, 0, 1]]);
+	});
+
+	it('preserves explicit rhythm timing inside expanded repeats', () => {
+		const { layout, errors } = renderTab('|: :h E0 :q A2 :r :|x2', bass4);
+		expect(errors).toEqual([]);
+		const { notes, length } = buildSchedule(layout.measures, bass4);
+		expect(length).toBe(2);
+		expect(notes.map((note) => [note.midi, note.start, note.length, note.measureId])).toEqual([
+			[28, 0, 0.5, 0],
+			[35, 0.5, 0.25, 0],
+			[28, 1, 0.5, 0],
+			[35, 1.5, 0.25, 0]
+		]);
+	});
+
+	it('adds source tempo changes to the expanded schedule without changing bar math', () => {
+		const { layout, errors } = renderTab('@120\n|: E0 |\n@90\nA2 :|x2', bass4);
+		expect(errors).toEqual([]);
+		const schedule = buildSchedule(layout.measures, bass4);
+		expect(schedule.length).toBe(4);
+		expect(schedule.tempoChanges).toEqual([
+			{ start: 0, bpm: 120 },
+			{ start: 1, bpm: 90 },
+			{ start: 2, bpm: 120 },
+			{ start: 3, bpm: 90 }
+		]);
+		expect(schedule.notes.map((note) => [note.midi, note.start, note.length])).toEqual([
+			[28, 0, 1],
+			[35, 1, 1],
+			[28, 2, 1],
+			[35, 3, 1]
+		]);
 	});
 
 	it('converts MIDI notes to frequencies', () => {

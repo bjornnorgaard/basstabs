@@ -1,6 +1,6 @@
 # 01 · Lazy-load Firebase
 
-- **Status:** Not started
+- **Status:** Done
 - **Area:** Performance
 - **Size:** Medium
 - **Depends on:** –
@@ -118,3 +118,61 @@ No Firestore rules or indexes change, so no Firebase deployment is required.
   687 lines) mocks the Firestore functions. Lazy loading changes where those
   mocks must be applied; expect to adjust the mock setup, not the assertions.
 - Do not regress the pending-upload/retry behaviour while making the store async.
+
+## Outcome
+
+Implemented lazy Firebase loading without changing the synchronous `cloudStore`
+surface used by components. `src/lib/firebase.ts` now exposes a memoized async
+accessor and a cached/prewarm path; the cloud store remains a module-level export
+but starts inert unless an account route, a live/public read, a sign-in action, a
+cloud-backed operation, or the previous-session hint asks for Firebase.
+
+Decisions:
+
+- Used `localStorage` key `basstabs:had-session` as a hint only. Auth state and
+  Firestore rules remain authoritative. The hint is written after successful
+  sign-in/auth detection and cleared on sign-out or signed-out auth state.
+- The root layout starts the auth check only when the hint exists. Snapshot share
+  links (`/shared#<payload>`) explicitly skip that initial check so they make no
+  Firebase request, even if the hint is stale.
+- `/public`, `/shared?id=<token>`, and `/profile` load Firebase on demand.
+- Sign-in buttons pre-warm Firebase on `pointerenter`, `focus`, and
+  `pointerdown`. If the SDK is already cached, `cloudStore.login()` calls
+  `signInWithPopup` synchronously in the click handler before any `await`; if the
+  import is still unresolved, it falls back to awaiting the prewarm promise.
+- `writeCloudTab` kept its public signature for integration tests and direct
+  callers, but imports Firestore helpers lazily internally. The cloud store passes
+  the already-loaded Firestore module when available.
+- No Firestore rules or indexes changed, so no deployment was run.
+
+Bundle proof (`npm run build`, inspecting
+`.svelte-kit/output/client/.vite/manifest.json` static imports for `/`):
+
+| Measurement                                | Before                     | After                                                  |
+| ------------------------------------------ | -------------------------- | ------------------------------------------------------ |
+| Root route initial JS static graph         | 726,675 raw / 227,442 gzip | 182,449 raw / 69,876 gzip                              |
+| Layout node static graph                   | 708,233 raw / 219,105 gzip | 165,305 raw / 62,192 gzip                              |
+| Firebase Firestore chunk in root graph     | 549,233 raw / 159,885 gzip | Not statically imported                                |
+| Dynamic Firebase chunks after lazy loading | n/a                        | app 379 gzip, auth 35,926 gzip, firestore 160,560 gzip |
+
+Validation:
+
+- `npm run lint && npm run check && npm test && npm run build` passed.
+  - `svelte-check`: 0 errors, 0 warnings.
+  - Vitest unit suite: 13 files passed, 1 skipped; 177 tests passed, 7 skipped.
+  - Production build completed successfully.
+- Firestore wrapper passed on emulator port 8210:
+  - Node rules tests: 16 passed.
+  - Cloud write integration Vitest: 1 file passed; 7 tests passed.
+
+Manual browser verification still recommended:
+
+- Signed-out `/` load with no `basstabs:had-session` hint should not request
+  Firebase chunks and should show the signed-out controls immediately.
+- Hover/focus/pointer-down the sign-in button, then click it; the Google popup
+  should open without being blocked.
+- With a valid previous session hint, `/` should show the existing checking state
+  while Firebase Auth loads, then reconnect the cloud library.
+- `/shared#<payload>` should render a snapshot without Firebase network requests.
+- `/shared?id=<token>`, `/public`, and `/profile` should load Firebase only when
+  those routes are visited and continue to behave as before.

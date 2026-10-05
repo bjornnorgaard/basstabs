@@ -1,6 +1,6 @@
 # 12 · Improve the public library
 
-- **Status:** Not started
+- **Status:** Done
 - **Area:** UX
 - **Size:** Medium
 - **Depends on:** –
@@ -112,3 +112,43 @@ record the verification in the completion summary.
 - The page is public and `noindex` is _not_ set here (unlike tab and shared
   pages), so content is indexable — another reason previews should be real
   rendered tab rather than raw shorthand.
+
+## Outcome
+
+Implemented the PM-scoped client-only public library improvements:
+
+- Public cards now show the same trimmed first-system tab preview used on the
+  home page, including `TabPreview`'s placeholder when a published tab has an
+  empty source.
+- Added a visible tuning badge with string count and string names.
+- Added client-side filtering over the already-loaded public tabs by title or
+  artist. The UI labels it as "Filter loaded tabs" and keeps the **Load more**
+  affordance visible when more pages may add matches.
+- Added an initial loading skeleton so `/public` no longer flashes a blank grid.
+- Extracted the first-system preview logic into `src/lib/tab/preview.ts` and
+  reused it from the home page to keep behavior consistent.
+
+Decisions and intentionally left out:
+
+- Did not add sort options, full-text search, popularity sorting, or any new
+  Firestore reads.
+- Did not change `firestore.rules`, `firestore.indexes.json`, the published
+  document schema, or the `/public` Firestore query
+  (`visibility == public`, `updatedAt desc`, `limit(24)`, `startAfter`).
+- No Firebase deployment was needed or run because this stayed client-only and
+  did not touch rules, indexes, schemas, paths, or queries.
+- No real-project browser verification was run; public data requires the live
+  Firebase project. Helper behavior is covered by unit tests, and manual browser
+  checks are listed for release validation.
+
+Validation:
+
+- Focused helper tests:
+  `npm run test:unit -- --run src/lib/tab/preview.spec.ts src/lib/public-library.spec.ts`
+  passed — 2 files, 4 tests.
+- Required chain:
+  `npm run lint && npm run check && npm test && npm run build` passed.
+  - `svelte-check`: 0 errors, 0 warnings.
+  - Vitest: 15 files passed, 1 skipped; 181 tests passed, 7 skipped.
+  - Production build completed successfully.
+- Removed generated `build/` output after validation.

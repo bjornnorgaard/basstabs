@@ -36,6 +36,221 @@ describe('explicit multi-digit frets', () => {
 		);
 	});
 
+	describe('articulation notation', () => {
+		it('parses all supported articulations with exact columns', () => {
+			const source = String.raw`E5h7 E7p5 E3/5 E5\3 E5b E5~ Ex E(5)|`;
+			const result = parse(source, tuning);
+			expect(result.errors).toEqual([]);
+			expect(result.features.articulations).toBe(true);
+			expect(result.systems[0].measures[0].events).toEqual([
+				{ kind: 'note', string: 0, fret: 5, digits: '5', column: 0, joinedToPrevious: false },
+				{ kind: 'technique', technique: 'hammer-on', string: 0, symbol: 'h', column: 1 },
+				{ kind: 'note', string: 0, fret: 7, digits: '7', column: 2, joinedToPrevious: true },
+				{ kind: 'note', string: 0, fret: 7, digits: '7', column: 4, joinedToPrevious: false },
+				{ kind: 'technique', technique: 'pull-off', string: 0, symbol: 'p', column: 5 },
+				{ kind: 'note', string: 0, fret: 5, digits: '5', column: 6, joinedToPrevious: true },
+				{ kind: 'note', string: 0, fret: 3, digits: '3', column: 8, joinedToPrevious: false },
+				{ kind: 'technique', technique: 'slide-up', string: 0, symbol: '/', column: 9 },
+				{ kind: 'note', string: 0, fret: 5, digits: '5', column: 10, joinedToPrevious: true },
+				{ kind: 'note', string: 0, fret: 5, digits: '5', column: 12, joinedToPrevious: false },
+				{ kind: 'technique', technique: 'slide-down', string: 0, symbol: '\\', column: 13 },
+				{ kind: 'note', string: 0, fret: 3, digits: '3', column: 14, joinedToPrevious: true },
+				{ kind: 'note', string: 0, fret: 5, digits: '5', column: 16, joinedToPrevious: false },
+				{ kind: 'technique', technique: 'bend', string: 0, symbol: 'b', column: 17 },
+				{ kind: 'note', string: 0, fret: 5, digits: '5', column: 19, joinedToPrevious: false },
+				{ kind: 'technique', technique: 'vibrato', string: 0, symbol: '~', column: 20 },
+				{ kind: 'dead-note', string: 0, digits: 'x', column: 22, joinedToPrevious: false },
+				{
+					kind: 'note',
+					string: 0,
+					fret: 5,
+					digits: '5',
+					display: '(5)',
+					ghost: true,
+					column: 24,
+					joinedToPrevious: false
+				}
+			]);
+			expect(result.systems[0].measures[0].width).toBe(27);
+		});
+
+		it('keeps adjacent B-string notes valid instead of reading them as bends', () => {
+			const result = parse('A2B0', getTuning('standard-5'));
+			expect(result.errors).toEqual([]);
+			expect(result.systems[0].measures[0].events).toEqual([
+				{ kind: 'note', string: 2, fret: 2, digits: '2', column: 0, joinedToPrevious: false },
+				{ kind: 'note', string: 0, fret: 0, digits: '0', column: 1, joinedToPrevious: true }
+			]);
+		});
+
+		it('reports connectors without an adjacent source note or target at the articulation column', () => {
+			expect(
+				parse('h5 E5 h7 E5h', tuning).errors.map((error) => [error.column, error.message])
+			).toEqual([
+				[1, 'Articulation "h" needs a preceding note'],
+				[7, 'Articulation "h" needs a preceding note'],
+				[12, 'Articulation "h" needs a target fret']
+			]);
+		});
+
+		it('does not reinterpret articulation characters from previously valid syntax', () => {
+			// `B` is the only suggested articulation character that can also be a valid string prefix.
+			// Adjacent B-string notes keep their old meaning; bend is only `b` without a following fret.
+			expect(parse('A2B0', getTuning('standard-5')).errors).toEqual([]);
+			for (const source of ['E5h7', 'E7p5', 'E3/5', String.raw`E5\3`, 'E5~', 'E5b', 'Ex', 'E(5)']) {
+				expect(parse(source, tuning).features.articulations).toBe(true);
+			}
+		});
+	});
+
+	describe('rhythm duration notation', () => {
+		it('parses sticky duration markers and rests without adding tab columns', () => {
+			const result = parse(':q E0 0 :e 0 :r :re. |', tuning);
+			expect(result.errors).toEqual([]);
+			expect(result.features.rhythm).toBe(true);
+			expect(result.systems[0].measures[0]).toMatchObject({ width: 10, timed: true });
+			expect(result.systems[0].measures[0].events).toEqual([
+				{
+					kind: 'note',
+					string: 0,
+					fret: 0,
+					digits: '0',
+					column: 1,
+					joinedToPrevious: false,
+					duration: { code: 'q', dotted: false, bars: 0.25 }
+				},
+				{
+					kind: 'note',
+					string: 0,
+					fret: 0,
+					digits: '0',
+					column: 3,
+					joinedToPrevious: false,
+					duration: { code: 'q', dotted: false, bars: 0.25 }
+				},
+				{
+					kind: 'note',
+					string: 0,
+					fret: 0,
+					digits: '0',
+					column: 6,
+					joinedToPrevious: false,
+					duration: { code: 'e', dotted: false, bars: 0.125 }
+				},
+				{ kind: 'rest', duration: { code: 'e', dotted: false, bars: 0.125 } },
+				{ kind: 'rest', duration: { code: 'e', dotted: true, bars: 0.1875 } }
+			]);
+		});
+
+		describe('repeat and tempo notation', () => {
+			it('parses repeat start/end markers with default and explicit play counts', () => {
+				const result = parse('|: E0 | A2 :|x3', tuning);
+				expect(result.errors).toEqual([]);
+				expect(result.features.repeats).toBe(true);
+				expect(result.systems[0].measures).toHaveLength(2);
+				expect(result.systems[0].measures[0]).toMatchObject({ repeatStart: true });
+				expect(result.systems[0].measures[1]).toMatchObject({ repeatEnd: { count: 3 } });
+
+				const defaultCount = parse('|: E0 :|', tuning);
+				expect(defaultCount.errors).toEqual([]);
+				expect(defaultCount.systems[0].measures[0]).toMatchObject({
+					repeatStart: true,
+					repeatEnd: { count: 2 }
+				});
+			});
+
+			it('keeps duration markers unambiguous after repeat starts', () => {
+				expect(
+					parse('|:q E0 :|', tuning).errors.map((error) => [error.column, error.message])
+				).toEqual([[8, 'Repeat end ":|" has no matching "|:"']]);
+
+				const result = parse('|: :q E0 :| x3', tuning);
+				expect(result.errors).toEqual([]);
+				expect(result.features).toMatchObject({ repeats: true, rhythm: true });
+				expect(result.systems[0].measures[0]).toMatchObject({
+					timed: true,
+					repeatStart: true,
+					repeatEnd: { count: 3 }
+				});
+			});
+
+			it('reports unmatched repeats, nested repeats and invalid counts at their markers', () => {
+				expect(parse('E0 :|', tuning).errors).toEqual([
+					{ line: 1, column: 4, length: 2, message: 'Repeat end ":|" has no matching "|:"' }
+				]);
+				expect(parse('|: E0 |', tuning).errors).toEqual([
+					{ line: 1, column: 1, length: 2, message: 'Repeat start "|:" has no matching ":|"' }
+				]);
+				expect(parse('|: E0 |: A2 :| :|', tuning).errors).toContainEqual({
+					line: 1,
+					column: 7,
+					length: 2,
+					message: 'Nested repeats are not supported'
+				});
+				expect(parse('|: E0 :|x1', tuning).errors).toEqual([
+					{ line: 1, column: 9, length: 2, message: 'Repeat count must be x2 or greater' }
+				]);
+			});
+
+			it('parses whole-line tempo markers as structural blocks', () => {
+				const result = parse('@120\n[Verse]\nE0 |', tuning);
+				expect(result.errors).toEqual([]);
+				expect(result.features.tempo).toBe(true);
+				expect(result.blocks.map((block) => block.kind)).toEqual(['tempo', 'section', 'system']);
+				expect(result.blocks[0]).toEqual({ kind: 'tempo', bpm: 120 });
+				expect(result.tokens.filter((token) => token.kind === 'tempo')).toHaveLength(1);
+			});
+
+			it('reports invalid tempo markers at the marker line', () => {
+				expect(parse('@fast\n@12\n@301', tuning).errors).toEqual([
+					{ line: 1, column: 1, length: 5, message: 'Tempo marker must be written as @120' },
+					{
+						line: 2,
+						column: 1,
+						length: 3,
+						message: 'Tempo marker BPM must be between 30 and 300'
+					},
+					{
+						line: 3,
+						column: 1,
+						length: 4,
+						message: 'Tempo marker BPM must be between 30 and 300'
+					}
+				]);
+			});
+		});
+
+		it('treats joined notes as one duration slot', () => {
+			const result = parse(':h E320 :h A2 |', tuning);
+			expect(result.errors).toEqual([]);
+			expect(
+				result.systems[0].measures[0].events
+					.filter((event) => event.kind === 'note')
+					.map((event) => [event.fret, event.joinedToPrevious, event.duration?.bars])
+			).toEqual([
+				[3, false, 0.5],
+				[2, true, undefined],
+				[0, true, undefined],
+				[2, false, 0.5]
+			]);
+		});
+
+		it('reports overfilled rhythm bars at the slot that exceeds the bar', () => {
+			expect(parse(':h E0 :h 1 :q 2 |', tuning).errors).toEqual([
+				{ line: 1, column: 15, length: 1, message: 'Rhythm durations exceed one 4/4 bar' }
+			]);
+		});
+
+		it('reports invalid rhythm markers without colliding with existing syntax', () => {
+			expect(parse(':z E0 |', tuning).errors).toEqual([
+				{ line: 1, column: 1, length: 2, message: 'Invalid rhythm marker ":z"' }
+			]);
+			expect(parse('E0:1', tuning).errors).toEqual([
+				{ line: 1, column: 3, length: 2, message: 'Invalid rhythm marker ":1"' }
+			]);
+		});
+	});
+
 	it('excludes brackets from tab columns but includes them in highlighted fret spans', () => {
 		const source = '|E[12]3 [14]|';
 		const { text, layout, tokens, errors } = renderTab(source, tuning);

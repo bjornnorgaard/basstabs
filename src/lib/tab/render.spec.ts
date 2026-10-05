@@ -190,6 +190,95 @@ describe('renderTab', () => {
 	it('returns an empty string for empty input', () => {
 		expect(renderTab('  \n\n', bass4).text).toBe('');
 	});
+
+	it('renders articulation characters as exact tab columns', () => {
+		const { text, layout, errors } = renderTab(
+			String.raw`E5h7 E7p5 E3/5 E5\3 E5b E5~ Ex E(5)|`,
+			bass4
+		);
+		expect(errors).toEqual([]);
+		expect(text.split('\n')).toEqual([
+			String.raw`G|---------------------------|`,
+			String.raw`D|---------------------------|`,
+			String.raw`A|---------------------------|`,
+			String.raw`E|5h7-7p5-3/5-5\3-5b-5~-x-(5)|`
+		]);
+		expect(layout.measures[0].width).toBe(27);
+		expect(layout.measures[0].notes.map((note) => [note.digits, note.display, note.width])).toEqual(
+			[
+				['5', undefined, 1],
+				['7', undefined, 1],
+				['7', undefined, 1],
+				['5', undefined, 1],
+				['3', undefined, 1],
+				['5', undefined, 1],
+				['5', undefined, 1],
+				['3', undefined, 1],
+				['5', undefined, 1],
+				['5', undefined, 1],
+				['x', undefined, 1],
+				['5', '(5)', 3]
+			]
+		);
+	});
+
+	it('keeps rhythm duration and rest markers out of rendered tab columns', () => {
+		const source = ':q E0 0 :e 0 :r :re. |';
+		const { text, layout, errors } = renderTab(source, bass4);
+		expect(errors).toEqual([]);
+		expect(text.split('\n')).toEqual([
+			'G|----------|',
+			'D|----------|',
+			'A|----------|',
+			'E|-0-0--0---|'
+		]);
+		expect(layout.measures[0]).toMatchObject({ width: 10, timed: true });
+		expect(
+			layout.measures[0].timingSlots.map((slot) => [slot.notes.length, slot.duration])
+		).toEqual([
+			[1, 0.25],
+			[1, 0.25],
+			[1, 0.125],
+			[0, 0.125],
+			[0, 0.1875]
+		]);
+	});
+
+	it('renders repeat barlines and counts without expanding the tab text', () => {
+		const source = '|: E0 0 | A2 :|x3';
+		const { text, layout, errors } = renderTab(source, bass4);
+		expect(errors).toEqual([]);
+		expect(text.split('\n')).toEqual([
+			'G|:-----|---:|x3',
+			'D|:-----|---:|x3',
+			'A|:-----|-2-:|x3',
+			'E|:-0-0-|---:|x3'
+		]);
+		expect(
+			layout.measures.map(({ column, width, repeatStart, repeatEnd }) => ({
+				column,
+				width,
+				repeatStart,
+				repeatEnd
+			}))
+		).toEqual([
+			{ column: 3, width: 5, repeatStart: true, repeatEnd: undefined },
+			{ column: 9, width: 3, repeatStart: undefined, repeatEnd: { count: 3 } }
+		]);
+	});
+
+	it('renders tempo markers as structural text so exports round-trip', () => {
+		const { text, layout, errors } = renderTab('@120\nE0 |\n@90\nA2 |', bass4);
+		expect(errors).toEqual([]);
+		expect(text).toBe('@120\nG|--|\nD|--|\nA|--|\nE|0-|\n\n@90\nG|--|\nD|--|\nA|2-|\nE|--|');
+		expect(layout.blocks.map((block) => block.kind)).toEqual([
+			'tempo',
+			'system',
+			'tempo',
+			'system'
+		]);
+		expect(layout.measures.map((measure) => measure.tempoBpm)).toEqual([120, 90]);
+	});
 });
 
 describe('parse errors', () => {

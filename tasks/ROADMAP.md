@@ -3,6 +3,11 @@
 How the tasks in this folder relate, so sessions can be started in parallel
 without colliding. The task list itself is in [README.md](./README.md).
 
+> **Progress:** every task except [04](./04-firebase-app-check.md) has been
+> implemented and merged. 04 (App Check) was deferred by the owner; its file
+> records the lessons from a reverted attempt. The actual execution order was:
+> wave 1 = 01, 03, 05, 08, 09, 13; wave 2 = 02, 06, 10, 12; wave 3 = 07, 11.
+
 ## Two kinds of dependency
 
 **Hard dependency** — the task genuinely needs another task's outcome first.

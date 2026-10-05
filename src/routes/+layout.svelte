@@ -2,6 +2,7 @@
 	import './layout.css';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import { site } from '$lib/site';
 	import { AppBar, Toast } from '@skeletonlabs/skeleton-svelte';
 	import Plus from '@lucide/svelte/icons/plus';
@@ -9,11 +10,22 @@
 	import UserRound from '@lucide/svelte/icons/user-round';
 	import Brand from '$lib/components/Brand.svelte';
 	import ModeToggle from '$lib/components/ModeToggle.svelte';
+	import { registerServiceWorker } from '$lib/service-worker-registration';
 	import { toaster } from '$lib/toaster';
 	import AccountControls from '$lib/components/AccountControls.svelte';
 	import { cloudStore } from '$lib/stores/cloud.svelte';
+	import { onMount } from 'svelte';
 
 	let { children } = $props();
+	registerServiceWorker();
+
+	onMount(() => {
+		if (page.route.id === '/shared' && !page.url.searchParams.has('id')) {
+			cloudStore.skipInitialSessionCheck();
+			return;
+		}
+		cloudStore.startFromSessionHint();
+	});
 
 	function newTab() {
 		const tab = cloudStore.create();
@@ -26,8 +38,10 @@
 	<title>{site.name}</title>
 </svelte:head>
 
-<div class="flex min-h-screen flex-col">
-	<AppBar class="z-10 border-b border-surface-200-800 bg-surface-50-950/80 backdrop-blur">
+<div class="flex min-h-screen flex-col print:block print:min-h-0">
+	<AppBar
+		class="z-10 border-b border-surface-200-800 bg-surface-50-950/80 backdrop-blur print:hidden"
+	>
 		<AppBar.Toolbar
 			class="mx-auto grid w-full max-w-[96rem] grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 px-3 py-2 lg:flex lg:justify-between lg:gap-x-4 lg:px-4"
 		>
@@ -93,7 +107,7 @@
 
 	<main class="mx-auto w-full max-w-[96rem] min-w-0 flex-1 p-3 sm:p-4 md:p-6">
 		{#if cloudStore.error}
-			<div role="alert" class="mb-4 space-y-2 card preset-tonal-error p-4">
+			<div role="alert" class="mb-4 space-y-2 card preset-tonal-error p-4 print:hidden">
 				<p>Cloud: {cloudStore.error}</p>
 				<p class="text-sm">
 					Local tabs still work. Retry saving unsaved cloud changes. Drafts are backed up in this
@@ -116,14 +130,16 @@
 	</main>
 </div>
 
-<Toast.Group {toaster}>
-	{#snippet children(toast)}
-		<Toast {toast}>
-			<Toast.Message>
-				<Toast.Title>{toast.title}</Toast.Title>
-				{#if toast.description}<Toast.Description>{toast.description}</Toast.Description>{/if}
-			</Toast.Message>
-			<Toast.CloseTrigger />
-		</Toast>
-	{/snippet}
-</Toast.Group>
+<div class="print:hidden">
+	<Toast.Group {toaster}>
+		{#snippet children(toast)}
+			<Toast {toast}>
+				<Toast.Message>
+					<Toast.Title>{toast.title}</Toast.Title>
+					{#if toast.description}<Toast.Description>{toast.description}</Toast.Description>{/if}
+				</Toast.Message>
+				<Toast.CloseTrigger />
+			</Toast>
+		{/snippet}
+	</Toast.Group>
+</div>

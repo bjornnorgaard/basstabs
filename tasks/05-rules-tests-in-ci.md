@@ -1,6 +1,6 @@
 # 05 · Run Firestore rules tests in CI
 
-- **Status:** Not started
+- **Status:** Done
 - **Area:** CI / safety
 - **Size:** Small
 - **Depends on:** –
@@ -90,3 +90,62 @@ Then push a branch and confirm the job runs on the pull request.
 - Do not add any Firebase credentials or Google federation to CI. This job uses
   the local emulator and the `demo-basstabs` project id only. Deployment stays a
   manual, agent-performed step per [AGENTS.md](../AGENTS.md).
+
+## Outcome
+
+Implemented:
+
+- Added a separate `rules` job to [`.github/workflows/webapp.yml`](../.github/workflows/webapp.yml).
+  It checks out the repo, sets up Node 24 with npm cache, sets up Temurin Java 21,
+  caches Firebase emulator jars, runs `npm ci`, then runs `npm run test:rules`.
+- Made the `image` job depend on both `test` and `rules`, preserving the existing
+  push-only image behavior while requiring the rules suite before image publish.
+- Added `REQUIRE_FIRESTORE_EMULATOR=1` to the `test:rules` script and made
+  [`src/lib/cloud/write.integration.spec.ts`](../src/lib/cloud/write.integration.spec.ts)
+  throw if that required emulator environment is missing. Plain `npm test` still
+  skips the 7 integration tests when no emulator is present.
+- Added `*-debug.log` to [`.gitignore`](../.gitignore) so emulator debug logs such
+  as `firestore-debug.log` are not left untracked.
+
+Decisions:
+
+- Kept the rules tests as a separate job rather than adding steps to `test`, so
+  failures are legible and the job can run in parallel with the normal app checks.
+- Did not add Firebase credentials, Google federation, deployment steps, or any
+  real-project Firebase access. The job uses the local emulator only.
+- Did not change [firestore.rules](../firestore.rules) or
+  [firestore.indexes.json](../firestore.indexes.json) in the final branch.
+- Confirmed the workflow `paths-ignore` entries still ignore only `deploy/**`,
+  Markdown, and `.github/workflows/production.yml`; root-level
+  [firestore.rules](../firestore.rules) and
+  [firestore.indexes.json](../firestore.indexes.json) changes are not ignored and
+  should trigger this workflow.
+
+Regression experiment:
+
+- Temporarily weakened [firestore.rules](../firestore.rules) by allowing an
+  authenticated non-owner to create `users/{uid}/tabs/{tabId}` documents.
+- Ran the local rules wrapper on port 8250 and confirmed it failed.
+- Failing test:
+  `nonowners and non-Google sign-ins cannot access or mutate owner tabs`
+  in [`tests/firestore.rules.test.mjs`](../tests/firestore.rules.test.mjs).
+- Reverted the temporary rules weakening before final validation; the final
+  [firestore.rules](../firestore.rules) matches the original rules.
+
+Validation results:
+
+- `npm run lint && npm run check && npm test` passed:
+  177 unit tests passed, 7 emulator-dependent integration tests skipped in the
+  normal non-emulator test path.
+- Rules wrapper passed after reverting the regression:
+  16 `node:test` Firestore rules tests passed and 7 Vitest Firestore integration
+  tests passed under the emulator.
+- `docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:latest -color`
+  passed with no findings.
+
+Unverifiable locally:
+
+- GitHub Actions itself was not run locally. After a push or PR, verify that the
+  new `Firestore rules tests` job starts, installs Java 21, runs `npm run
+test:rules`, and reports both the 16 rules tests and the 7 integration tests as
+  executed rather than skipped.

@@ -22,7 +22,34 @@
 			syntax: `${tuning.strings[0]}123`,
 			meaning: 'Unbracketed digits are separate frets: a joined run of frets 1, 2, and 3.'
 		},
+		{
+			syntax: `${tuning.strings[0]}5h7 ${tuning.strings[0]}7p5 ${tuning.strings[0]}3/5 ${tuning.strings[0]}5\\3`,
+			meaning: 'Hammer-on, pull-off and slides connect two frets on one string.'
+		},
+		{
+			syntax: `${tuning.strings[0]}5b ${tuning.strings[0]}5~ ${tuning.strings[0]}x ${tuning.strings[0]}(5)`,
+			meaning: 'Bend, vibrato, dead note and ghost note notation.'
+		},
+		{
+			syntax: `:q ${tuning.strings[0]}0 0 :e 0 0`,
+			meaning:
+				'Duration markers are sticky within a bar: whole, half, quarter, eighth or sixteenth.'
+		},
+		{
+			syntax: ':q. E0 :r :re 0',
+			meaning:
+				'Add . for dotted notes. :r is a rest using the current duration; :re is an eighth rest.'
+		},
 		{ syntax: '|', meaning: 'Bar line – ends the current measure.' },
+		{
+			syntax: `|: ${tuning.strings[0]}0 0 :|x3`,
+			meaning: 'Repeat the marked phrase three total times. Omit x3 for the default two plays.'
+		},
+		{
+			syntax: '@120',
+			meaning: 'Tempo marker on its own line – sets playback to 120 BPM from that point.',
+			plain: true
+		},
 		{ syntax: '↵ new line', meaning: 'Starts a new row of tab.', plain: true },
 		{ syntax: '[Verse 1]', meaning: 'Names the section that follows. Use a line of its own.' },
 		{
@@ -56,7 +83,16 @@
 		automatically. Notes can be adjacent, too:
 		<ShorthandCode source="A2E320" {tuning} /> means <ShorthandCode source="A2 E3 2 0" {tuning} />.
 		Spaces after the last note extend the bar by exactly that many blank columns. Brackets and
-		string names occupy no tab columns. A bare bracketed fret reuses the previous string; use <ShorthandCode
+		string names occupy no tab columns. Articulation characters also occupy tab columns: <ShorthandCode
+			source={`${tuning.strings[0]}5h7`}
+			{tuning}
+		/> is three columns. Rhythm markers such as <ShorthandCode source=":q" {tuning} /> and
+		<ShorthandCode source=":r" {tuning} /> do not occupy tab columns, but spaces around them still do.
+		Repeat markers such as <ShorthandCode source="|:" {tuning} /> and
+		<ShorthandCode source=":|" {tuning} /> are barlines. Existing rhythm shorthand like
+		<ShorthandCode source="|:q E0" {tuning} /> stays a plain barline plus duration marker; write
+		<ShorthandCode source="|: :q E0 :|" {tuning} /> when a repeated bar starts with a duration marker.
+		A bare bracketed fret reuses the previous string; use <ShorthandCode
 			source="E0 |[12]|"
 			{tuning}
 		/> rather than putting

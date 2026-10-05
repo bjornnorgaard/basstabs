@@ -1,6 +1,6 @@
 # 09 · Articulation notation
 
-- **Status:** Not started
+- **Status:** Done
 - **Area:** Notation / parser
 - **Size:** Large
 - **Depends on:** –
@@ -127,3 +127,84 @@ No Firestore changes: tab source is an opaque string to the rules and schema.
 - Heavy overlap with [10](./10-rhythm-and-durations.md) and
   [11](./11-repeats-and-tempo-markers.md) — do not run these in parallel. See
   [ROADMAP.md](./ROADMAP.md).
+
+## Outcome
+
+Implemented the brief's articulation set:
+
+| Input  | Meaning           | Rendered text |
+| ------ | ----------------- | ------------- |
+| `E5h7` | Hammer-on         | `5h7`         |
+| `E7p5` | Pull-off          | `7p5`         |
+| `E3/5` | Slide up          | `3/5`         |
+| `E5\3` | Slide down        | `5\3`         |
+| `E5b`  | Bend              | `5b`          |
+| `E5~`  | Vibrato           | `5~`          |
+| `Ex`   | Dead / muted note | `x`           |
+| `E(5)` | Ghost note        | `(5)`         |
+
+Decisions and compatibility:
+
+- Kept the suggested characters. The only concrete ambiguity found was `b` versus
+  the low `B` string in 5-string tuning, so `A2B0` remains an adjacent B-string
+  note and bend is only `b` when it is attached to a preceding note without a
+  following fret. Regression coverage preserves this.
+- Replaced the parser's note regex loop with an explicit scanner. Existing v2
+  syntax and v1 migration semantics are preserved, including legacy `E12` versus
+  `E320` migration behavior.
+- `TabEvent` is now an extensible union of plain fretted notes, `technique`
+  events, and `dead-note` events. Ordinary note objects keep their existing shape
+  unless they are ghost notes, where `display: "(5)"` and `ghost: true` are added.
+- Column accounting is exact and documented: every articulation glyph occupies one
+  rendered tab column, while string prefixes, brackets, and bar lines still do
+  not. `E5h7` is three columns, `E5b` is two, and `E(5)` is three.
+- Invalid connectors report at the connector column. Examples: `h5` reports
+  `Articulation "h" needs a preceding note`; `E5h` reports
+  `Articulation "h" needs a target fret`.
+- Playback is render-first as requested: hammer-on/pull-off/slide targets play as
+  normal joined notes, bends/vibrato/ghost notes play as the plain fret, and `x`
+  is a silent slot. No new synthesis was added.
+- Share links now accept versions 1, 2, and 3. `encodeSharedTab` emits the lowest
+  version required by the source via `requiredShareVersion(source, tuningId)`:
+  version 2 for bracket-era syntax, version 3 only when articulation feature flags
+  are present.
+- Copy-to-clipboard and `.txt` export already use rendered tab text, so the new
+  renderer output includes articulations there without separate UI changes.
+- Updated the README syntax/playback/highlighting/share text, in-app
+  `SyntaxHelp`, and the new-tab example walkthrough.
+
+Left out:
+
+- Expressive synthesis for slides, bends, vibrato, ghost-note velocity, or muted
+  thuds. These remain notation/rendering semantics for now.
+- A second slide-down character. Backslash is supported and documented; tests use
+  raw string literals where useful.
+
+Validation:
+
+- `npm run lint && npm run check && npm test && npm run build` passed with Node
+  24 from the session env.
+- Test count: 13 test files passed, 1 skipped; 186 tests passed, 7 skipped.
+- Build output was removed afterward.
+- Manual smoke check: ran the dev server on port 4193, opened the new-tab example,
+  and verified rendered articulation output including
+  `E|5h7-7p5|-------|-----|x-(5)|`; stopped the server afterward.
+
+### Notes for tasks 10 and 11
+
+- Extend `TabEvent` in `src/lib/tab/parser.ts` with new event variants rather
+  than overloading note strings. The scanner's main loop is the extension point:
+  add a token reader near the articulation handling and set a parse-result feature
+  flag for share-version decisions.
+- `Measure.width` must continue to be the exact rendered column count. If a new
+  marker occupies a tab column, increment `measureColumn`; if it is structural
+  only, do not.
+- For rendered output, add non-note glyphs as line segments with their own class
+  instead of letting `fillerParts` guess. Playback should consume only the layout
+  events it actually schedules.
+- Add new token kinds/classes in `SourceTokenKind`, `tokenClass`, and the `.hl-*`
+  block in `src/routes/layout.css`.
+- Extend `requiredShareVersion`/parser feature flags for rhythm and repeat syntax.
+  Version 3 is intentionally the unreleased extension version for tasks 10 and 11;
+  do not bump to version 4 for those features unless the payload format changes
+  incompatibly after v3 is released.

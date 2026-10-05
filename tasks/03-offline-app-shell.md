@@ -1,6 +1,6 @@
 # 03 · Offline app shell (service worker)
 
-- **Status:** Not started
+- **Status:** Done
 - **Area:** Offline / PWA
 - **Size:** Medium
 - **Depends on:** –
@@ -98,3 +98,54 @@ check it does not accidentally fall under the `/_app/immutable/*` one-year rule 
 - A buggy service worker can pin users to a broken build with no easy recovery.
   Include a working update path and test it before considering this done.
 - Do not cache `/shared?id=…` responses; live links must reflect real updates.
+
+## Outcome
+
+Implemented a SvelteKit service worker in `src/service-worker.ts` and a dedicated
+production-only registration module in `src/lib/service-worker-registration.ts`.
+SvelteKit's auto-registration is disabled deliberately so registration stays out
+of `npm run dev` and the app owns the update prompt behavior.
+
+Decisions:
+
+- The worker caches only same-origin `GET` app assets and navigation shells. It
+  never handles cross-origin Firebase, Google API, or avatar requests.
+- Hashed build assets, static files and prerendered endpoint files are
+  precached cache-first. `.br` and `.gz` outputs are filtered out so precompressed
+  files are not redundantly precached.
+- Navigations are network-first. On failure they fall back to the cached
+  `200.html` shell; during `vite preview`, where `/200.html` is not directly
+  served, the worker caches `/` under the shell key and normalizes it to the same
+  base behavior as the adapter fallback.
+- Successful queryless navigation shell responses may be cached by pathname, but
+  query-string navigations such as `/shared?id=...` are not cached as their own
+  entries.
+- A newly installed worker calls `skipWaiting`/`clients.claim`; controlled pages
+  show an "Update ready" toast asking the user to refresh.
+- `docker/default.conf` now has an explicit `/service-worker.js` location with
+  `Cache-Control: no-cache`, while immutable assets retain the one-year cache.
+
+Validation:
+
+- `npm run lint && npm run check && npm test && npm run build` passed.
+  Vitest: 13 files passed, 1 skipped; 177 tests passed, 7 skipped.
+- `npm run preview -- --port 4133 --host 127.0.0.1` plus a Playwright script
+  passed offline checks for a created local tab reload, `/sound`, `/`, cache
+  contents, no cross-origin cached entries, no `.br`/`.gz` cached entries, and no
+  `/shared` query cached entries.
+- Built twice with a temporary visible homepage text change and verified with
+  Playwright that `registration.update()` installed the new worker, showed the
+  "Update ready" toast, and loaded the visible changed text after refresh.
+- Nginx config check passed using the CI-style `nginxinc/nginx-unprivileged`
+  container as UID 1000.
+- `docker build -t basstabs-t03 .` and
+  `docker run --rm -d -p 3033:3000 basstabs-t03` passed. Header checks confirmed
+  `/service-worker.js` returned `HTTP/1.1 200 OK` with `Cache-Control: no-cache`,
+  and `/healthz` and `/readyz` returned `HTTP/1.1 200 OK`.
+
+Left out:
+
+- No Firebase rules/index changes were needed or deployed.
+- Manual browser checks should still confirm real audio playback under DevTools
+  offline mode, because the automated check verifies route rendering rather than
+  listening to generated sound.
