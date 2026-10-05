@@ -17,6 +17,10 @@ import {
 import { cloudData, type CloudTab } from './model';
 import { writeCloudTab } from './write';
 
+if (process.env.REQUIRE_FIRESTORE_EMULATOR === '1' && !process.env.FIRESTORE_EMULATOR_HOST) {
+	throw new Error('FIRESTORE_EMULATOR_HOST is required when running npm run test:rules.');
+}
+
 describe.skipIf(!process.env.FIRESTORE_EMULATOR_HOST)(
 	'cloud title uniqueness with Firestore',
 	() => {
