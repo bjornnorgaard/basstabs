@@ -103,6 +103,19 @@ describe('buildSchedule', () => {
 		expect(notes.map((note) => note.start)).toEqual([1]);
 	});
 
+	it('plays connector targets and ghost notes as plain notes while dead notes are silent slots', () => {
+		const { layout } = renderTab('E5h7 E5b E(5) Ex |', bass4);
+		const { notes, length } = buildSchedule(layout.measures, bass4);
+		expect(length).toBe(1);
+		expect(notes.map((note) => [note.midi, note.start, note.length])).toEqual([
+			[33, 0, 0.125],
+			[35, 0.125, 0.125],
+			[33, 0.25, 0.25],
+			[33, 0.5, 0.25]
+		]);
+		expect(notes.some((note) => note.noteId === layout.measures[0].notes[4].id)).toBe(false);
+	});
+
 	it('converts MIDI notes to frequencies', () => {
 		expect(midiToFrequency(69)).toBe(440);
 		expect(midiToFrequency(28)).toBeCloseTo(41.2, 1);

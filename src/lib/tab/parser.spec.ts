@@ -36,6 +36,73 @@ describe('explicit multi-digit frets', () => {
 		);
 	});
 
+	describe('articulation notation', () => {
+		it('parses all supported articulations with exact columns', () => {
+			const source = String.raw`E5h7 E7p5 E3/5 E5\3 E5b E5~ Ex E(5)|`;
+			const result = parse(source, tuning);
+			expect(result.errors).toEqual([]);
+			expect(result.features.articulations).toBe(true);
+			expect(result.systems[0].measures[0].events).toEqual([
+				{ kind: 'note', string: 0, fret: 5, digits: '5', column: 0, joinedToPrevious: false },
+				{ kind: 'technique', technique: 'hammer-on', string: 0, symbol: 'h', column: 1 },
+				{ kind: 'note', string: 0, fret: 7, digits: '7', column: 2, joinedToPrevious: true },
+				{ kind: 'note', string: 0, fret: 7, digits: '7', column: 4, joinedToPrevious: false },
+				{ kind: 'technique', technique: 'pull-off', string: 0, symbol: 'p', column: 5 },
+				{ kind: 'note', string: 0, fret: 5, digits: '5', column: 6, joinedToPrevious: true },
+				{ kind: 'note', string: 0, fret: 3, digits: '3', column: 8, joinedToPrevious: false },
+				{ kind: 'technique', technique: 'slide-up', string: 0, symbol: '/', column: 9 },
+				{ kind: 'note', string: 0, fret: 5, digits: '5', column: 10, joinedToPrevious: true },
+				{ kind: 'note', string: 0, fret: 5, digits: '5', column: 12, joinedToPrevious: false },
+				{ kind: 'technique', technique: 'slide-down', string: 0, symbol: '\\', column: 13 },
+				{ kind: 'note', string: 0, fret: 3, digits: '3', column: 14, joinedToPrevious: true },
+				{ kind: 'note', string: 0, fret: 5, digits: '5', column: 16, joinedToPrevious: false },
+				{ kind: 'technique', technique: 'bend', string: 0, symbol: 'b', column: 17 },
+				{ kind: 'note', string: 0, fret: 5, digits: '5', column: 19, joinedToPrevious: false },
+				{ kind: 'technique', technique: 'vibrato', string: 0, symbol: '~', column: 20 },
+				{ kind: 'dead-note', string: 0, digits: 'x', column: 22, joinedToPrevious: false },
+				{
+					kind: 'note',
+					string: 0,
+					fret: 5,
+					digits: '5',
+					display: '(5)',
+					ghost: true,
+					column: 24,
+					joinedToPrevious: false
+				}
+			]);
+			expect(result.systems[0].measures[0].width).toBe(27);
+		});
+
+		it('keeps adjacent B-string notes valid instead of reading them as bends', () => {
+			const result = parse('A2B0', getTuning('standard-5'));
+			expect(result.errors).toEqual([]);
+			expect(result.systems[0].measures[0].events).toEqual([
+				{ kind: 'note', string: 2, fret: 2, digits: '2', column: 0, joinedToPrevious: false },
+				{ kind: 'note', string: 0, fret: 0, digits: '0', column: 1, joinedToPrevious: true }
+			]);
+		});
+
+		it('reports connectors without an adjacent source note or target at the articulation column', () => {
+			expect(
+				parse('h5 E5 h7 E5h', tuning).errors.map((error) => [error.column, error.message])
+			).toEqual([
+				[1, 'Articulation "h" needs a preceding note'],
+				[7, 'Articulation "h" needs a preceding note'],
+				[12, 'Articulation "h" needs a target fret']
+			]);
+		});
+
+		it('does not reinterpret articulation characters from previously valid syntax', () => {
+			// `B` is the only suggested articulation character that can also be a valid string prefix.
+			// Adjacent B-string notes keep their old meaning; bend is only `b` without a following fret.
+			expect(parse('A2B0', getTuning('standard-5')).errors).toEqual([]);
+			for (const source of ['E5h7', 'E7p5', 'E3/5', String.raw`E5\3`, 'E5~', 'E5b', 'Ex', 'E(5)']) {
+				expect(parse(source, tuning).features.articulations).toBe(true);
+			}
+		});
+	});
+
 	it('excludes brackets from tab columns but includes them in highlighted fret spans', () => {
 		const source = '|E[12]3 [14]|';
 		const { text, layout, tokens, errors } = renderTab(source, tuning);

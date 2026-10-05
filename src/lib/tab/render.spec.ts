@@ -190,6 +190,37 @@ describe('renderTab', () => {
 	it('returns an empty string for empty input', () => {
 		expect(renderTab('  \n\n', bass4).text).toBe('');
 	});
+
+	it('renders articulation characters as exact tab columns', () => {
+		const { text, layout, errors } = renderTab(
+			String.raw`E5h7 E7p5 E3/5 E5\3 E5b E5~ Ex E(5)|`,
+			bass4
+		);
+		expect(errors).toEqual([]);
+		expect(text.split('\n')).toEqual([
+			String.raw`G|---------------------------|`,
+			String.raw`D|---------------------------|`,
+			String.raw`A|---------------------------|`,
+			String.raw`E|5h7-7p5-3/5-5\3-5b-5~-x-(5)|`
+		]);
+		expect(layout.measures[0].width).toBe(27);
+		expect(layout.measures[0].notes.map((note) => [note.digits, note.display, note.width])).toEqual(
+			[
+				['5', undefined, 1],
+				['7', undefined, 1],
+				['7', undefined, 1],
+				['5', undefined, 1],
+				['3', undefined, 1],
+				['5', undefined, 1],
+				['5', undefined, 1],
+				['3', undefined, 1],
+				['5', undefined, 1],
+				['5', undefined, 1],
+				['x', undefined, 1],
+				['5', '(5)', 3]
+			]
+		);
+	});
 });
 
 describe('parse errors', () => {

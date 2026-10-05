@@ -29,6 +29,12 @@ export const EXAMPLE_SOURCE = `[C Major Scale]
 # A whole line like [12] is a section heading; use |[12]| for a lone bare fret.
 |D[10] [12] G[12] [14]|E[12]3|E123|
 
+[Articulations]
+# Conventional tab marks are supported: h, p, /, \\, b, ~, x, and ghost notes.
+# Connectors such as E5h7 render as 5h7; each articulation character is a column.
+# Playback treats connected and ghost notes as plain notes for now; x is silent.
+|E5h7 E7p5|A3/5 D5\\3|G5b G5~|Ex E(5)|
+
 [Bar Lines and Rows]
 # The | character separates measures (bars); their written widths can differ.
 # Playback gives each bar four beats at the chosen BPM, regardless of its width.

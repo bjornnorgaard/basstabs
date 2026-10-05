@@ -157,13 +157,13 @@
 										style:--string-hue={stringHue(tuning.strings[line.string], line.string)}
 									>
 										{#each line.segments as segment, s (s)}{#if segment.noteId !== undefined}<span
-													class="rounded-xs {segment.text.length > 1
+													class="rounded-xs {segment.multiDigit
 														? 'hl-multi-digit'
 														: ''} {player.activeNoteId === segment.noteId
 														? 'preset-filled-primary-500'
 														: segment.noteId === focusedNote
-															? 'hl-string hl-focus'
-															: 'hl-string'}">{segment.text}</span
+															? `${segment.class ?? 'hl-string'} hl-focus`
+															: (segment.class ?? 'hl-string')}">{segment.text}</span
 												>{:else}{#each fillerParts(segment.text) as part, p (p)}<span
 														class={part.class}>{part.text}</span
 													>{/each}{/if}{/each}

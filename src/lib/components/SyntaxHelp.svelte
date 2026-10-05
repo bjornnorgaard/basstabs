@@ -22,6 +22,14 @@
 			syntax: `${tuning.strings[0]}123`,
 			meaning: 'Unbracketed digits are separate frets: a joined run of frets 1, 2, and 3.'
 		},
+		{
+			syntax: `${tuning.strings[0]}5h7 ${tuning.strings[0]}7p5 ${tuning.strings[0]}3/5 ${tuning.strings[0]}5\\3`,
+			meaning: 'Hammer-on, pull-off and slides connect two frets on one string.'
+		},
+		{
+			syntax: `${tuning.strings[0]}5b ${tuning.strings[0]}5~ ${tuning.strings[0]}x ${tuning.strings[0]}(5)`,
+			meaning: 'Bend, vibrato, dead note and ghost note notation.'
+		},
 		{ syntax: '|', meaning: 'Bar line – ends the current measure.' },
 		{ syntax: '↵ new line', meaning: 'Starts a new row of tab.', plain: true },
 		{ syntax: '[Verse 1]', meaning: 'Names the section that follows. Use a line of its own.' },
@@ -56,7 +64,10 @@
 		automatically. Notes can be adjacent, too:
 		<ShorthandCode source="A2E320" {tuning} /> means <ShorthandCode source="A2 E3 2 0" {tuning} />.
 		Spaces after the last note extend the bar by exactly that many blank columns. Brackets and
-		string names occupy no tab columns. A bare bracketed fret reuses the previous string; use <ShorthandCode
+		string names occupy no tab columns. Articulation characters also occupy tab columns: <ShorthandCode
+			source={`${tuning.strings[0]}5h7`}
+			{tuning}
+		/> is three columns. A bare bracketed fret reuses the previous string; use <ShorthandCode
 			source="E0 |[12]|"
 			{tuning}
 		/> rather than putting

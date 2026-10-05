@@ -29,8 +29,11 @@ export interface NoteLayout {
 	/** Unique across the whole layout, in playing order. */
 	id: number;
 	string: number;
-	fret: number;
+	fret?: number;
 	digits: string;
+	display?: string;
+	ghost?: boolean;
+	dead?: boolean;
 	joinedToPrevious: boolean;
 	/** 0-based column of the note's first digit within its row's lines. */
 	column: number;
@@ -51,6 +54,8 @@ export interface MeasureLayout {
 export interface LineSegment {
 	text: string;
 	noteId?: number;
+	class?: string;
+	multiDigit?: boolean;
 }
 
 export interface SystemLine {
@@ -102,21 +107,32 @@ function layoutSystem(
 
 	const measures: MeasureLayout[] = system.measures.map((measure) => {
 		const start = column;
-		const notes: NoteLayout[] = measure.events.map((event) => ({
-			id: counters.note++,
-			string: event.string,
-			fret: event.fret,
-			digits: event.digits,
-			joinedToPrevious: event.joinedToPrevious,
-			column: start + event.column,
-			width: event.digits.length
-		}));
+		const notes: NoteLayout[] = measure.events.flatMap((event) => {
+			if (event.kind === 'technique') return [];
+			const text = event.kind === 'dead-note' ? event.digits : (event.display ?? event.digits);
+			return [
+				{
+					id: counters.note++,
+					string: event.string,
+					fret: event.kind === 'note' ? event.fret : undefined,
+					digits: event.digits,
+					display: event.kind === 'note' ? event.display : undefined,
+					ghost: event.kind === 'note' ? event.ghost : undefined,
+					dead: event.kind === 'dead-note' ? true : undefined,
+					joinedToPrevious: event.joinedToPrevious,
+					column: start + event.column,
+					width: text.length
+				}
+			];
+		});
 		const layout = { id: counters.measure++, column: start, width: measure.width, notes };
 		column += measure.width + BAR.length;
 		return layout;
 	});
 
 	const lineLength = column;
+	const notesByMeasure = measures.map((measure) => measure.notes);
+	const allNotes = notesByMeasure.flat();
 	const lines = tuning.strings
 		.map((name, string) => {
 			const segments: LineSegment[] = [{ text: name.padEnd(nameWidth) + BAR }];
@@ -130,11 +146,32 @@ function layoutSystem(
 				}
 				if (text) segments.push({ text });
 			};
-			for (const note of measures.flatMap((m) => m.notes)) {
-				if (note.string !== string) continue;
-				fillTo(note.column);
-				segments.push({ text: note.digits, noteId: note.id });
-				cursor += note.width;
+			let nextNote = 0;
+			for (const [measureIndex, measure] of system.measures.entries()) {
+				const measureStart = measures[measureIndex].column;
+				let lastNoteId: number | undefined;
+				for (const event of measure.events) {
+					if (event.string !== string) {
+						if (event.kind !== 'technique') nextNote++;
+						continue;
+					}
+					if (event.kind === 'technique') {
+						fillTo(measureStart + event.column);
+						segments.push({ text: event.symbol, noteId: lastNoteId, class: 'hl-technique' });
+						cursor += event.symbol.length;
+						continue;
+					}
+					const note = allNotes[nextNote];
+					nextNote++;
+					lastNoteId = note.id;
+					fillTo(note.column);
+					const text = note.display ?? note.digits;
+					const segment: LineSegment = { text, noteId: note.id };
+					if (note.digits.length > 1) segment.multiDigit = true;
+					if (note.dead) segment.class = 'hl-technique';
+					segments.push(segment);
+					cursor += note.width;
+				}
 			}
 			fillTo(lineLength);
 			return { string, text: segments.map((s) => s.text).join(''), segments };

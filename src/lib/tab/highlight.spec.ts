@@ -55,6 +55,26 @@ describe('source tokens', () => {
 			expect(note?.string).toBe(token.string);
 		}
 	});
+
+	it('tags articulation glyphs as technique tokens', () => {
+		const source = String.raw`E5h7 E5b Ex E(5)|`;
+		expect(describeTokens(source)).toEqual([
+			'string:E#0',
+			'fret:5#0',
+			'technique:h#0',
+			'fret:7#1',
+			'string:E#2',
+			'fret:5#2',
+			'technique:b#2',
+			'string:E#3',
+			'technique:x#3',
+			'string:E#4',
+			'technique:(#4',
+			'fret:5#4',
+			'technique:)#4',
+			'bar:|'
+		]);
+	});
 });
 
 describe('highlightSegments', () => {

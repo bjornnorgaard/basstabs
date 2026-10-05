@@ -29,22 +29,31 @@ E|0-0-----|0-0-3---|
 | `E[12]3`        | Fret 12 on E, immediately followed by fret 3                |
 | `E123`          | Joined frets 1, 2, and 3 on E                               |
 | `[12]` in a bar | Fret 12 on the previous string                              |
+| `E5h7`          | Hammer-on from fret 5 to fret 7                             |
+| `E7p5`          | Pull-off from fret 7 to fret 5                              |
+| `E3/5`, `E5\3`  | Slide up or down                                            |
+| `E5b`, `E5~`    | Bend or vibrato                                             |
+| `Ex`            | Dead / muted note                                           |
+| `E(5)`          | Ghost note                                                  |
 | `\|`            | Bar line, which ends the current measure                    |
 | new line        | Starts a new row of tab                                     |
 | `[Intro]`       | Names the section that follows (whole line only)            |
 | `# Play softly` | Displays an annotation above the next row (whole line only) |
 
 Every fret digit and every space inside a bar occupies exactly one tab column;
-string letters, fret brackets, and bar lines occupy none. No extra columns are added. For
-example, `|E4320|` renders `E|4320|`, while `|E1       |` renders
-`E|1-------|`. Spaces before or between notes also become blank columns, and
-bars in the same row can have different widths. A row without a final bar line
-ends immediately after its last written character. Adjacent notes such as
-`A2E320` mean `A2 E3 2 0`. Every unbracketed digit is a separate fret:
-`E12` means `E1 E2`, while `E[12]` is one note at fret 12 and occupies two columns.
-Use `E[12]3` for joined frets 12 and 3, or `E[12] 3` to separate them.
+string letters, fret brackets, and bar lines occupy none. Articulation characters
+do occupy columns: `E5h7` is three columns, `E5b` is two, and `E(5)` is three.
+No extra columns are added. For example, `|E4320|` renders `E|4320|`, while
+`|E1       |` renders `E|1-------|`. Spaces before or between notes also become
+blank columns, and bars in the same row can have different widths. A row without
+a final bar line ends immediately after its last written character. Adjacent notes
+such as `A2E320` mean `A2 E3 2 0`. Every unbracketed digit is a separate fret:
+`E12` means `E1 E2`, while `E[12]` is one note at fret 12 and occupies two
+columns. Use `E[12]3` for joined frets 12 and 3, or `E[12] 3` to separate them.
 A bare bracketed fret reuses the previous string. Whole-line bracketed text is
 always a section heading, including `[12]`; use `|[12]|` for a lone bare fret.
+Hammer-ons, pull-offs, slides, bends and vibrato must be attached to the note
+they mark; `h7` at the start of a bar or `E5h` without a target is invalid.
 Supported tunings are 4-string (EADG), 5-string (BEADG) and 6-string (BEADGC).
 
 Use section names and annotations for structure, playing reminders, or rough
@@ -75,6 +84,10 @@ There is no rhythm in the syntax yet, so every bar lasts the same time (4 beats 
 the chosen BPM), regardless of its written width. Playback divides a bar evenly
 between its note groups, not its spaces; joined notes like `E320` share a group's
 slot. Fully blank bars are silent. Section headings and annotations are not played.
+Articulations are render-first: hammer-on, pull-off and slide targets play as
+normal joined notes, bends, vibrato and ghost notes play as the plain fret, and
+dead notes (`x`) are silent slots. There is not yet special slide, bend, vibrato
+or muted-string synthesis.
 
 The **Sound design** page (`/sound`, the sliders icon in the header) shapes the
 synthesised bass app-wide: exciter, Karplus–Strong string model (damping, decay,
@@ -89,9 +102,10 @@ JSON; to make a sound the default, paste its values into `DEFAULT_SOUND` in
 
 The shorthand editor is colour-coded, and the rendered tab uses the same colours so
 you can see which shorthand produced which part of the tab. Each string has its own
-colour, and a bare fret takes the colour of the string it plays on. Sections are
-tinted, comments are muted and invalid tokens are underlined. Put the caret on a
-note to outline it in the tab.
+colour, and a bare fret takes the colour of the string it plays on. Articulation
+marks use a separate technique colour. Sections are tinted, comments are muted
+and invalid tokens are underlined. Put the caret on a note to outline it in the
+tab.
 
 Click the **Shorthand** heading to collapse the editor so the tab takes the full
 width. While collapsed, the heading shows a badge if the shorthand has errors. The
@@ -115,7 +129,9 @@ automatic saving, and sound design. String names are consistently uppercase in
 the music, with a comment explaining that casing does not matter. Duplicating or
 saving a shared tab preserves its source instead. Older saved tabs, sound-design riffs, and
 version 1 share links are automatically migrated to bracket notation, preserving
-their pitches, tab columns, and playback grouping. New share links use version 2.
+their pitches, tab columns, and playback grouping. New share links use the lowest
+compatible payload version: version 2 for bracket-era syntax, or version 3 when
+articulations are present.
 
 - Parser: `src/lib/tab/parser.ts`. New indicators go in the `TabEvent` union.
 - Renderer: `src/lib/tab/render.ts`. `layoutBlocks` records where every note and bar

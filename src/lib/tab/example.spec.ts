@@ -33,13 +33,14 @@ describe('new tab example', () => {
 			'Spacing and Silence',
 			'Joined Notes',
 			'Higher Frets',
+			'Articulations',
 			'Bar Lines and Rows',
 			'Verse',
 			'Try the Features'
 		]);
-		expect(systems).toHaveLength(8);
+		expect(systems).toHaveLength(9);
 		expect(new Set(tokens.map((token) => token.kind))).toEqual(
-			new Set(['section', 'comment', 'bar', 'string', 'fret'])
+			new Set(['section', 'comment', 'bar', 'string', 'fret', 'technique'])
 		);
 		for (const token of tokens.filter((token) => token.kind === 'string')) {
 			const name = EXAMPLE_SOURCE.slice(token.start, token.end);
@@ -49,9 +50,10 @@ describe('new tab example', () => {
 
 	it.each(TUNINGS)('plays an ascending C major scale for $label', (tuning) => {
 		const { systems } = parse(EXAMPLE_SOURCE, tuning);
-		const pitches = systems[0].measures[0].events.map(
-			(note) => tuning.openMidi[note.string] + note.fret
-		);
+		const pitches = systems[0].measures[0].events.map((note) => {
+			if (note.kind !== 'note') throw new Error('Expected only notes in the scale example');
+			return tuning.openMidi[note.string] + note.fret;
+		});
 		expect(pitches).toEqual([36, 38, 40, 41, 43, 45, 47, 48]);
 	});
 
@@ -78,7 +80,17 @@ describe('new tab example', () => {
 		expect(systems[4].measures[0].events.map((note) => note.fret)).toEqual([10, 12, 12, 14]);
 		expect(systems[4].measures[1].events.map((note) => note.fret)).toEqual([12, 3]);
 		expect(systems[4].measures[2].events.map((note) => note.fret)).toEqual([1, 2, 3]);
-		expect(systems[5].measures.map((measure) => measure.width)).toEqual([2, 7, 9, 8]);
+		const articulations = systems[5].measures;
+		expect(articulations.map((measure) => measure.width)).toEqual([7, 7, 5, 5]);
+		expect(articulations[0].events.map((event) => event.kind)).toEqual([
+			'note',
+			'technique',
+			'note',
+			'note',
+			'technique',
+			'note'
+		]);
+		expect(systems[6].measures.map((measure) => measure.width)).toEqual([2, 7, 9, 8]);
 		const { layout } = renderTab(EXAMPLE_SOURCE, tuning);
 		const silentBar = layout.measures.find((measure) => measure.notes.length === 0);
 		expect(silentBar?.width).toBe(4);
@@ -90,7 +102,7 @@ describe('new tab example', () => {
 	it('places the newline comment above the next row and preserves the previous string', () => {
 		const tuning = getTuning('standard-4');
 		const { systems } = parse(EXAMPLE_SOURCE, tuning);
-		expect(systems[6].measures[0].events.map((note) => [note.string, note.fret])).toEqual([
+		expect(systems[7].measures[0].events.map((note) => [note.string, note.fret])).toEqual([
 			[0, 3],
 			[0, 2],
 			[0, 0]
