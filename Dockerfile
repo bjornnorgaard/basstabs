@@ -5,7 +5,7 @@
 # so the container also works with a read-only root filesystem and any
 # non-root runAsUser.
 
-FROM node:24-bookworm-slim AS build
+FROM node:26-bookworm-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
