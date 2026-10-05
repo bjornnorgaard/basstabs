@@ -1,6 +1,8 @@
 import type * as FirebaseApp from 'firebase/app';
+import type * as FirebaseAppCheck from 'firebase/app-check';
 import type * as FirebaseAuth from 'firebase/auth';
 import type * as FirebaseFirestore from 'firebase/firestore';
+import { env } from '$env/dynamic/public';
 
 const firebaseConfig = {
 	apiKey: 'AIzaSyD0fKYg55eOfxm-_f5Qcut0MqMQAqJgfwg',
@@ -11,6 +13,7 @@ const firebaseConfig = {
 
 export type FirebaseServices = {
 	app: FirebaseApp.FirebaseApp;
+	appCheck?: FirebaseAppCheck.AppCheck;
 	auth: FirebaseAuth.Auth;
 	db: FirebaseFirestore.Firestore;
 	authSdk: typeof FirebaseAuth;
@@ -42,9 +45,11 @@ async function loadFirebase(): Promise<FirebaseServices> {
 			import('firebase/firestore')
 		]);
 		const app = appSdk.getApps()[0] ?? appSdk.initializeApp(firebaseConfig);
+		const appCheck = await initializeAppCheck(app);
 		const { db, cache } = initializeFirestore(app, firestoreSdk);
 		firebase = {
 			app,
+			...(appCheck ? { appCheck } : {}),
 			auth: authSdk.getAuth(app),
 			db,
 			authSdk,
@@ -55,6 +60,29 @@ async function loadFirebase(): Promise<FirebaseServices> {
 	} catch (error) {
 		firebasePromise = undefined;
 		throw error;
+	}
+}
+
+async function initializeAppCheck(app: FirebaseApp.FirebaseApp) {
+	const siteKey = env.PUBLIC_FIREBASE_APPCHECK_SITE_KEY?.trim();
+	if (!siteKey) return undefined;
+
+	try {
+		if (import.meta.env.DEV) {
+			const debugToken = env.PUBLIC_FIREBASE_APPCHECK_DEBUG_TOKEN?.trim();
+			const debugGlobal = (globalThis.self ?? globalThis) as typeof globalThis & {
+				FIREBASE_APPCHECK_DEBUG_TOKEN?: string | boolean;
+			};
+			debugGlobal.FIREBASE_APPCHECK_DEBUG_TOKEN = debugToken || true;
+		}
+		const appCheckSdk = await import('firebase/app-check');
+		return appCheckSdk.initializeAppCheck(app, {
+			provider: new appCheckSdk.ReCaptchaEnterpriseProvider(siteKey),
+			isTokenAutoRefreshEnabled: true
+		});
+	} catch (error) {
+		console.warn('Firebase App Check could not be initialized; continuing without it.', error);
+		return undefined;
 	}
 }
 
