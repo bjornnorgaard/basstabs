@@ -1,4 +1,4 @@
-import { parse, type System, type TabBlock, type TabEvent } from './parser';
+import { parse, type System, type TabBlock } from './parser';
 import type { Tuning } from './tuning';
 
 const FILL = '-';
@@ -9,9 +9,7 @@ const BAR = '|';
  * whitespace between them (see `NoteEvent.joinedToPrevious`). Playback uses the runs
  * to schedule quickly successive notes within one slot.
  */
-export function groupJoinedEvents<T extends Pick<TabEvent, 'joinedToPrevious'>>(
-	events: T[]
-): T[][] {
+export function groupJoinedEvents<T extends { joinedToPrevious: boolean }>(events: T[]): T[][] {
 	const groups: T[][] = [];
 	for (const event of events) {
 		const previousGroup = groups[groups.length - 1];
@@ -40,6 +38,12 @@ export interface NoteLayout {
 	width: number;
 }
 
+export interface TimingSlot {
+	notes: NoteLayout[];
+	/** Length in bars. A quarter note in 4/4 is 0.25. */
+	duration: number;
+}
+
 export interface MeasureLayout {
 	/** Unique across the whole layout, in playing order. */
 	id: number;
@@ -48,6 +52,10 @@ export interface MeasureLayout {
 	/** Number of characters between the surrounding bar lines. */
 	width: number;
 	notes: NoteLayout[];
+	/** True when this bar uses explicit rhythm markers instead of legacy even spacing. */
+	timed?: boolean;
+	/** Timed note/rest slots in source order. Empty notes represent rests or silent dead-note slots. */
+	timingSlots: TimingSlot[];
 }
 
 /** A run of characters on one rendered line; notes get their own segment so they can be highlighted. */
@@ -107,25 +115,42 @@ function layoutSystem(
 
 	const measures: MeasureLayout[] = system.measures.map((measure) => {
 		const start = column;
-		const notes: NoteLayout[] = measure.events.flatMap((event) => {
-			if (event.kind === 'technique') return [];
+		const notes: NoteLayout[] = [];
+		const timingSlots: TimingSlot[] = [];
+		for (const event of measure.events) {
+			if (event.kind === 'technique') continue;
+			if (event.kind === 'rest') {
+				timingSlots.push({ notes: [], duration: event.duration.bars });
+				continue;
+			}
 			const text = event.kind === 'dead-note' ? event.digits : (event.display ?? event.digits);
-			return [
-				{
-					id: counters.note++,
-					string: event.string,
-					fret: event.kind === 'note' ? event.fret : undefined,
-					digits: event.digits,
-					display: event.kind === 'note' ? event.display : undefined,
-					ghost: event.kind === 'note' ? event.ghost : undefined,
-					dead: event.kind === 'dead-note' ? true : undefined,
-					joinedToPrevious: event.joinedToPrevious,
-					column: start + event.column,
-					width: text.length
-				}
-			];
-		});
-		const layout = { id: counters.measure++, column: start, width: measure.width, notes };
+			const note = {
+				id: counters.note++,
+				string: event.string,
+				fret: event.kind === 'note' ? event.fret : undefined,
+				digits: event.digits,
+				display: event.kind === 'note' ? event.display : undefined,
+				ghost: event.kind === 'note' ? event.ghost : undefined,
+				dead: event.kind === 'dead-note' ? true : undefined,
+				joinedToPrevious: event.joinedToPrevious,
+				column: start + event.column,
+				width: text.length
+			};
+			notes.push(note);
+			if (event.joinedToPrevious && timingSlots.length > 0) {
+				timingSlots[timingSlots.length - 1].notes.push(note);
+			} else {
+				timingSlots.push({ notes: [note], duration: event.duration?.bars ?? 1 / 4 });
+			}
+		}
+		const layout = {
+			id: counters.measure++,
+			column: start,
+			width: measure.width,
+			notes,
+			...(measure.timed ? { timed: true } : {}),
+			timingSlots
+		};
 		column += measure.width + BAR.length;
 		return layout;
 	});
@@ -151,6 +176,7 @@ function layoutSystem(
 				const measureStart = measures[measureIndex].column;
 				let lastNoteId: number | undefined;
 				for (const event of measure.events) {
+					if (event.kind === 'rest') continue;
 					if (event.string !== string) {
 						if (event.kind !== 'technique') nextNote++;
 						continue;

@@ -103,6 +103,76 @@ describe('explicit multi-digit frets', () => {
 		});
 	});
 
+	describe('rhythm duration notation', () => {
+		it('parses sticky duration markers and rests without adding tab columns', () => {
+			const result = parse(':q E0 0 :e 0 :r :re. |', tuning);
+			expect(result.errors).toEqual([]);
+			expect(result.features.rhythm).toBe(true);
+			expect(result.systems[0].measures[0]).toMatchObject({ width: 10, timed: true });
+			expect(result.systems[0].measures[0].events).toEqual([
+				{
+					kind: 'note',
+					string: 0,
+					fret: 0,
+					digits: '0',
+					column: 1,
+					joinedToPrevious: false,
+					duration: { code: 'q', dotted: false, bars: 0.25 }
+				},
+				{
+					kind: 'note',
+					string: 0,
+					fret: 0,
+					digits: '0',
+					column: 3,
+					joinedToPrevious: false,
+					duration: { code: 'q', dotted: false, bars: 0.25 }
+				},
+				{
+					kind: 'note',
+					string: 0,
+					fret: 0,
+					digits: '0',
+					column: 6,
+					joinedToPrevious: false,
+					duration: { code: 'e', dotted: false, bars: 0.125 }
+				},
+				{ kind: 'rest', duration: { code: 'e', dotted: false, bars: 0.125 } },
+				{ kind: 'rest', duration: { code: 'e', dotted: true, bars: 0.1875 } }
+			]);
+		});
+
+		it('treats joined notes as one duration slot', () => {
+			const result = parse(':h E320 :h A2 |', tuning);
+			expect(result.errors).toEqual([]);
+			expect(
+				result.systems[0].measures[0].events
+					.filter((event) => event.kind === 'note')
+					.map((event) => [event.fret, event.joinedToPrevious, event.duration?.bars])
+			).toEqual([
+				[3, false, 0.5],
+				[2, true, undefined],
+				[0, true, undefined],
+				[2, false, 0.5]
+			]);
+		});
+
+		it('reports overfilled rhythm bars at the slot that exceeds the bar', () => {
+			expect(parse(':h E0 :h 1 :q 2 |', tuning).errors).toEqual([
+				{ line: 1, column: 15, length: 1, message: 'Rhythm durations exceed one 4/4 bar' }
+			]);
+		});
+
+		it('reports invalid rhythm markers without colliding with existing syntax', () => {
+			expect(parse(':z E0 |', tuning).errors).toEqual([
+				{ line: 1, column: 1, length: 2, message: 'Invalid rhythm marker ":z"' }
+			]);
+			expect(parse('E0:1', tuning).errors).toEqual([
+				{ line: 1, column: 3, length: 2, message: 'Invalid rhythm marker ":1"' }
+			]);
+		});
+	});
+
 	it('excludes brackets from tab columns but includes them in highlighted fret spans', () => {
 		const source = '|E[12]3 [14]|';
 		const { text, layout, tokens, errors } = renderTab(source, tuning);

@@ -19,6 +19,8 @@ export interface NoteEvent {
 	 * quick succession.
 	 */
 	joinedToPrevious: boolean;
+	/** Explicit rhythmic length for the note group when the bar opts into rhythm. */
+	duration?: RhythmDuration;
 }
 
 export type TechniqueKind =
@@ -44,15 +46,39 @@ export interface DeadNoteEvent {
 	/** 0-based column within the measure. */
 	column: number;
 	joinedToPrevious: boolean;
+	/** Explicit rhythmic length for the silent slot when the bar opts into rhythm. */
+	duration?: RhythmDuration;
+}
+
+export type DurationCode = 'w' | 'h' | 'q' | 'e' | 's';
+
+export interface RhythmDuration {
+	code: DurationCode;
+	dotted: boolean;
+	/** Length in bars. A quarter note in 4/4 is 0.25. */
+	bars: number;
+}
+
+export interface RestEvent {
+	kind: 'rest';
+	string?: never;
+	fret?: never;
+	digits?: never;
+	column?: never;
+	joinedToPrevious?: never;
+	/** Rests consume time in marked bars but occupy no rendered tab columns. */
+	duration: RhythmDuration;
 }
 
 /** One rhythmic column in the tab. Kept as a union so new indicators can be added later. */
-export type TabEvent = NoteEvent | TechniqueEvent | DeadNoteEvent;
+export type TabEvent = NoteEvent | TechniqueEvent | DeadNoteEvent | RestEvent;
 
 export interface Measure {
 	events: TabEvent[];
 	/** Exact number of columns written between the bar lines (or row boundaries). */
 	width: number;
+	/** True when any duration or rest marker opts this bar into explicit timing. */
+	timed?: boolean;
 }
 
 /** A row of measures rendered together (one input line = one system). */
@@ -83,7 +109,7 @@ export interface ParseError {
 }
 
 export type SourceTokenKind =
-	'string' | 'fret' | 'technique' | 'bar' | 'section' | 'comment' | 'invalid';
+	'string' | 'fret' | 'technique' | 'duration' | 'rest' | 'bar' | 'section' | 'comment' | 'invalid';
 
 /** A highlightable span of the source, used for syntax highlighting in the editor. */
 export interface SourceToken {
@@ -106,6 +132,7 @@ export interface ParseResult {
 	tokens: SourceToken[];
 	features: {
 		articulations: boolean;
+		rhythm: boolean;
 	};
 }
 
@@ -116,6 +143,20 @@ const CONNECTOR_TECHNIQUES: Record<string, TechniqueKind> = {
 	'\\': 'slide-down'
 };
 const POSTFIX_TECHNIQUES: Record<string, TechniqueKind> = { b: 'bend', '~': 'vibrato' };
+
+const DURATION_BARS: Record<DurationCode, number> = {
+	w: 1,
+	h: 1 / 2,
+	q: 1 / 4,
+	e: 1 / 8,
+	s: 1 / 16
+};
+
+const DEFAULT_DURATION = durationFor('q', false);
+
+function durationFor(code: DurationCode, dotted: boolean): RhythmDuration {
+	return { code, dotted, bars: DURATION_BARS[code] * (dotted ? 1.5 : 1) };
+}
 
 /**
  * Parses the shorthand syntax, e.g. `E0 0 A2 2 |E0 0 3 A2 |`.
@@ -134,7 +175,7 @@ export function parse(source: string, tuning: Tuning, syntaxVersion: 1 | 2 = 2):
 	const errors: ParseError[] = [];
 	const sourceTokens: SourceToken[] = [];
 	const stringIndex = new Map(tuning.strings.map((name, i) => [name.toUpperCase(), i]));
-	const features = { articulations: false };
+	const features = { articulations: false, rhythm: false };
 	let currentString: number | undefined;
 	let noteCount = 0;
 	let lineOffset = 0;
@@ -177,6 +218,9 @@ export function parse(source: string, tuning: Tuning, syntaxVersion: 1 | 2 = 2):
 		let measureColumn = 0;
 		let consumedEnd = 0;
 		let openingBar = false;
+		let measureHasRhythm = false;
+		let currentDuration = DEFAULT_DURATION;
+		let rhythmSlots: { duration: RhythmDuration; start: number; length: number }[] = [];
 		// End index (0-based, exclusive) in lineText of the previously emitted note, used to
 		// detect notes written back-to-back with no whitespace between them. Reset whenever a
 		// measure ends, since joining never crosses a bar line.
@@ -186,12 +230,36 @@ export function parse(source: string, tuning: Tuning, syntaxVersion: 1 | 2 = 2):
 
 		const closeMeasure = (end: number, explicit: boolean) => {
 			if (!explicit && end > consumedEnd) measureColumn += end - consumedEnd;
+			if (measureHasRhythm) {
+				let total = 0;
+				const overflow = rhythmSlots.find((slot) => {
+					total += slot.duration.bars;
+					return total > 1 + Number.EPSILON;
+				});
+				if (overflow) {
+					sourceTokens.push({
+						kind: 'invalid',
+						...span(overflow.start, overflow.start + overflow.length)
+					});
+					errors.push({
+						...position(overflow.start, overflow.length),
+						message: 'Rhythm durations exceed one 4/4 bar'
+					});
+				}
+			}
 			if (events.length > 0 || (openingBar && measureColumn > 0)) {
-				measures.push({ events, width: measureColumn });
+				measures.push({
+					events,
+					width: measureColumn,
+					...(measureHasRhythm ? { timed: true } : {})
+				});
 			}
 			events = [];
 			measureColumn = 0;
 			consumedEnd = end + (explicit ? 1 : 0);
+			measureHasRhythm = false;
+			currentDuration = DEFAULT_DURATION;
+			rhythmSlots = [];
 			previousEventEnd = -1;
 			previousFrettedNote = undefined;
 			splitLegacyDigitsEnd = -1;
@@ -231,6 +299,36 @@ export function parse(source: string, tuning: Tuning, syntaxVersion: 1 | 2 = 2):
 					digits: match[1],
 					tokenEnd: start + match[0].length,
 					fretStart: start
+				};
+			}
+			return null;
+		};
+		const readRhythmMarker = (
+			start: number
+		):
+			| { kind: 'duration'; duration: RhythmDuration; tokenEnd: number }
+			| { kind: 'rest'; duration?: RhythmDuration; tokenEnd: number }
+			| null => {
+			if (lineText[start] !== ':') return null;
+			const marker = lineText[start + 1];
+			if (marker === 'r') {
+				const restCode = lineText[start + 2];
+				if (restCode && restCode in DURATION_BARS) {
+					const dotted = lineText[start + 3] === '.';
+					return {
+						kind: 'rest',
+						duration: durationFor(restCode as DurationCode, dotted),
+						tokenEnd: start + (dotted ? 4 : 3)
+					};
+				}
+				return { kind: 'rest', tokenEnd: start + 2 };
+			}
+			if (marker && marker in DURATION_BARS) {
+				const dotted = lineText[start + 2] === '.';
+				return {
+					kind: 'duration',
+					duration: durationFor(marker as DurationCode, dotted),
+					tokenEnd: start + (dotted ? 3 : 2)
 				};
 			}
 			return null;
@@ -329,7 +427,11 @@ export function parse(source: string, tuning: Tuning, syntaxVersion: 1 | 2 = 2):
 			};
 			if (options.display) event.display = options.display;
 			if (options.ghost) event.ghost = true;
+			if (measureHasRhythm && !joinedToPrevious) event.duration = currentDuration;
 			events.push(event);
+			if (!joinedToPrevious) {
+				rhythmSlots.push({ duration: currentDuration, start, length: tokenEnd - start });
+			}
 			measureColumn += (options.display ?? digits).length;
 			consumedEnd = tokenEnd;
 			previousEventEnd = tokenEnd;
@@ -349,13 +451,18 @@ export function parse(source: string, tuning: Tuning, syntaxVersion: 1 | 2 = 2):
 			const noteToken = { string, note };
 			if (letter) addStringToken(start, noteToken);
 			sourceTokens.push({ kind: 'technique', ...span(tokenEnd - 1, tokenEnd), ...noteToken });
-			events.push({
+			const event: DeadNoteEvent = {
 				kind: 'dead-note',
 				string,
 				digits: 'x',
 				column: measureColumn,
 				joinedToPrevious
-			});
+			};
+			if (measureHasRhythm && !joinedToPrevious) event.duration = currentDuration;
+			events.push(event);
+			if (!joinedToPrevious) {
+				rhythmSlots.push({ duration: currentDuration, start, length: tokenEnd - start });
+			}
 			measureColumn += 1;
 			consumedEnd = tokenEnd;
 			previousEventEnd = tokenEnd;
@@ -383,6 +490,32 @@ export function parse(source: string, tuning: Tuning, syntaxVersion: 1 | 2 = 2):
 			}
 
 			consumeGap(start);
+
+			if (char === ':') {
+				const marker = readRhythmMarker(start);
+				if (!marker) {
+					const end = invalidRunEnd(start);
+					addInvalid(start, end, `Invalid rhythm marker "${lineText.slice(start, end)}"`);
+					index = end;
+					continue;
+				}
+				features.rhythm = true;
+				measureHasRhythm = true;
+				if (marker.kind === 'duration') {
+					currentDuration = marker.duration;
+					sourceTokens.push({ kind: 'duration', ...span(start, marker.tokenEnd) });
+				} else {
+					const duration = marker.duration ?? currentDuration;
+					sourceTokens.push({ kind: 'rest', ...span(start, marker.tokenEnd) });
+					events.push({ kind: 'rest', duration });
+					rhythmSlots.push({ duration, start, length: marker.tokenEnd - start });
+				}
+				consumedEnd = marker.tokenEnd;
+				previousEventEnd = -1;
+				previousFrettedNote = undefined;
+				index = marker.tokenEnd;
+				continue;
+			}
 
 			const canAttachToPrevious =
 				previousFrettedNote !== undefined && previousFrettedNote.end === start;

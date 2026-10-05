@@ -35,12 +35,13 @@ describe('new tab example', () => {
 			'Higher Frets',
 			'Articulations',
 			'Bar Lines and Rows',
+			'Rhythm and Rests',
 			'Verse',
 			'Try the Features'
 		]);
-		expect(systems).toHaveLength(9);
+		expect(systems).toHaveLength(10);
 		expect(new Set(tokens.map((token) => token.kind))).toEqual(
-			new Set(['section', 'comment', 'bar', 'string', 'fret', 'technique'])
+			new Set(['section', 'comment', 'bar', 'string', 'fret', 'technique', 'duration', 'rest'])
 		);
 		for (const token of tokens.filter((token) => token.kind === 'string')) {
 			const name = EXAMPLE_SOURCE.slice(token.start, token.end);
@@ -91,6 +92,12 @@ describe('new tab example', () => {
 			'note'
 		]);
 		expect(systems[6].measures.map((measure) => measure.width)).toEqual([2, 7, 9, 8]);
+		const rhythm = systems[8].measures;
+		expect(rhythm.every((measure) => measure.timed)).toBe(true);
+		expect(rhythm.map((measure) => measure.events.map((event) => event.kind))).toEqual([
+			['note', 'note', 'note', 'note', 'rest', 'note'],
+			['note', 'note', 'note', 'note', 'note', 'rest']
+		]);
 		const { layout } = renderTab(EXAMPLE_SOURCE, tuning);
 		const silentBar = layout.measures.find((measure) => measure.notes.length === 0);
 		expect(silentBar?.width).toBe(4);

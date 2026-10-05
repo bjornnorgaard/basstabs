@@ -35,6 +35,9 @@ E|0-0-----|0-0-3---|
 | `E5b`, `E5~`    | Bend or vibrato                                             |
 | `Ex`            | Dead / muted note                                           |
 | `E(5)`          | Ghost note                                                  |
+| `:q`, `:e`, ... | Duration marker: whole, half, quarter, eighth, sixteenth    |
+| `:q.`           | Dotted duration marker                                      |
+| `:r`, `:re.`    | Rest using the current duration, or an explicit dotted rest |
 | `\|`            | Bar line, which ends the current measure                    |
 | new line        | Starts a new row of tab                                     |
 | `[Intro]`       | Names the section that follows (whole line only)            |
@@ -55,6 +58,19 @@ always a section heading, including `[12]`; use `|[12]|` for a lone bare fret.
 Hammer-ons, pull-offs, slides, bends and vibrato must be attached to the note
 they mark; `h7` at the start of a bar or `E5h` without a target is invalid.
 Supported tunings are 4-string (EADG), 5-string (BEADG) and 6-string (BEADGC).
+
+Rhythm is explicit and opt-in per bar. A bar with no duration or rest markers
+keeps the original playback behaviour. In a marked bar, `:w`, `:h`, `:q`, `:e`
+and `:s` set a sticky duration for following note groups in that bar (whole,
+half, quarter, eighth and sixteenth in 4/4). Add `.` for a dotted value, such as
+`:q.`. The marker itself is structural: it does not render and does not occupy a
+tab column, though any spaces you type around it still do. Rests are written
+`:r` for the current sticky duration, or with an explicit duration such as
+`:rq`, `:re` or `:re.`. Duration stickiness resets to quarter notes at each bar
+line. Joined notes and articulation groups use one duration slot and subdivide it
+as before: `:h E320` plays the three joined notes inside one half-note slot.
+Under-filled marked bars leave the remaining time silent; over-filled bars are
+reported as errors at the slot that exceeds the 4/4 bar.
 
 Use section names and annotations for structure, playing reminders, or rough
 lyrics without aligning words to notes:
@@ -80,14 +96,16 @@ a section heading, row or bar and click it to play just that part. Shift+click
 loops it; the loop button makes looping the default. The note currently sounding
 is highlighted.
 
-There is no rhythm in the syntax yet, so every bar lasts the same time (4 beats at
-the chosen BPM), regardless of its written width. Playback divides a bar evenly
-between its note groups, not its spaces; joined notes like `E320` share a group's
-slot. Fully blank bars are silent. Section headings and annotations are not played.
-Articulations are render-first: hammer-on, pull-off and slide targets play as
-normal joined notes, bends, vibrato and ghost notes play as the plain fret, and
-dead notes (`x`) are silent slots. There is not yet special slide, bend, vibrato
-or muted-string synthesis.
+Every bar lasts four beats at the chosen BPM. A bar with no rhythm markers keeps
+the original behaviour: playback divides the bar evenly between note groups, not
+its spaces, and joined notes like `E320` share a group's slot. A bar with any
+duration or rest marker is timed by those written durations instead. Rests are
+silent slots; if the written durations add up to less than four beats, the
+remaining time in the bar is silent. Fully blank bars are silent. Section
+headings and annotations are not played. Articulations are render-first:
+hammer-on, pull-off and slide targets play as normal joined notes, bends, vibrato
+and ghost notes play as the plain fret, and dead notes (`x`) are silent slots.
+There is not yet special slide, bend, vibrato or muted-string synthesis.
 
 The **Sound design** page (`/sound`, the sliders icon in the header) shapes the
 synthesised bass app-wide: exciter, Karplus–Strong string model (damping, decay,
@@ -103,9 +121,9 @@ JSON; to make a sound the default, paste its values into `DEFAULT_SOUND` in
 The shorthand editor is colour-coded, and the rendered tab uses the same colours so
 you can see which shorthand produced which part of the tab. Each string has its own
 colour, and a bare fret takes the colour of the string it plays on. Articulation
-marks use a separate technique colour. Sections are tinted, comments are muted
-and invalid tokens are underlined. Put the caret on a note to outline it in the
-tab.
+marks use a separate technique colour, while duration and rest markers have their
+own rhythm colour. Sections are tinted, comments are muted and invalid tokens are
+underlined. Put the caret on a note to outline it in the tab.
 
 Click the **Shorthand** heading to collapse the editor so the tab takes the full
 width. While collapsed, the heading shows a badge if the shorthand has errors. The
@@ -137,7 +155,7 @@ saving a shared tab preserves its source instead. Older saved tabs, sound-design
 version 1 share links are automatically migrated to bracket notation, preserving
 their pitches, tab columns, and playback grouping. New share links use the lowest
 compatible payload version: version 2 for bracket-era syntax, or version 3 when
-articulations are present.
+articulations or rhythm markers are present.
 
 - Parser: `src/lib/tab/parser.ts`. New indicators go in the `TabEvent` union.
 - Renderer: `src/lib/tab/render.ts`. `layoutBlocks` records where every note and bar

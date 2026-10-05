@@ -75,6 +75,18 @@ describe('source tokens', () => {
 			'bar:|'
 		]);
 	});
+
+	it('tags rhythm duration and rest markers separately from frets', () => {
+		const source = ':q. E0 :r :re|';
+		expect(describeTokens(source)).toEqual([
+			'duration::q.',
+			'string:E#0',
+			'fret:0#0',
+			'rest::r',
+			'rest::re',
+			'bar:|'
+		]);
+	});
 });
 
 describe('highlightSegments', () => {
