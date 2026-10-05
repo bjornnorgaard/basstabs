@@ -302,8 +302,8 @@ npm run build    # build a static site into build/
 
 ## Container
 
-The image is a static build served by `nginx-unprivileged`, so there is no Node
-runtime. It idles at a few MiB of RAM.
+The image is a static build served by digest-pinned `nginx-unprivileged`, so
+there is no Node runtime. It idles at a few MiB of RAM.
 
 - Listens on port **3000** and runs as UID 101. It also works with any non-root
   `runAsUser` and `readOnlyRootFilesystem: true`, as long as `/tmp` is a
@@ -312,6 +312,11 @@ runtime. It idles at a few MiB of RAM.
   authentication.
 - `/_app/immutable/*` is cached for a year. Every other path gets `no-cache` and
   falls back to the app (`200.html`).
+- The runtime base image is pinned in `Dockerfile` with a readable tag plus a
+  digest. CI derives its nginx config test image from the same `Dockerfile`
+  reference via `.github/scripts/runtime-image.sh`, so the checked image cannot
+  drift from the shipped image. Dependabot checks Docker digests weekly in
+  `.github/dependabot.yml`.
 
 ## Deploy (Mimir)
 
