@@ -1,6 +1,6 @@
 # 07 · Split the cloud store
 
-- **Status:** Not started
+- **Status:** In progress
 - **Area:** Maintainability
 - **Size:** Medium
 - **Depends on:** [01](./01-lazy-load-firebase.md) _(soft — heavy overlap)_

@@ -1,6 +1,6 @@
 # 04 · Firebase App Check
 
-- **Status:** Not started
+- **Status:** In progress
 - **Area:** Security / cost control
 - **Size:** Medium
 - **Depends on:** [01](./01-lazy-load-firebase.md) _(soft — same file)_

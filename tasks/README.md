@@ -11,12 +11,12 @@ can safely run in parallel.
 | #                                           | Task                               | Area                 | Size   | Status      | Depends on  |
 | ------------------------------------------- | ---------------------------------- | -------------------- | ------ | ----------- | ----------- |
 | [01](./01-lazy-load-firebase.md)            | Lazy-load Firebase                 | Performance          | Medium | Done        | –           |
-| [02](./02-firestore-offline-persistence.md) | Firestore offline persistence      | Offline              | Small  | In progress | 01 _(soft)_ |
+| [02](./02-firestore-offline-persistence.md) | Firestore offline persistence      | Offline              | Small  | Done        | 01 _(soft)_ |
 | [03](./03-offline-app-shell.md)             | Offline app shell (service worker) | Offline / PWA        | Medium | Done        | –           |
-| [04](./04-firebase-app-check.md)            | Firebase App Check                 | Security / cost      | Medium | Not started | 01 _(soft)_ |
+| [04](./04-firebase-app-check.md)            | Firebase App Check                 | Security / cost      | Medium | In progress | 01 _(soft)_ |
 | [05](./05-rules-tests-in-ci.md)             | Run Firestore rules tests in CI    | CI / safety          | Small  | Done        | –           |
-| [06](./06-component-interaction-tests.md)   | Component and interaction tests    | Testing              | Medium | In progress | –           |
-| [07](./07-split-cloud-store.md)             | Split the cloud store              | Maintainability      | Medium | Not started | 01 _(soft)_ |
+| [06](./06-component-interaction-tests.md)   | Component and interaction tests    | Testing              | Medium | Done        | –           |
+| [07](./07-split-cloud-store.md)             | Split the cloud store              | Maintainability      | Medium | In progress | 01 _(soft)_ |
 | [08](./08-pin-container-base-image.md)      | Pin the container base image       | Build / supply chain | Small  | Done        | –           |
 | [09](./09-articulation-notation.md)         | Articulation notation              | Notation / parser    | Large  | Done        | –           |
 | [10](./10-rhythm-and-durations.md)          | Rhythm and note durations          | Notation / playback  | Large  | In progress | 09 _(soft)_ |
