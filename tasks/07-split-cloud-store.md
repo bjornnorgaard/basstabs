@@ -1,6 +1,6 @@
 # 07 · Split the cloud store
 
-- **Status:** In progress
+- **Status:** Done
 - **Area:** Maintainability
 - **Size:** Medium
 - **Depends on:** [01](./01-lazy-load-firebase.md) _(soft — heavy overlap)_
@@ -93,3 +93,99 @@ it starts changing document paths or query shapes, it has exceeded its scope.
 - Doing this _after_ [06](./06-component-interaction-tests.md) is attractive: real
   interaction tests give the refactor a safety net the current logic-only suite
   cannot.
+
+## Outcome
+
+Implemented the split with `cloudStore` kept as the public façade. No `.svelte`
+files were edited.
+
+Module map:
+
+- `src/lib/stores/cloud.svelte.ts` — façade and orchestration. It keeps the
+  public `cloudStore` properties and methods, delegates auth/listener/upload
+  responsibilities, and still owns cloud edit/save/delete operations that span
+  multiple seams (`dirty`, `saving`, `movingToBrowser`, timers, write promises,
+  title/share save bookkeeping).
+- `src/lib/cloud/auth-session.svelte.ts` — Auth state and lifecycle: `user`,
+  `ready`, `busy`, `ensure()`, `startFromSessionHint()`,
+  `skipInitialSessionCheck()`, `prewarmLogin()`, `login()`, `logout()`, session
+  hint maintenance, synchronous cached `signInWithPopup` path, generation
+  counter, and Firestore cache cleanup after sign-out.
+- `src/lib/cloud/library-listener.svelte.ts` — account library listener:
+  `onSnapshot`, cloud tab projection, saved title/share tracking, draft
+  restore/cache, `loading`, `connectionFailed`, `offline`, and `pendingSync`.
+- `src/lib/cloud/upload-queue.svelte.ts` — browser-tab cloud promotion queue:
+  `syncBrowserTabs()`, upload attempt fingerprint dedupe, per-tab
+  `uploadErrors`, account binding checks, explicit `upload()`, and
+  `replaceFromLocal()`.
+- `src/lib/cloud/errors.ts` — shared offline-error predicate for retry paths.
+
+Line counts:
+
+- Before: `src/lib/stores/cloud.svelte.ts` 700 lines;
+  `src/lib/cloud/store.spec.ts` 742 lines.
+- After:
+  - `src/lib/stores/cloud.svelte.ts` 459 lines.
+  - `src/lib/cloud/auth-session.svelte.ts` 145 lines.
+  - `src/lib/cloud/library-listener.svelte.ts` 200 lines.
+  - `src/lib/cloud/upload-queue.svelte.ts` 195 lines.
+  - `src/lib/cloud/errors.ts` 7 lines.
+  - Split cloud store specs: `store.spec.ts` 233 lines,
+    `upload-queue.spec.ts` 293 lines, `auth-session.spec.ts` 60 lines,
+    `library-listener.spec.ts` 48 lines, shared fixture 126 lines.
+
+Surface and reactivity:
+
+- Repository-wide `cloudStore.` scan was captured before and after. App and
+  component usage is unchanged; the only scan movement is the test helper setup
+  moving from `store.spec.ts` to `store.spec.fixtures.ts`.
+- The member names used by components and component-test mocks remain available:
+  `busy`, `connect`, `connectionFailed`, `create`, `dirty`, `ensure`, `error`,
+  `get`, `keepBrowserOnly`, `loading`, `login`, `logout`, `movingToBrowser`,
+  `offline`, `pendingSync`, `prewarmLogin`, `ready`, `remove`,
+  `replaceFromLocal`, `save`, `saving`, `setVisibility`,
+  `skipInitialSessionCheck`, `startFromSessionHint`, `tabs`, `update`, `upload`,
+  `uploadErrors`, and `user`.
+- `$state` remains live through the façade: auth, listener, and upload modules
+  are `.svelte.ts` files that own their reactive fields, while the façade exposes
+  getters/setters that delegate directly to those fields instead of copying
+  values. `sorted` is still derived from the façade `tabs` getter.
+
+Test split and counts:
+
+- Moved existing cloud store tests unchanged along seams:
+  - `upload-queue.spec.ts`: 18 tests.
+  - `auth-session.spec.ts`: 3 tests.
+  - `library-listener.spec.ts`: 3 tests.
+  - Remaining façade/save/share/delete tests in `store.spec.ts`: 16 tests.
+- Repo-wide `it(`/`test(` count before: 151. After: 151.
+- Baseline before work: `npm test` passed with 20 files passed, 1 skipped; 200
+  tests passed, 7 skipped.
+- After split: `npm test` passed with 23 files passed, 1 skipped; 200 tests
+  passed, 7 skipped.
+
+Lazy Firebase / bundle check:
+
+- No static `firebase/*` imports were added to the root bundle path.
+- After `npm run build`, the
+  `.svelte-kit/output/client/.vite/manifest.json` static import graph for the
+  client app/start entry, root layout node, and root page node contained 23
+  chunks and `firebaseStaticImports: []`.
+- This preserves the pre-refactor lazy-Firebase outcome from task 01 (root graph
+  had no Firebase static imports); Firebase remains reachable only through the
+  lazy accessor and dynamic chunks.
+
+Validation:
+
+- `npm run lint && npm run check && npm test && npm run build` passed.
+  - Prettier check passed.
+  - ESLint passed.
+  - `svelte-check`: 0 errors, 0 warnings.
+  - Vitest aggregate: 23 files passed, 1 skipped; 200 tests passed, 7 skipped.
+  - Production build completed and wrote `build/`.
+- Required rules wrapper passed on port 8270:
+  - Firestore rules node tests: 16 passed.
+  - Cloud write integration Vitest: 1 file passed; 7 tests passed.
+
+No Firestore document paths, queries, schemas, rules, or indexes changed. No
+Firebase deployment or push was run.
