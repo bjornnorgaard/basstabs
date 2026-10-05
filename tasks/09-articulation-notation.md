@@ -1,6 +1,6 @@
 # 09 · Articulation notation
 
-- **Status:** Not started
+- **Status:** In progress
 - **Area:** Notation / parser
 - **Size:** Large
 - **Depends on:** –

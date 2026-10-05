@@ -1,6 +1,6 @@
 # 05 · Run Firestore rules tests in CI
 
-- **Status:** Not started
+- **Status:** In progress
 - **Area:** CI / safety
 - **Size:** Small
 - **Depends on:** –

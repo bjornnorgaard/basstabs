@@ -10,19 +10,19 @@ can safely run in parallel.
 
 | #                                           | Task                               | Area                 | Size   | Status      | Depends on  |
 | ------------------------------------------- | ---------------------------------- | -------------------- | ------ | ----------- | ----------- |
-| [01](./01-lazy-load-firebase.md)            | Lazy-load Firebase                 | Performance          | Medium | Not started | –           |
+| [01](./01-lazy-load-firebase.md)            | Lazy-load Firebase                 | Performance          | Medium | In progress | –           |
 | [02](./02-firestore-offline-persistence.md) | Firestore offline persistence      | Offline              | Small  | Not started | 01 _(soft)_ |
-| [03](./03-offline-app-shell.md)             | Offline app shell (service worker) | Offline / PWA        | Medium | Not started | –           |
+| [03](./03-offline-app-shell.md)             | Offline app shell (service worker) | Offline / PWA        | Medium | In progress | –           |
 | [04](./04-firebase-app-check.md)            | Firebase App Check                 | Security / cost      | Medium | Not started | 01 _(soft)_ |
-| [05](./05-rules-tests-in-ci.md)             | Run Firestore rules tests in CI    | CI / safety          | Small  | Not started | –           |
+| [05](./05-rules-tests-in-ci.md)             | Run Firestore rules tests in CI    | CI / safety          | Small  | In progress | –           |
 | [06](./06-component-interaction-tests.md)   | Component and interaction tests    | Testing              | Medium | Not started | –           |
 | [07](./07-split-cloud-store.md)             | Split the cloud store              | Maintainability      | Medium | Not started | 01 _(soft)_ |
-| [08](./08-pin-container-base-image.md)      | Pin the container base image       | Build / supply chain | Small  | Not started | –           |
-| [09](./09-articulation-notation.md)         | Articulation notation              | Notation / parser    | Large  | Not started | –           |
+| [08](./08-pin-container-base-image.md)      | Pin the container base image       | Build / supply chain | Small  | In progress | –           |
+| [09](./09-articulation-notation.md)         | Articulation notation              | Notation / parser    | Large  | In progress | –           |
 | [10](./10-rhythm-and-durations.md)          | Rhythm and note durations          | Notation / playback  | Large  | Not started | 09 _(soft)_ |
 | [11](./11-repeats-and-tempo-markers.md)     | Repeats and tempo markers          | Notation / playback  | Medium | Not started | 10 _(soft)_ |
 | [12](./12-public-library-browsing.md)       | Improve the public library         | UX                   | Medium | Not started | –           |
-| [13](./13-print-stylesheet.md)              | Print stylesheet                   | UX                   | Small  | Not started | –           |
+| [13](./13-print-stylesheet.md)              | Print stylesheet                   | UX                   | Small  | In progress | –           |
 
 A **soft** dependency means the tasks edit the same files, not that one needs the
 other's feature. They can be done in either order, but not at the same time.

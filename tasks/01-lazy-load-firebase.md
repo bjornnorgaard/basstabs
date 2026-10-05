@@ -1,6 +1,6 @@
 # 01 · Lazy-load Firebase
 
-- **Status:** Not started
+- **Status:** In progress
 - **Area:** Performance
 - **Size:** Medium
 - **Depends on:** –

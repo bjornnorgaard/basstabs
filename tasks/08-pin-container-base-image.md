@@ -1,6 +1,6 @@
 # 08 · Pin the container base image
 
-- **Status:** Not started
+- **Status:** In progress
 - **Area:** Build / supply chain
 - **Size:** Small
 - **Depends on:** –

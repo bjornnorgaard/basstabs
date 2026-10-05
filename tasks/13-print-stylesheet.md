@@ -1,6 +1,6 @@
 # 13 · Print stylesheet
 
-- **Status:** Not started
+- **Status:** In progress
 - **Area:** UX
 - **Size:** Small
 - **Depends on:** –

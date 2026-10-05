@@ -1,6 +1,6 @@
 # 03 · Offline app shell (service worker)
 
-- **Status:** Not started
+- **Status:** In progress
 - **Area:** Offline / PWA
 - **Size:** Medium
 - **Depends on:** –
