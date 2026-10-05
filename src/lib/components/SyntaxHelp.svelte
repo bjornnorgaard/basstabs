@@ -41,6 +41,15 @@
 				'Add . for dotted notes. :r is a rest using the current duration; :re is an eighth rest.'
 		},
 		{ syntax: '|', meaning: 'Bar line – ends the current measure.' },
+		{
+			syntax: `|: ${tuning.strings[0]}0 0 :|x3`,
+			meaning: 'Repeat the marked phrase three total times. Omit x3 for the default two plays.'
+		},
+		{
+			syntax: '@120',
+			meaning: 'Tempo marker on its own line – sets playback to 120 BPM from that point.',
+			plain: true
+		},
 		{ syntax: '↵ new line', meaning: 'Starts a new row of tab.', plain: true },
 		{ syntax: '[Verse 1]', meaning: 'Names the section that follows. Use a line of its own.' },
 		{
@@ -79,6 +88,10 @@
 			{tuning}
 		/> is three columns. Rhythm markers such as <ShorthandCode source=":q" {tuning} /> and
 		<ShorthandCode source=":r" {tuning} /> do not occupy tab columns, but spaces around them still do.
+		Repeat markers such as <ShorthandCode source="|:" {tuning} /> and
+		<ShorthandCode source=":|" {tuning} /> are barlines. Existing rhythm shorthand like
+		<ShorthandCode source="|:q E0" {tuning} /> stays a plain barline plus duration marker; write
+		<ShorthandCode source="|: :q E0 :|" {tuning} /> when a repeated bar starts with a duration marker.
 		A bare bracketed fret reuses the previous string; use <ShorthandCode
 			source="E0 |[12]|"
 			{tuning}

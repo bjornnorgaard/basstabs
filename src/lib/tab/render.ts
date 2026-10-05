@@ -4,6 +4,10 @@ import type { Tuning } from './tuning';
 const FILL = '-';
 const BAR = '|';
 
+function repeatCountText(count: number): string {
+	return count === 2 ? '' : `x${count}`;
+}
+
 /**
  * Splits a measure's events into runs of notes that were written back-to-back with no
  * whitespace between them (see `NoteEvent.joinedToPrevious`). Playback uses the runs
@@ -56,6 +60,12 @@ export interface MeasureLayout {
 	timed?: boolean;
 	/** Timed note/rest slots in source order. Empty notes represent rests or silent dead-note slots. */
 	timingSlots: TimingSlot[];
+	/** True when this measure starts a repeated phrase. */
+	repeatStart?: boolean;
+	/** Repeat count when this measure ends a repeated phrase. */
+	repeatEnd?: { count: number };
+	/** Absolute BPM in effect for this measure when the source contains tempo markers. */
+	tempoBpm?: number;
 }
 
 /** A run of characters on one rendered line; notes get their own segment so they can be highlighted. */
@@ -96,7 +106,13 @@ export interface AnnotationLayout {
 	text: string;
 }
 
-export type BlockLayout = SystemLayout | SectionLayout | AnnotationLayout;
+export interface TempoLayout {
+	kind: 'tempo';
+	bpm: number;
+	text: string;
+}
+
+export type BlockLayout = SystemLayout | SectionLayout | AnnotationLayout | TempoLayout;
 
 export interface TabLayout {
 	blocks: BlockLayout[];
@@ -108,12 +124,14 @@ export interface TabLayout {
 function layoutSystem(
 	system: System,
 	tuning: Tuning,
-	counters: { note: number; measure: number }
+	counters: { note: number; measure: number },
+	tempoBpm?: number
 ): Omit<SystemLayout, 'index' | 'section'> {
 	const nameWidth = Math.max(...tuning.strings.map((s) => s.length));
 	let column = nameWidth + BAR.length;
 
 	const measures: MeasureLayout[] = system.measures.map((measure) => {
+		if (measure.repeatStart) column += 1;
 		const start = column;
 		const notes: NoteLayout[] = [];
 		const timingSlots: TimingSlot[] = [];
@@ -149,9 +167,13 @@ function layoutSystem(
 			width: measure.width,
 			notes,
 			...(measure.timed ? { timed: true } : {}),
-			timingSlots
+			timingSlots,
+			...(measure.repeatStart ? { repeatStart: true } : {}),
+			...(measure.repeatEnd ? { repeatEnd: measure.repeatEnd } : {}),
+			...(tempoBpm !== undefined ? { tempoBpm } : {})
 		};
-		column += measure.width + BAR.length;
+		column +=
+			measure.width + (measure.repeatEnd ? 2 + repeatCountText(measure.repeatEnd.count).length : 1);
 		return layout;
 	});
 
@@ -162,11 +184,26 @@ function layoutSystem(
 		.map((name, string) => {
 			const segments: LineSegment[] = [{ text: name.padEnd(nameWidth) + BAR }];
 			let cursor = segments[0].text.length;
+			const structuralCharAt = (target: number) => {
+				for (const measure of measures) {
+					if (measure.repeatStart && target === measure.column - 1) return ':';
+					const measureEnd = measure.column + measure.width;
+					if (!measure.repeatEnd) {
+						if (target === measureEnd) return BAR;
+						continue;
+					}
+					if (target === measureEnd) return ':';
+					if (target === measureEnd + 1) return BAR;
+					const countText = repeatCountText(measure.repeatEnd.count);
+					const countOffset = target - (measureEnd + 2);
+					if (countOffset >= 0 && countOffset < countText.length) return countText[countOffset];
+				}
+				return undefined;
+			};
 			const fillTo = (target: number) => {
 				let text = '';
 				while (cursor < target) {
-					const atBar = measures.some((m) => cursor === m.column + m.width);
-					text += atBar ? BAR : FILL;
+					text += structuralCharAt(cursor) ?? FILL;
 					cursor++;
 				}
 				if (text) segments.push({ text });
@@ -212,11 +249,12 @@ export function layoutBlocks(blocks: TabBlock[], tuning: Tuning): TabLayout {
 	const counters = { note: 0, measure: 0 };
 	let systemIndex = 0;
 	let sectionIndex = -1;
+	let currentTempo: number | undefined;
 
 	const layouts: BlockLayout[] = blocks.map((block) => {
 		if (block.kind === 'system') {
 			return {
-				...layoutSystem(block, tuning, counters),
+				...layoutSystem(block, tuning, counters, currentTempo),
 				index: systemIndex++,
 				section: sectionIndex >= 0 ? sectionIndex : undefined
 			};
@@ -224,6 +262,10 @@ export function layoutBlocks(blocks: TabBlock[], tuning: Tuning): TabLayout {
 		if (block.kind === 'section') {
 			sectionIndex++;
 			return { kind: 'section', index: sectionIndex, title: block.title, text: `[${block.title}]` };
+		}
+		if (block.kind === 'tempo') {
+			currentTempo = block.bpm;
+			return { kind: 'tempo', bpm: block.bpm, text: `@${block.bpm}` };
 		}
 		return { kind: 'annotation', text: `#${block.text ? ` ${block.text}` : ''}` };
 	});

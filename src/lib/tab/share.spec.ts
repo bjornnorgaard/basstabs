@@ -55,6 +55,15 @@ describe('share links', () => {
 		expect(decodeSharedTab(encodeSharedTab(rhythmic))).toEqual(rhythmic);
 	});
 
+	it('uses version 3 when repeat or tempo syntax is present', () => {
+		for (const source of ['|: E0 :|x3', '@120\nE0 |']) {
+			const current = { ...tab, source };
+			expect(requiredShareVersion(current.source, current.tuningId)).toBe('3');
+			expect(decodedPayloadVersion(encodeSharedTab(current))).toBe('3');
+			expect(decodeSharedTab(encodeSharedTab(current))).toEqual(current);
+		}
+	});
+
 	it('accepts version 3 payloads', () => {
 		const payload = btoa(String.raw`3
 Title

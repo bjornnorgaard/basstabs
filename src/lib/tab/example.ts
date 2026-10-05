@@ -50,6 +50,14 @@ export const EXAMPLE_SOURCE = `[C Major Scale]
 # Under-filled marked bars leave the remaining time silent.
 |:q E0 0 :e 0 0 :r 0|:h A2E320 :q E0 :r|
 
+[Repeats and Tempo]
+# |: starts a repeat and :| ends it. Add x3 for three total plays.
+# Tempo markers such as @120 use their own line and apply from that point onward.
+@120
+|: :q E0 0 A2 2 | :e E3 3 A2 2 :|x3
+@90
+|: :h E0 :q A2 :r :|
+
 [Verse]
 # Original lyric sketch: Footsteps settle into time
 # Let the low notes trace the line

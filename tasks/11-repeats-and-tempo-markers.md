@@ -1,6 +1,6 @@
 # 11 · Repeats and tempo markers
 
-- **Status:** In progress
+- **Status:** Done
 - **Area:** Notation / playback
 - **Size:** Medium
 - **Depends on:** [10](./10-rhythm-and-durations.md) _(soft — same files; tempo composes with durations)_
@@ -107,3 +107,73 @@ No Firestore changes.
 - Edits the same parser/renderer/playback files as
   [09](./09-articulation-notation.md) and [10](./10-rhythm-and-durations.md).
   Sequence, don't parallelize — see [ROADMAP.md](./ROADMAP.md).
+
+## Outcome
+
+Implemented compact repeat barlines and whole-line tempo markers.
+
+Syntax:
+
+| Marker          | Meaning                                      |
+| --------------- | -------------------------------------------- |
+| `\|: ... :\|`   | Repeat the enclosed phrase twice             |
+| `\|: ... :\|x3` | Repeat the enclosed phrase three total times |
+| `@120`          | Set playback tempo to 120 BPM from here      |
+
+Decisions and rationale:
+
+- Repeats render as conventional, compact barlines (`|:` and `:|`, with `xN`
+  when the count is greater than the default 2). They are not expanded in the
+  rendered/exported tab, so copy and `.txt` output keep the shorthand concise and
+  re-parse with the same repeat semantics.
+- Repeats expand only in `buildSchedule`. Repeated notes keep the same source
+  `noteId` and `measureId`, so highlighting re-lights the same source bar on
+  every pass. Scheduling a single selected bar ignores partial repeat markers;
+  a selected range/section expands repeats only when the complete start and end
+  are inside that selection.
+- Cross-row/section repeats are supported because validation and expansion walk
+  the flattened measure sequence. Nested repeats are deliberately left out and
+  rejected with `Nested repeats are not supported`.
+- To preserve task 10 rhythm compatibility, `|:q`, `|:e`, `|:h`, `|:s`, `|:w`
+  and `|:r` remain a plain barline followed by a duration/rest marker. A repeated
+  bar that starts with rhythm must use a separating space: `|: :q E0 :|`.
+- Tempo markers use `@120` on their own line. This was chosen over parsing
+  section-title suffixes so existing section names containing `@` remain literal.
+  The marker is rendered as a structural text line, so copied/downloaded tab text
+  round-trips tempo semantics.
+- Source tempo markers are absolute. When the played selection contains them,
+  they override the BPM control for that playback; the control is disabled and
+  shows the source tempo currently in effect. Tabs without tempo markers keep the
+  previous user-chosen BPM slider behaviour.
+- Tempo composes by changing bar-to-seconds conversion in the player schedule
+  (`Schedule.tempoChanges`); explicit rhythm duration math remains in bar units.
+- Share links stay on unreleased v3. `requiredShareVersion` now returns v3 for
+  articulation, rhythm, repeat or tempo feature flags; no v4 was introduced.
+- Added `repeat` and `tempo` source token kinds and `.hl-repeat` / `.hl-tempo`
+  styles for light, dark and print contexts.
+
+Left out:
+
+- Volta/ending brackets.
+- Nested repeats.
+- Inline tempo syntax and section-title tempo suffixes such as `[Chorus @ 140]`.
+  Use a whole-line `@140` marker before the section instead.
+
+Regression and coverage:
+
+- Added old-behaviour locks for the `|:q` rhythm collision, single-bar selection
+  inside repeats, repeat expansion preserving note/measure IDs, repeat counts,
+  cross-marker errors, tempo schedule maps, share v3 detection and the source-BPM
+  UI state.
+- Updated the README syntax/playback/highlighting/share text, in-app
+  `SyntaxHelp`, preview rendering and the new-tab example.
+
+Validation:
+
+- `npm run format` was run before final validation.
+- `npm run lint && npm run check && npm test && npm run build` passed with Node
+  24 from the session env.
+- Test count: 20 test files passed, 1 skipped; 230 tests passed, 7 skipped.
+- Build output was removed afterward.
+- No Firestore rules, indexes, schema paths or Firebase deployment surfaces were
+  touched.

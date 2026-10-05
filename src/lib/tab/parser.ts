@@ -79,6 +79,14 @@ export interface Measure {
 	width: number;
 	/** True when any duration or rest marker opts this bar into explicit timing. */
 	timed?: boolean;
+	/** True when this measure starts a repeated phrase. */
+	repeatStart?: boolean;
+	/** Repeat count when this measure ends a repeated phrase. */
+	repeatEnd?: { count: number };
+	/** Source position of the repeat start marker, used for validation diagnostics. */
+	repeatStartPosition?: SourcePosition;
+	/** Source position of the repeat end marker, used for validation diagnostics. */
+	repeatEndPosition?: SourcePosition;
 }
 
 /** A row of measures rendered together (one input line = one system). */
@@ -97,7 +105,12 @@ export interface Annotation {
 	text: string;
 }
 
-export type TabBlock = System | Section | Annotation;
+export interface TempoMarker {
+	kind: 'tempo';
+	bpm: number;
+}
+
+export type TabBlock = System | Section | Annotation | TempoMarker;
 
 export interface ParseError {
 	message: string;
@@ -108,8 +121,25 @@ export interface ParseError {
 	length: number;
 }
 
+export interface SourcePosition extends ParseError {
+	/** 0-based offset into the source (inclusive). */
+	start: number;
+	/** 0-based offset into the source (exclusive). */
+	end: number;
+}
+
 export type SourceTokenKind =
-	'string' | 'fret' | 'technique' | 'duration' | 'rest' | 'bar' | 'section' | 'comment' | 'invalid';
+	| 'string'
+	| 'fret'
+	| 'technique'
+	| 'duration'
+	| 'rest'
+	| 'bar'
+	| 'repeat'
+	| 'tempo'
+	| 'section'
+	| 'comment'
+	| 'invalid';
 
 /** A highlightable span of the source, used for syntax highlighting in the editor. */
 export interface SourceToken {
@@ -133,6 +163,8 @@ export interface ParseResult {
 	features: {
 		articulations: boolean;
 		rhythm: boolean;
+		repeats: boolean;
+		tempo: boolean;
 	};
 }
 
@@ -175,10 +207,11 @@ export function parse(source: string, tuning: Tuning, syntaxVersion: 1 | 2 = 2):
 	const errors: ParseError[] = [];
 	const sourceTokens: SourceToken[] = [];
 	const stringIndex = new Map(tuning.strings.map((name, i) => [name.toUpperCase(), i]));
-	const features = { articulations: false, rhythm: false };
+	const features = { articulations: false, rhythm: false, repeats: false, tempo: false };
 	let currentString: number | undefined;
 	let noteCount = 0;
 	let lineOffset = 0;
+	const allMeasures: Measure[] = [];
 
 	source.split('\n').forEach((rawLine, lineIdx) => {
 		const lineText = rawLine.replace(/\r$/, '');
@@ -190,6 +223,34 @@ export function parse(source: string, tuning: Tuning, syntaxVersion: 1 | 2 = 2):
 		if (trimmed.startsWith('#')) {
 			blocks.push({ kind: 'annotation', text: trimmed.slice(1).trim() });
 			sourceTokens.push({ kind: 'comment', ...trimmedSpan });
+			return;
+		}
+		if (trimmed.startsWith('@')) {
+			const match = /^@(\d+)$/.exec(trimmed);
+			if (!match) {
+				sourceTokens.push({ kind: 'invalid', ...trimmedSpan });
+				errors.push({
+					line: lineIdx + 1,
+					column: lineText.indexOf('@') + 1,
+					length: trimmed.length,
+					message: 'Tempo marker must be written as @120'
+				});
+				return;
+			}
+			const bpm = Number(match[1]);
+			if (!Number.isInteger(bpm) || bpm < 30 || bpm > 300) {
+				sourceTokens.push({ kind: 'invalid', ...trimmedSpan });
+				errors.push({
+					line: lineIdx + 1,
+					column: lineText.indexOf('@') + 1,
+					length: trimmed.length,
+					message: 'Tempo marker BPM must be between 30 and 300'
+				});
+				return;
+			}
+			features.tempo = true;
+			blocks.push({ kind: 'tempo', bpm });
+			sourceTokens.push({ kind: 'tempo', ...trimmedSpan });
 			return;
 		}
 		if (
@@ -221,6 +282,8 @@ export function parse(source: string, tuning: Tuning, syntaxVersion: 1 | 2 = 2):
 		let measureHasRhythm = false;
 		let currentDuration = DEFAULT_DURATION;
 		let rhythmSlots: { duration: RhythmDuration; start: number; length: number }[] = [];
+		let pendingRepeatStart: SourcePosition | undefined;
+		let pendingRepeatEnd: { count: number; position: SourcePosition } | undefined;
 		// End index (0-based, exclusive) in lineText of the previously emitted note, used to
 		// detect notes written back-to-back with no whitespace between them. Reset whenever a
 		// measure ends, since joining never crosses a bar line.
@@ -228,7 +291,7 @@ export function parse(source: string, tuning: Tuning, syntaxVersion: 1 | 2 = 2):
 		let previousFrettedNote: { event: NoteEvent; note: number; end: number } | undefined;
 		let splitLegacyDigitsEnd = -1;
 
-		const closeMeasure = (end: number, explicit: boolean) => {
+		const closeMeasure = (end: number, explicit: boolean, delimiterLength = 1) => {
 			if (!explicit && end > consumedEnd) measureColumn += end - consumedEnd;
 			if (measureHasRhythm) {
 				let total = 0;
@@ -248,18 +311,31 @@ export function parse(source: string, tuning: Tuning, syntaxVersion: 1 | 2 = 2):
 				}
 			}
 			if (events.length > 0 || (openingBar && measureColumn > 0)) {
-				measures.push({
+				const measure: Measure = {
 					events,
 					width: measureColumn,
-					...(measureHasRhythm ? { timed: true } : {})
-				});
+					...(measureHasRhythm ? { timed: true } : {}),
+					...(pendingRepeatStart
+						? { repeatStart: true, repeatStartPosition: pendingRepeatStart }
+						: {}),
+					...(pendingRepeatEnd
+						? {
+								repeatEnd: { count: pendingRepeatEnd.count },
+								repeatEndPosition: pendingRepeatEnd.position
+							}
+						: {})
+				};
+				measures.push(measure);
+				allMeasures.push(measure);
 			}
 			events = [];
 			measureColumn = 0;
-			consumedEnd = end + (explicit ? 1 : 0);
+			consumedEnd = end + (explicit ? delimiterLength : 0);
 			measureHasRhythm = false;
 			currentDuration = DEFAULT_DURATION;
 			rhythmSlots = [];
+			pendingRepeatStart = undefined;
+			pendingRepeatEnd = undefined;
 			previousEventEnd = -1;
 			previousFrettedNote = undefined;
 			splitLegacyDigitsEnd = -1;
@@ -272,6 +348,12 @@ export function parse(source: string, tuning: Tuning, syntaxVersion: 1 | 2 = 2):
 			length
 		});
 		const span = (start: number, end: number) => ({ start: offset + start, end: offset + end });
+		const sourcePosition = (start: number, end: number, message = ''): SourcePosition => ({
+			...position(start, end - start),
+			start: offset + start,
+			end: offset + end,
+			message
+		});
 		const consumeGap = (start: number) => {
 			measureColumn += start - consumedEnd;
 		};
@@ -332,6 +414,34 @@ export function parse(source: string, tuning: Tuning, syntaxVersion: 1 | 2 = 2):
 				};
 			}
 			return null;
+		};
+		const readRepeatEnd = (
+			start: number
+		): { count: number; tokenEnd: number; error?: ParseError } | null => {
+			if (lineText[start] !== ':' || lineText[start + 1] !== '|') return null;
+			let tokenEnd = start + 2;
+			let count = 2;
+			let cursor = tokenEnd;
+			while (/\s/.test(lineText[cursor] ?? '')) cursor++;
+			if (lineText[cursor] === 'x') {
+				const countStart = cursor;
+				cursor++;
+				const digits = /^\d+/.exec(lineText.slice(cursor))?.[0] ?? '';
+				tokenEnd = cursor + digits.length;
+				count = Number(digits);
+				if (!digits || !Number.isSafeInteger(count) || count < 2) {
+					const end = digits ? tokenEnd : countStart + 1;
+					return {
+						count: 2,
+						tokenEnd: end,
+						error: {
+							...position(countStart, end - countStart),
+							message: 'Repeat count must be x2 or greater'
+						}
+					};
+				}
+			}
+			return { count, tokenEnd };
 		};
 		const readGhostFret = (
 			start: number
@@ -481,6 +591,21 @@ export function parse(source: string, tuning: Tuning, syntaxVersion: 1 | 2 = 2):
 			const char = lineText[start];
 			const currentSpan = span(start, start + 1);
 
+			const afterBarColon = lineText[start + 2];
+			const colonAfterBarStartsRhythm =
+				lineText[start + 1] === ':' &&
+				(afterBarColon === 'r' || (afterBarColon !== undefined && afterBarColon in DURATION_BARS));
+			if (char === '|' && lineText[start + 1] === ':' && !colonAfterBarStartsRhythm) {
+				consumeGap(start);
+				sourceTokens.push({ kind: 'repeat', ...span(start, start + 2) });
+				features.repeats = true;
+				closeMeasure(start, true, 2);
+				pendingRepeatStart = sourcePosition(start, start + 2);
+				consumedEnd = start + 2;
+				index = start + 2;
+				continue;
+			}
+
 			if (char === '|') {
 				consumeGap(start);
 				sourceTokens.push({ kind: 'bar', ...currentSpan });
@@ -492,6 +617,29 @@ export function parse(source: string, tuning: Tuning, syntaxVersion: 1 | 2 = 2):
 			consumeGap(start);
 
 			if (char === ':') {
+				const repeatEnd = readRepeatEnd(start);
+				if (repeatEnd) {
+					if (repeatEnd.error) {
+						sourceTokens.push({ kind: 'invalid', ...span(start, repeatEnd.tokenEnd) });
+						errors.push(repeatEnd.error);
+						pendingRepeatEnd = {
+							count: 2,
+							position: sourcePosition(start, start + 2)
+						};
+						closeMeasure(start, true, repeatEnd.tokenEnd - start);
+						index = repeatEnd.tokenEnd;
+						continue;
+					}
+					sourceTokens.push({ kind: 'repeat', ...span(start, repeatEnd.tokenEnd) });
+					features.repeats = true;
+					pendingRepeatEnd = {
+						count: repeatEnd.count,
+						position: sourcePosition(start, repeatEnd.tokenEnd)
+					};
+					closeMeasure(start, true, repeatEnd.tokenEnd - start);
+					index = repeatEnd.tokenEnd;
+					continue;
+				}
 				const marker = readRhythmMarker(start);
 				if (!marker) {
 					const end = invalidRunEnd(start);
@@ -679,6 +827,59 @@ export function parse(source: string, tuning: Tuning, syntaxVersion: 1 | 2 = 2):
 			systems.push(system);
 			blocks.push(system);
 		}
+	});
+
+	let openRepeat: Measure | undefined;
+	for (const measure of allMeasures) {
+		if (measure.repeatStart) {
+			if (openRepeat) {
+				const position = measure.repeatStartPosition;
+				if (position) {
+					sourceTokens.push({ kind: 'invalid', start: position.start, end: position.end });
+					errors.push({
+						line: position.line,
+						column: position.column,
+						length: position.length,
+						message: 'Nested repeats are not supported'
+					});
+				}
+			} else {
+				openRepeat = measure;
+			}
+		}
+		if (measure.repeatEnd) {
+			if (!openRepeat) {
+				const position = measure.repeatEndPosition;
+				if (position) {
+					sourceTokens.push({ kind: 'invalid', start: position.start, end: position.end });
+					errors.push({
+						line: position.line,
+						column: position.column,
+						length: position.length,
+						message: 'Repeat end ":|" has no matching "|:"'
+					});
+				}
+			} else {
+				openRepeat = undefined;
+			}
+		}
+	}
+	if (openRepeat?.repeatStartPosition) {
+		const position = openRepeat.repeatStartPosition;
+		sourceTokens.push({ kind: 'invalid', start: position.start, end: position.end });
+		errors.push({
+			line: position.line,
+			column: position.column,
+			length: position.length,
+			message: 'Repeat start "|:" has no matching ":|"'
+		});
+	}
+
+	sourceTokens.sort((a, b) => {
+		if (a.start !== b.start) return a.start - b.start;
+		if (a.kind === 'invalid' && b.kind !== 'invalid') return -1;
+		if (a.kind !== 'invalid' && b.kind === 'invalid') return 1;
+		return b.end - a.end;
 	});
 
 	return { systems, blocks, errors, tokens: sourceTokens, features };
