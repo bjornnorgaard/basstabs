@@ -1,14 +1,13 @@
 import { browser } from '$app/environment';
 import { untrack } from 'svelte';
+import type { User } from 'firebase/auth';
+import type { Unsubscribe } from 'firebase/firestore';
 import {
-	GoogleAuthProvider,
-	onAuthStateChanged,
-	signInWithPopup,
-	signOut,
-	type User
-} from 'firebase/auth';
-import { collection, doc, onSnapshot, writeBatch, type Unsubscribe } from 'firebase/firestore';
-import { auth, db } from '$lib/firebase';
+	getCachedFirebase,
+	getFirebase,
+	prewarmFirebase,
+	type FirebaseServices
+} from '$lib/firebase';
 import {
 	cloudData,
 	cloudTitleConflict,
@@ -22,9 +21,30 @@ import {
 import { writeCloudTab } from '$lib/cloud/write';
 import { tabStore, type BassTab } from './tabs.svelte';
 
+const SESSION_HINT = 'basstabs:had-session';
+
+function hasSessionHint() {
+	if (!browser) return false;
+	try {
+		return localStorage.getItem(SESSION_HINT) === '1';
+	} catch {
+		return false;
+	}
+}
+
+function setSessionHint(value: boolean) {
+	if (!browser) return;
+	try {
+		if (value) localStorage.setItem(SESSION_HINT, '1');
+		else localStorage.removeItem(SESSION_HINT);
+	} catch {
+		// Losing the hint only affects whether the next boot eagerly checks Auth.
+	}
+}
+
 class CloudStore {
 	user = $state<User | null>(null);
-	ready = $state(false);
+	ready = $state(!hasSessionHint());
 	loading = $state(false);
 	connectionFailed = $state(false);
 	busy = $state(false);
@@ -42,13 +62,72 @@ class CloudStore {
 	private generation = 0;
 	private uploadAttempts = new Map<string, string>();
 	private syncTask?: { generation: number; promise: Promise<void> };
+	private ensureTask?: Promise<FirebaseServices>;
+	private authUnsubscribe?: Unsubscribe;
 	sorted = $derived([...this.tabs].sort((a, b) => b.updatedAt - a.updatedAt));
 
 	constructor() {
 		if (!browser) return;
-		onAuthStateChanged(
-			auth,
+		window.addEventListener('beforeunload', (event) => {
+			if (this.dirty.length || this.saving.length || this.movingToBrowser.length) {
+				event.preventDefault();
+				event.returnValue = '';
+			}
+		});
+		$effect.root(() => {
+			$effect(() => {
+				const eligible = !!this.user && !this.loading && !this.connectionFailed && !this.busy;
+				JSON.stringify(tabStore.tabs);
+				if (!eligible) return;
+				const timer = setTimeout(() => {
+					untrack(() => {
+						void this.syncBrowserTabs();
+					});
+				}, 800);
+				return () => clearTimeout(timer);
+			});
+		});
+	}
+
+	startFromSessionHint() {
+		if (hasSessionHint()) {
+			void this.ensure();
+		} else if (!this.user) {
+			this.ready = true;
+		}
+	}
+
+	skipInitialSessionCheck() {
+		if (!this.user && !this.ensureTask) this.ready = true;
+	}
+
+	prewarmLogin() {
+		void prewarmFirebase();
+	}
+
+	async ensure() {
+		if (!browser) throw new Error('Cloud features are only available in the browser.');
+		this.ensureTask ??= getFirebase()
+			.then((firebase) => {
+				this.watchAuth(firebase);
+				return firebase;
+			})
+			.catch((error) => {
+				this.ensureTask = undefined;
+				this.error = errorMessage(error);
+				this.ready = true;
+				throw error;
+			});
+		return this.ensureTask;
+	}
+
+	private watchAuth(firebase: FirebaseServices) {
+		if (this.authUnsubscribe) return;
+		this.authUnsubscribe = firebase.authSdk.onAuthStateChanged(
+			firebase.auth,
 			(user) => {
+				if (user) setSessionHint(true);
+				else setSessionHint(false);
 				if (this.user?.uid === user?.uid && this.ready) return;
 				if (this.dirty.length) {
 					this.error =
@@ -72,32 +151,13 @@ class CloudStore {
 				this.connectionFailed = false;
 				if (!user) return;
 				this.restoreDrafts(user.uid);
-				this.connect();
+				void this.connect();
 			},
 			(error) => {
 				this.error = errorMessage(error);
 				this.ready = true;
 			}
 		);
-		window.addEventListener('beforeunload', (event) => {
-			if (this.dirty.length || this.saving.length || this.movingToBrowser.length) {
-				event.preventDefault();
-				event.returnValue = '';
-			}
-		});
-		$effect.root(() => {
-			$effect(() => {
-				const eligible = !!this.user && !this.loading && !this.connectionFailed && !this.busy;
-				JSON.stringify(tabStore.tabs);
-				if (!eligible) return;
-				const timer = setTimeout(() => {
-					untrack(() => {
-						void this.syncBrowserTabs();
-					});
-				}, 800);
-				return () => clearTimeout(timer);
-			});
-		});
 	}
 
 	connect() {
@@ -109,8 +169,27 @@ class CloudStore {
 		this.connectionFailed = false;
 		this.uploadAttempts.clear();
 		const generation = this.generation;
-		this.unsubscribe = onSnapshot(
-			collection(db, 'users', user.uid, 'tabs'),
+		const firebase = getCachedFirebase();
+		if (firebase) {
+			this.subscribeToTabs(firebase, user, generation);
+			return;
+		}
+		void this.ensure()
+			.then((firebase) => {
+				if (this.generation === generation) this.subscribeToTabs(firebase, user, generation);
+			})
+			.catch((error) => {
+				if (this.generation !== generation) return;
+				this.error = errorMessage(error);
+				this.connectionFailed = true;
+				this.loading = false;
+			});
+	}
+
+	private subscribeToTabs(firebase: FirebaseServices, user: User, generation: number) {
+		const { db, firestoreSdk } = firebase;
+		this.unsubscribe = firestoreSdk.onSnapshot(
+			firestoreSdk.collection(db, 'users', user.uid, 'tabs'),
 			(snapshot) => {
 				if (this.generation !== generation) return;
 				try {
@@ -295,7 +374,14 @@ class CloudStore {
 		this.busy = true;
 		this.error = '';
 		try {
-			await signInWithPopup(auth, new GoogleAuthProvider());
+			const cached = getCachedFirebase();
+			if (cached) this.watchAuth(cached);
+			const firebase = cached ?? (await this.ensure());
+			await firebase.authSdk.signInWithPopup(
+				firebase.auth,
+				new firebase.authSdk.GoogleAuthProvider()
+			);
+			setSessionHint(true);
 		} catch (error) {
 			this.error = errorMessage(error);
 		} finally {
@@ -327,7 +413,9 @@ class CloudStore {
 				throw new Error(
 					'Your account changed while saving. Check the current account before signing out.'
 				);
-			await signOut(auth);
+			const firebase = await this.ensure();
+			await firebase.authSdk.signOut(firebase.auth);
+			setSessionHint(false);
 		} catch (error) {
 			this.error = errorMessage(error);
 		} finally {
@@ -365,6 +453,7 @@ class CloudStore {
 	async upload(local: BassTab): Promise<string> {
 		const user = this.user;
 		if (!user) throw new Error('Sign in to save tabs to the cloud.');
+		const firebase = this.ensure();
 		if (this.writes.has(local.id))
 			throw new Error('This tab already has a cloud save in progress.');
 		const conflict = cloudTitleConflict(local.title, this.tabs);
@@ -384,7 +473,9 @@ class CloudStore {
 			shareId: null
 		};
 		this.saving.push(tab.id);
-		const operation = writeCloudTab(db, tab, user.uid, null, true);
+		const operation = firebase.then(({ db, firestoreSdk }) =>
+			writeCloudTab(db, tab, user.uid, null, true, firestoreSdk)
+		);
 		this.writes.set(tab.id, operation);
 		try {
 			await operation;
@@ -456,16 +547,21 @@ class CloudStore {
 		const tab = this.get(id);
 		const user = this.user;
 		if (!tab || !user) throw new Error('Sign in to save this cloud tab.');
+		const firebase = this.ensure();
 		clearTimeout(this.timers.get(id));
 		const revision = this.revisions.get(id) ?? 0;
 		const generation = this.generation;
 		const snapshot = { ...tab };
 		this.saving.push(id);
-		const operation = writeCloudTab(
-			db,
-			snapshot,
-			user.uid,
-			oldShareId === undefined ? (this.savedShareIds.get(id) ?? snapshot.shareId) : oldShareId
+		const operation = firebase.then(({ db, firestoreSdk }) =>
+			writeCloudTab(
+				db,
+				snapshot,
+				user.uid,
+				oldShareId === undefined ? (this.savedShareIds.get(id) ?? snapshot.shareId) : oldShareId,
+				false,
+				firestoreSdk
+			)
 		);
 		this.writes.set(id, operation);
 		try {
@@ -517,11 +613,12 @@ class CloudStore {
 		const tab = this.get(id);
 		const user = this.user;
 		if (!tab || !user) throw new Error('Sign in to delete this cloud tab.');
+		const { db, firestoreSdk } = await this.ensure();
 		const generation = this.generation;
-		const batch = writeBatch(db);
-		batch.delete(doc(db, 'users', user.uid, 'tabs', id));
+		const batch = firestoreSdk.writeBatch(db);
+		batch.delete(firestoreSdk.doc(db, 'users', user.uid, 'tabs', id));
 		const shareId = this.savedShareIds.has(id) ? this.savedShareIds.get(id) : tab.shareId;
-		if (shareId) batch.delete(doc(db, 'publishedTabs', shareId));
+		if (shareId) batch.delete(firestoreSdk.doc(db, 'publishedTabs', shareId));
 		clearTimeout(this.timers.get(id));
 		const operation = batch.commit();
 		this.writes.set(id, operation);

@@ -1,18 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
-	import {
-		collection,
-		getDocs,
-		limit,
-		orderBy,
-		query,
-		startAfter,
-		where,
-		type QueryConstraint,
-		type QueryDocumentSnapshot
-	} from 'firebase/firestore';
-	import { db } from '$lib/firebase';
+	import type { QueryConstraint, QueryDocumentSnapshot } from 'firebase/firestore';
+	import { getFirebase } from '$lib/firebase';
 	import { readCloudTab, errorMessage, type CloudTab } from '$lib/cloud/model';
 	import { site } from '$lib/site';
 
@@ -27,6 +17,8 @@
 		loading = true;
 		error = '';
 		try {
+			const { db, firestoreSdk } = await getFirebase();
+			const { collection, getDocs, limit, orderBy, query, startAfter, where } = firestoreSdk;
 			const constraints: QueryConstraint[] = [
 				where('visibility', '==', 'public'),
 				orderBy('updatedAt', 'desc'),

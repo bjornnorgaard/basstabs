@@ -2,6 +2,7 @@
 	import './layout.css';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import { site } from '$lib/site';
 	import { AppBar, Toast } from '@skeletonlabs/skeleton-svelte';
 	import Plus from '@lucide/svelte/icons/plus';
@@ -12,8 +13,17 @@
 	import { toaster } from '$lib/toaster';
 	import AccountControls from '$lib/components/AccountControls.svelte';
 	import { cloudStore } from '$lib/stores/cloud.svelte';
+	import { onMount } from 'svelte';
 
 	let { children } = $props();
+
+	onMount(() => {
+		if (page.route.id === '/shared' && !page.url.searchParams.has('id')) {
+			cloudStore.skipInitialSessionCheck();
+			return;
+		}
+		cloudStore.startFromSessionHint();
+	});
 
 	function newTab() {
 		const tab = cloudStore.create();
