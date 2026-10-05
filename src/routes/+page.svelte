@@ -98,6 +98,12 @@
 				<button class="btn preset-tonal btn-sm" onclick={() => cloudStore.connect()}
 					>Reconnect cloud</button
 				>
+			{:else if cloudStore.offline || cloudStore.pendingSync}
+				<p role="status">
+					{cloudStore.pendingSync
+						? 'Offline — changes will sync when the connection returns.'
+						: 'Offline — showing cached cloud tabs.'}
+				</p>
 			{/if}
 		</section>
 	{/if}
@@ -150,9 +156,13 @@
 								{cloudStore.movingToBrowser.includes(tab.id)
 									? 'Moving to browser...'
 									: cloudStore.saving.includes(tab.id)
-										? 'Saving to cloud...'
+										? cloudStore.offline
+											? 'Offline — changes will sync'
+											: 'Saving to cloud...'
 										: cloudStore.dirty.includes(tab.id)
-											? 'Cloud · Unsaved changes'
+											? cloudStore.offline
+												? 'Offline — changes will sync'
+												: 'Cloud · Unsaved changes'
 											: 'Saved to cloud'}
 								· {cloudStore.get(tab.id)?.visibility}
 							{:else}

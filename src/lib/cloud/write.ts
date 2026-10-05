@@ -3,7 +3,7 @@ import { assertUniqueCloudTitle, cloudData, readCloudTab, type CloudTab } from '
 
 type FirestoreApi = Pick<
 	typeof FirebaseFirestore,
-	'collection' | 'doc' | 'getDocsFromServer' | 'increment' | 'runTransaction'
+	'collection' | 'doc' | 'getDocsFromServer' | 'increment' | 'runTransaction' | 'writeBatch'
 >;
 
 export async function writeCloudTab(
@@ -48,4 +48,28 @@ export async function writeCloudTab(
 			});
 		}
 	});
+}
+
+export async function queueCloudTabWrite(
+	db: FirebaseFirestore.Firestore,
+	tab: CloudTab,
+	uid: string,
+	oldShareId: string | null,
+	firestore?: FirestoreApi
+) {
+	firestore ??= await import('firebase/firestore');
+	readCloudTab(tab.id, cloudData(tab));
+	const batch = firestore.writeBatch(db);
+	batch.set(firestore.doc(db, 'users', uid, 'tabs', tab.id), cloudData(tab));
+	if (oldShareId && oldShareId !== tab.shareId)
+		batch.delete(firestore.doc(db, 'publishedTabs', oldShareId));
+	const { shareId, ...data } = cloudData(tab);
+	if (shareId) {
+		batch.set(firestore.doc(db, 'publishedTabs', shareId), {
+			...data,
+			ownerId: uid,
+			tabId: tab.id
+		});
+	}
+	await batch.commit();
 }

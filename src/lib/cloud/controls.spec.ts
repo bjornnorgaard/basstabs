@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
 		saving: [] as string[],
 		dirty: [] as string[],
 		movingToBrowser: [] as string[],
+		offline: false,
 		uploadErrors: {} as Record<string, string>,
 		get: vi.fn<(id: string) => CloudTab | undefined>(() => undefined)
 	}
@@ -145,6 +146,21 @@ describe('cloud saving controls', () => {
 			mocks.cloud.get.mockReturnValue(undefined);
 			mocks.cloud.saving = [];
 			mocks.cloud.dirty = [];
+		}
+	});
+
+	it('shows offline pending cloud edits without a retry action', () => {
+		mocks.cloud.get.mockReturnValue({ ...tab, visibility: 'private', shareId: null });
+		mocks.cloud.dirty = [tab.id];
+		mocks.cloud.offline = true;
+		try {
+			const { body } = render(CloudTabControls, { props: { tab } });
+			expect(body).toContain('Offline — changes will sync when online');
+			expect(body).not.toContain('Retry save</button>');
+		} finally {
+			mocks.cloud.get.mockReturnValue(undefined);
+			mocks.cloud.dirty = [];
+			mocks.cloud.offline = false;
 		}
 	});
 });

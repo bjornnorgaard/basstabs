@@ -45,11 +45,15 @@
 		cloudStore.movingToBrowser.includes(tab.id)
 			? 'Moving to browser...'
 			: working
-				? 'Saving...'
+				? cloudStore.offline
+					? 'Offline — changes will sync'
+					: 'Saving...'
 				: cloud
-					? cloudStore.dirty.includes(tab.id)
-						? 'Unsaved changes'
-						: 'Saved to cloud'
+					? cloudStore.offline && cloudStore.dirty.includes(tab.id)
+						? 'Offline — changes will sync when online'
+						: cloudStore.dirty.includes(tab.id)
+							? 'Unsaved changes'
+							: 'Saved to cloud'
 					: location === 'cloud'
 						? uploadMessage
 							? 'Cloud save needs attention'
@@ -194,7 +198,7 @@
 				{/if}
 				{status}
 			</span>
-			{#if cloud && cloudStore.dirty.includes(tab.id)}
+			{#if cloud && cloudStore.dirty.includes(tab.id) && !cloudStore.offline}
 				<button
 					class="btn preset-tonal btn-sm"
 					{disabled}

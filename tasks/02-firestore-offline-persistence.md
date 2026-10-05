@@ -1,6 +1,6 @@
 # 02 · Firestore offline persistence
 
-- **Status:** In progress
+- **Status:** Done
 - **Area:** Offline / reliability
 - **Size:** Small
 - **Depends on:** [01](./01-lazy-load-firebase.md) _(soft — same file)_
@@ -98,3 +98,65 @@ No Firestore rules or indexes change, so no Firebase deployment is required.
 Touches the same file as [01](./01-lazy-load-firebase.md) and
 [04](./04-firebase-app-check.md). Do not run those in parallel with this one —
 see [ROADMAP.md](./ROADMAP.md).
+
+## Outcome
+
+Implemented Firestore persistent local cache on top of the lazy Firebase loader.
+`src/lib/firebase.ts` now initializes Firestore with
+`persistentLocalCache({ tabManager: persistentMultipleTabManager() })` and falls
+back to the default memory cache if persistence is unavailable, such as in some
+private-browsing or embedded-webview environments. Firebase remains dynamically
+imported; no static `firebase/*` imports were added.
+
+Cloud subscriptions now request metadata updates and map `fromCache` /
+`hasPendingWrites` to explicit offline and pending-sync UI states. Previously
+opened cloud tabs can render from the persistent cache while offline. Content and
+sharing updates that do not need title uniqueness checks use a batched write, so
+Firestore can keep them as local pending writes and sync them automatically when
+the connection returns. The UI says "Offline — changes will sync" instead of
+treating those writes as failed uploads.
+
+Decisions and limits:
+
+- Kept server-side title uniqueness authoritative. Creating a new cloud tab,
+  enabling cloud saving for a browser-only tab, and changing a cloud title still
+  use the existing transaction/server check and therefore cannot be truly queued
+  offline. Offline transaction failures leave the draft dirty and retry on the
+  browser `online` event rather than weakening uniqueness.
+- Sign-out now detaches the tab listener, terminates Firestore, and calls
+  `clearIndexedDbPersistence`. If another basstabs tab keeps IndexedDB open and
+  the browser refuses cleanup, sign-out still succeeds but the app reports the
+  cache-clearing problem with shared-computer guidance.
+- No Firestore rules, indexes, document paths, or schemas changed. No Firebase
+  deployment was run.
+
+Validation results:
+
+- `npm run lint` passed.
+- `npm run check` passed with 0 errors and 0 warnings.
+- `npm test` passed: 14 files passed, 1 skipped; 182 tests passed, 7 skipped.
+- `npm run build` passed.
+- Manifest static-graph check after build:
+  `.svelte-kit/output/client/.vite/manifest.json` root app/layout/page graph had
+  21 statically imported chunks and `firebaseStaticImports: []`.
+- Firestore wrapper on emulator port 8220 passed:
+  - Rules tests: 16 passed.
+  - Cloud write integration Vitest: 1 file passed; 7 tests passed.
+
+Manual browser checks still recommended:
+
+- Open a cloud tab online, toggle DevTools network offline, reload, and confirm
+  the cached tab renders. Edit the shorthand while offline; expect the overview
+  and tab controls to show "Offline — changes will sync", with no failed-upload
+  prompt. Toggle online and confirm the edit appears after sync.
+- Open the app in two normal tabs signed into the same account. Confirm both
+  connect without a `failed-precondition` persistence error and that an edit in
+  one tab appears in the other after sync.
+- Open a private/incognito window, sign in, and confirm cloud features still load
+  online. Persistence may fall back to memory; cached cloud tabs may not survive
+  a private-window reload.
+- On a shared-computer simulation, sign in, open a cached cloud tab, then sign
+  out from the profile page. Expect sign-out to wait for saves, clear the
+  session hint and attempt Firestore IndexedDB cleanup. If another app tab is
+  open, expect an explicit warning to close other basstabs tabs and sign in/out
+  again before leaving.
