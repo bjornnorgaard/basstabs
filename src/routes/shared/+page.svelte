@@ -5,6 +5,7 @@
 	import { page } from '$app/state';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import Copy from '@lucide/svelte/icons/copy';
+	import Printer from '@lucide/svelte/icons/printer';
 	import Save from '@lucide/svelte/icons/save';
 	import PlayableTab from '$lib/components/PlayableTab.svelte';
 	import { cloudStore } from '$lib/stores/cloud.svelte';
@@ -74,6 +75,10 @@
 			toaster.error({ title: 'Could not access the clipboard' });
 		}
 	}
+
+	function printTab() {
+		window.print();
+	}
 </script>
 
 <svelte:head>
@@ -108,7 +113,7 @@
 	</section>
 {:else}
 	<div class="space-y-6">
-		<div class="flex flex-wrap items-center justify-between gap-2">
+		<div class="flex flex-wrap items-center justify-between gap-2 print:hidden">
 			<a href={resolve('/')} class="btn hover:preset-tonal">
 				<ArrowLeft class="size-4" /> All tabs
 			</a>
@@ -119,6 +124,9 @@
 				<button type="button" class="btn preset-tonal" onclick={copy} disabled={!result.text}>
 					<Copy class="size-4" /> Copy tab
 				</button>
+				<button type="button" class="btn preset-tonal" onclick={printTab} disabled={!result.text}>
+					<Printer class="size-4" /> Print
+				</button>
 			</div>
 		</div>
 
@@ -127,7 +135,7 @@
 			<p class="opacity-70">
 				{shared.artist || 'Unknown artist'} · {tuning.label}
 			</p>
-			<p class="text-sm opacity-60">
+			<p class="text-sm opacity-60 print:hidden">
 				{token
 					? 'Live read-only tab. Saved updates appear here automatically.'
 					: 'Snapshot shared with you.'}
@@ -144,5 +152,6 @@
 			placeholder="This shared tab is empty."
 			class="min-h-64"
 		/>
+		<p class="print-source-url hidden text-xs print:block">Source: {page.url.href}</p>
 	</div>
 {/if}

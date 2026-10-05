@@ -1,6 +1,6 @@
 # 13 · Print stylesheet
 
-- **Status:** In progress
+- **Status:** Done
 - **Area:** UX
 - **Size:** Small
 - **Depends on:** –
@@ -90,3 +90,27 @@ No Firestore changes.
 - The monospace alignment is the whole value of the output. If the print font
   falls back to a proportional face, the tab becomes meaningless — specify the
   monospace stack explicitly in the print rules.
+
+## Outcome
+
+- Implemented visible **Print** actions on local tab and snapshot/live shared tab
+  pages; the action calls `window.print()` and is hidden from print output.
+- Added a separated `@media print` block at the end of
+  `src/routes/layout.css` that forces light pages, black tab text, an explicit
+  monospace stack, hidden app/playback/editor/cloud/toast chrome, and
+  `break-inside: avoid` on rendered tab blocks.
+- Added print-only local tab headings and kept shared tab headings visible, with a
+  wrapped shared source URL footer.
+- Left out Firestore changes and Firebase deployment because this task only
+  changes client markup/CSS and documentation.
+- Verification completed:
+  `npm run lint && npm run check && npm test && npm run build`; production
+  preview on port 4143; Playwright print-media PDF/PNG renders for local light
+  A4, local dark Letter, shared snapshot light Letter, and shared snapshot dark
+  A4. The renders were visually inspected for white pages, aligned monospace tab
+  columns, section/comment presence, no app chrome, no visible print button, and
+  wrapped shared source URL.
+- Manual follow-up for a human reviewer: open browser print preview on a real
+  saved/live shared tab if they want to validate an authenticated `/shared?id=…`
+  link, because the automated print render used a snapshot hash link and did not
+  contact Firebase.

@@ -101,8 +101,8 @@ choice is saved in the browser.
 
 Built with SvelteKit and Skeleton UI (`vintage` theme, with light and dark mode).
 Local tabs are saved in the browser's `localStorage`. You can create, search, duplicate
-and delete tabs, copy them to the clipboard, download them as `.txt`, or share
-them as a snapshot link. Google sign-in is optional: all existing local features
+and delete tabs, copy them to the clipboard, print clean paper copies, download
+them as `.txt`, or share them as a snapshot link. Google sign-in is optional: all existing local features
 work without an account. When signed in, cloud saving is the default; each tab
 can opt out by choosing **Browser only** under **Save location**.
 

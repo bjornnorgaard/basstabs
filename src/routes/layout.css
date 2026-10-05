@@ -83,3 +83,126 @@
 		box-shadow: none;
 	}
 }
+
+@media print {
+	@page {
+		margin: 12mm;
+	}
+
+	html {
+		color-scheme: light !important;
+		background: white !important;
+	}
+
+	body {
+		background: white !important;
+		color: black !important;
+		print-color-adjust: economy;
+	}
+
+	*,
+	*::before,
+	*::after {
+		box-shadow: none !important;
+		text-shadow: none !important;
+	}
+
+	main {
+		max-width: none !important;
+		padding: 0 !important;
+	}
+
+	.print\:hidden {
+		display: none !important;
+	}
+
+	a {
+		color: black !important;
+		text-decoration: none !important;
+	}
+
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6,
+	p {
+		color: black !important;
+	}
+
+	.card,
+	.tab-surface,
+	.tab-surface-bg {
+		background: white !important;
+		color: black !important;
+		border-color: #d4d4d4 !important;
+	}
+
+	.tab-surface {
+		border-radius: 0 !important;
+	}
+
+	.print-tab {
+		font-family:
+			ui-monospace, 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Menlo, Consolas, monospace !important;
+		color: black !important;
+		background: white !important;
+	}
+
+	.print-tab-body {
+		overflow: visible !important;
+		padding: 0 !important;
+		font-family:
+			ui-monospace, 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Menlo, Consolas, monospace !important;
+		font-size: 9pt !important;
+		line-height: 1.18 !important;
+	}
+
+	.print-tab-inner {
+		width: max-content !important;
+		min-width: 0 !important;
+		max-width: none !important;
+	}
+
+	.print-tab-block {
+		break-inside: avoid;
+		page-break-inside: avoid;
+	}
+
+	.print-tab-system {
+		color: black !important;
+	}
+
+	.print-source-url {
+		max-width: 100% !important;
+		overflow-wrap: anywhere;
+		word-break: break-word;
+	}
+
+	.hl-string,
+	.hl-string-name,
+	.hl-bar,
+	.hl-fill,
+	.hl-multi-digit,
+	.hl-focus,
+	[data-mode='dark'] .hl-string,
+	[data-mode='dark'] .hl-string-name {
+		color: black !important;
+		background: transparent !important;
+		opacity: 1 !important;
+		outline-color: black !important;
+	}
+
+	.hl-section,
+	.hl-comment {
+		color: #404040 !important;
+		background: transparent !important;
+		opacity: 1 !important;
+	}
+
+	.hl-invalid {
+		color: black !important;
+		text-decoration-color: black !important;
+	}
+}

@@ -53,7 +53,7 @@
 	{@const active = player.key === key}
 	<button
 		type="button"
-		class="flex size-5 items-center justify-center rounded-base transition-opacity hover:preset-tonal-primary focus-visible:opacity-100 {active
+		class="flex size-5 items-center justify-center rounded-base transition-opacity hover:preset-tonal-primary focus-visible:opacity-100 print:hidden {active
 			? 'preset-filled-primary-500 opacity-100'
 			: 'opacity-0 group-hover:opacity-100 pointer-coarse:opacity-40'}"
 		aria-label="{active ? 'Stop' : 'Play'} {label}"
@@ -67,9 +67,9 @@
 {#if !layout.text}
 	<TabPreview blocks={[]} {tuning} {placeholder} class={className} />
 {:else}
-	<div class="rounded-container tab-surface {className}">
+	<div class="print-tab rounded-container tab-surface {className}">
 		<div
-			class="flex flex-wrap items-center gap-2 border-b border-surface-200-800 px-4 py-2 text-sm"
+			class="flex flex-wrap items-center gap-2 border-b border-surface-200-800 px-4 py-2 text-sm print:hidden"
 		>
 			<button
 				type="button"
@@ -119,13 +119,19 @@
 			</span>
 		</div>
 
-		<div class="overflow-x-auto p-4 font-tab text-sm leading-snug [font-variant-ligatures:none]">
-			<div class="w-max min-w-full">
+		<div
+			class="print-tab-body overflow-x-auto p-4 font-tab text-sm leading-snug [font-variant-ligatures:none]"
+		>
+			<div class="print-tab-inner w-max min-w-full">
 				{#each layout.blocks as block, i (i)}
 					{@const gap = i > 0 && layout.blocks[i - 1].kind === 'system'}
 					{#if block.kind === 'section'}
-						<div class="group flex items-center gap-1 {gap ? 'mt-[1lh]' : ''}">
-							<div class="w-5 shrink-0">
+						<div
+							class="group print-tab-block print-tab-section flex items-center gap-1 {gap
+								? 'mt-[1lh]'
+								: ''}"
+						>
+							<div class="w-5 shrink-0 print:hidden">
 								{#if sectionMeasures[block.index]?.length}
 									{@render gutterButton(
 										`section:${block.index}`,
@@ -137,13 +143,17 @@
 							<div class="whitespace-pre"><span class="hl-section">{block.text}</span></div>
 						</div>
 					{:else if block.kind === 'annotation'}
-						<div class="flex gap-1 {gap ? 'mt-[1lh]' : ''}">
-							<div class="w-5 shrink-0"></div>
+						<div class="print-tab-block print-tab-annotation flex gap-1 {gap ? 'mt-[1lh]' : ''}">
+							<div class="w-5 shrink-0 print:hidden"></div>
 							<div class="hl-comment whitespace-pre">{block.text}</div>
 						</div>
 					{:else}
-						<div class="group flex items-center gap-1 {gap ? 'mt-[1lh]' : ''}">
-							<div class="w-5 shrink-0">
+						<div
+							class="group print-tab-block print-tab-system flex items-center gap-1 {gap
+								? 'mt-[1lh]'
+								: ''}"
+						>
+							<div class="w-5 shrink-0 print:hidden">
 								{@render gutterButton(
 									`row:${block.index}`,
 									`row ${block.index + 1}`,
@@ -173,7 +183,7 @@
 									{@const key = `bar:${measure.id}`}
 									<button
 										type="button"
-										class="absolute inset-y-0 cursor-pointer rounded-xs transition-colors hover:bg-primary-500/15 focus-visible:bg-primary-500/15 {player.activeMeasureId ===
+										class="absolute inset-y-0 cursor-pointer rounded-xs transition-colors hover:bg-primary-500/15 focus-visible:bg-primary-500/15 print:hidden {player.activeMeasureId ===
 										measure.id
 											? 'bg-primary-500/20'
 											: ''} {player.key === key ? 'ring-1 ring-primary-500' : ''}"

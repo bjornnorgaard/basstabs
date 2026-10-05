@@ -13,6 +13,7 @@
 	import Eraser from '@lucide/svelte/icons/eraser';
 	import Files from '@lucide/svelte/icons/files';
 	import FoldVertical from '@lucide/svelte/icons/fold-vertical';
+	import Printer from '@lucide/svelte/icons/printer';
 	import Share from '@lucide/svelte/icons/share-2';
 	import Trash from '@lucide/svelte/icons/trash';
 	import UnfoldVertical from '@lucide/svelte/icons/unfold-vertical';
@@ -203,6 +204,10 @@
 		URL.revokeObjectURL(url);
 	}
 
+	function printTab() {
+		window.print();
+	}
+
 	function duplicate() {
 		if (!tab) return;
 		const copy = cloudStore.create({
@@ -255,7 +260,7 @@
 	</section>
 {:else}
 	<div class="space-y-6">
-		<div class="flex flex-wrap items-center justify-between gap-2">
+		<div class="flex flex-wrap items-center justify-between gap-2 print:hidden">
 			<a href={resolve('/')} class="btn hover:preset-tonal">
 				<ArrowLeft class="size-4" /> All tabs
 			</a>
@@ -280,6 +285,9 @@
 				<button type="button" class="btn preset-tonal" onclick={download} disabled={!result.text}>
 					<Download class="size-4" /> .txt
 				</button>
+				<button type="button" class="btn preset-tonal" onclick={printTab} disabled={!result.text}>
+					<Printer class="size-4" /> Print
+				</button>
 				<button type="button" class="btn preset-tonal" onclick={duplicate}>
 					<Files class="size-4" /> Duplicate
 				</button>
@@ -295,7 +303,14 @@
 			</div>
 		</div>
 
-		<div class="grid gap-4 md:grid-cols-[2fr_2fr_1fr]">
+		<header class="hidden space-y-1 print:block">
+			<h1 class="h2">{tab.title || 'Untitled tab'}</h1>
+			<p>
+				{tab.artist || 'Unknown artist'} · {tuning.label}
+			</p>
+		</header>
+
+		<div class="grid gap-4 md:grid-cols-[2fr_2fr_1fr] print:hidden">
 			<label class="label min-w-0">
 				<span class="label-text">Title</span>
 				<input
@@ -327,14 +342,16 @@
 			</label>
 		</div>
 
-		<CloudTabControls {tab} {sharing} />
+		<div class="print:hidden">
+			<CloudTabControls {tab} {sharing} />
+		</div>
 
 		<!-- Side by side from wide desktop width up; stacked on smaller screens. Wide tabs scroll within their column. -->
 		<div class="grid grid-cols-1 gap-6 {editorOpen ? 'xl:grid-cols-2' : ''}">
 			<Collapsible
 				open={editorOpen}
 				onOpenChange={(details) => setEditorOpen(details.open)}
-				class="min-w-0 items-stretch gap-3"
+				class="min-w-0 items-stretch gap-3 print:hidden"
 			>
 				<div class="flex flex-wrap items-center justify-between gap-2">
 					<div class="flex items-center gap-1">
@@ -460,7 +477,7 @@
 			</Collapsible>
 
 			<section class="min-w-0 space-y-3">
-				<h2 class="h5">Generated bass tabs</h2>
+				<h2 class="h5 print:hidden">Generated bass tabs</h2>
 				<PlayableTab
 					layout={result.layout}
 					{tuning}
