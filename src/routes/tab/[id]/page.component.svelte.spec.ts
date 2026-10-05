@@ -89,4 +89,18 @@ describe('tab page component interactions', () => {
 
 		expect(print).toHaveBeenCalledTimes(1);
 	});
+
+	it('inserts notation from the quick-insert menus', async () => {
+		mocks.tab.source = 'E0 |';
+		localStorage.setItem('basstabs:editor', 'open');
+		const screen = await render(TabPage);
+
+		await screen.getByRole('button', { name: /structure/i }).click();
+		await screen.getByRole('menuitem', { name: /section heading/i }).click();
+
+		await expect.poll(() => mocks.tab.source).toBe('[Section]\nE0 |');
+		await expect
+			.element(screen.getByRole('menuitem', { name: /section heading/i }))
+			.not.toBeInTheDocument();
+	});
 });

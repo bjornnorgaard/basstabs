@@ -19,11 +19,13 @@
 	import UnfoldVertical from '@lucide/svelte/icons/unfold-vertical';
 	import ShorthandEditor from '$lib/components/ShorthandEditor.svelte';
 	import SyntaxHelp from '$lib/components/SyntaxHelp.svelte';
+	import NotationInsertMenus from '$lib/components/NotationInsertMenus.svelte';
 	import PlayableTab from '$lib/components/PlayableTab.svelte';
 	import { formatErrorReport } from '$lib/error-report';
 	import { tabStore } from '$lib/stores/tabs.svelte';
 	import type { ParseError } from '$lib/tab/parser';
 	import { stringHue } from '$lib/tab/highlight';
+	import { planInsert, type Snippet } from '$lib/tab/insert';
 	import { renderTab } from '$lib/tab/render';
 	import { buildShareUrl } from '$lib/tab/share';
 	import { getTuning, TUNINGS } from '$lib/tab/tuning';
@@ -97,20 +99,23 @@
 		editor.focus();
 	}
 
-	/** Inserts a snippet at the caret, adding a separating space where needed. */
-	function insert(snippet: string) {
+	/** Inserts a snippet at the caret, placing it according to its notation kind. */
+	function insert(snippet: Snippet) {
 		if (!tab || !editor) return;
 		const { from, to } = editor.state.selection.main;
-		const value = editor.state.doc.toString();
-		const before = value.slice(0, from);
-		const pad = before.length > 0 && !/\s$/.test(before) ? ' ' : '';
-		const text = `${pad}${snippet}`;
+		const edit = planInsert(editor.state.doc.toString(), from, to, snippet);
 		editor.dispatch({
-			changes: { from, to, insert: text },
-			selection: { anchor: from + text.length },
+			changes: { from: edit.from, to: edit.to, insert: edit.insert },
+			selection: edit.selection,
 			scrollIntoView: true
 		});
 		editor.focus();
+	}
+
+	function insertFromMenu(snippet: Snippet) {
+		insert(snippet);
+		// The menu restores focus to its trigger as it closes, so refocus the editor afterwards.
+		setTimeout(() => editor?.focus());
 	}
 
 	function selectError(error: ParseError) {
@@ -381,27 +386,32 @@
 									class="btn preset-tonal font-tab btn-sm"
 									style:--string-hue={stringHue(name, i)}
 									title="Insert {name} string"
-									onclick={() => insert(name)}><span class="hl-string">{name}</span></button
+									onclick={() => insert({ text: name, kind: 'word' })}
+									><span class="hl-string">{name}</span></button
 								>
 							{/each}
 							<button
 								type="button"
 								class="btn preset-tonal font-tab btn-sm"
 								title="Insert bar line"
-								onclick={() => insert('| ')}>|</button
+								onclick={() => insert({ text: '| ', kind: 'word' })}>|</button
 							>
+							<NotationInsertMenus oninsert={insertFromMenu} />
 							<button
 								type="button"
-								class="ml-8 btn preset-tonal font-tab btn-sm"
+								class="btn preset-tonal font-tab btn-sm sm:ml-auto"
 								title={editorGrow
 									? 'Limit the editor to five lines'
 									: 'Expand the editor to fit its content'}
+								aria-label={editorGrow ? 'Shrink editor' : 'Expand editor'}
 								onclick={toggleEditorGrow}
 							>
 								{#if editorGrow}
-									<FoldVertical class="size-4" /> Shrink editor
+									<FoldVertical class="size-4" />
+									<span class="hidden sm:inline">Shrink editor</span>
 								{:else}
-									<UnfoldVertical class="size-4" /> Expand editor
+									<UnfoldVertical class="size-4" />
+									<span class="hidden sm:inline">Expand editor</span>
 								{/if}
 							</button>
 							<button
@@ -412,7 +422,7 @@
 								onclick={clearSource}
 								disabled={!tab.source}
 							>
-								<Eraser class="size-4" /> Clear editor
+								<Eraser class="size-4" /> <span class="hidden sm:inline">Clear editor</span>
 							</button>
 						</div>
 					{/if}
