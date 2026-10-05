@@ -9,11 +9,13 @@
 	import UserRound from '@lucide/svelte/icons/user-round';
 	import Brand from '$lib/components/Brand.svelte';
 	import ModeToggle from '$lib/components/ModeToggle.svelte';
+	import { registerServiceWorker } from '$lib/service-worker-registration';
 	import { toaster } from '$lib/toaster';
 	import AccountControls from '$lib/components/AccountControls.svelte';
 	import { cloudStore } from '$lib/stores/cloud.svelte';
 
 	let { children } = $props();
+	registerServiceWorker();
 
 	function newTab() {
 		const tab = cloudStore.create();

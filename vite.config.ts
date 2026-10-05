@@ -12,7 +12,8 @@ export default defineConfig({
 				runes: ({ filename }) =>
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
-			adapter: adapter({ fallback: '200.html', precompress: true })
+			adapter: adapter({ fallback: '200.html', precompress: true }),
+			serviceWorker: { register: false }
 		})
 	],
 	test: {
