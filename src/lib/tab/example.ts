@@ -37,13 +37,18 @@ export const EXAMPLE_SOURCE = `[C Major Scale]
 
 [Bar Lines and Rows]
 # The | character separates measures (bars); their written widths can differ.
-# Playback gives each bar four beats at the chosen BPM, regardless of its width.
-# Note groups divide that time evenly; the syntax does not specify note durations.
+# Unmarked bars keep the original playback: note groups divide the bar evenly.
 |E0A2|E0 0 3 A2|A3 3 3 3  |A2E320    |
 
 # Newlines start a new row of tab.
 # Bare frets still use the previous string (E here). A final | is optional.
 3 2 0
+
+[Rhythm and Rests]
+# Duration markers are explicit and do not render: :q quarter, :e eighth, :h half.
+# Markers are sticky within a bar. :r rests for the current duration; :re is an eighth rest.
+# Under-filled marked bars leave the remaining time silent.
+|:q E0 0 :e 0 0 :r 0|:h A2E320 :q E0 :r|
 
 [Verse]
 # Original lyric sketch: Footsteps settle into time

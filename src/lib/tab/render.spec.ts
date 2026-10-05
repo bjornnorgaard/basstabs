@@ -221,6 +221,28 @@ describe('renderTab', () => {
 			]
 		);
 	});
+
+	it('keeps rhythm duration and rest markers out of rendered tab columns', () => {
+		const source = ':q E0 0 :e 0 :r :re. |';
+		const { text, layout, errors } = renderTab(source, bass4);
+		expect(errors).toEqual([]);
+		expect(text.split('\n')).toEqual([
+			'G|----------|',
+			'D|----------|',
+			'A|----------|',
+			'E|-0-0--0---|'
+		]);
+		expect(layout.measures[0]).toMatchObject({ width: 10, timed: true });
+		expect(
+			layout.measures[0].timingSlots.map((slot) => [slot.notes.length, slot.duration])
+		).toEqual([
+			[1, 0.25],
+			[1, 0.25],
+			[1, 0.125],
+			[0, 0.125],
+			[0, 0.1875]
+		]);
+	});
 });
 
 describe('parse errors', () => {

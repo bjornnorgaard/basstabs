@@ -30,6 +30,16 @@
 			syntax: `${tuning.strings[0]}5b ${tuning.strings[0]}5~ ${tuning.strings[0]}x ${tuning.strings[0]}(5)`,
 			meaning: 'Bend, vibrato, dead note and ghost note notation.'
 		},
+		{
+			syntax: `:q ${tuning.strings[0]}0 0 :e 0 0`,
+			meaning:
+				'Duration markers are sticky within a bar: whole, half, quarter, eighth or sixteenth.'
+		},
+		{
+			syntax: ':q. E0 :r :re 0',
+			meaning:
+				'Add . for dotted notes. :r is a rest using the current duration; :re is an eighth rest.'
+		},
 		{ syntax: '|', meaning: 'Bar line – ends the current measure.' },
 		{ syntax: '↵ new line', meaning: 'Starts a new row of tab.', plain: true },
 		{ syntax: '[Verse 1]', meaning: 'Names the section that follows. Use a line of its own.' },
@@ -67,7 +77,9 @@
 		string names occupy no tab columns. Articulation characters also occupy tab columns: <ShorthandCode
 			source={`${tuning.strings[0]}5h7`}
 			{tuning}
-		/> is three columns. A bare bracketed fret reuses the previous string; use <ShorthandCode
+		/> is three columns. Rhythm markers such as <ShorthandCode source=":q" {tuning} /> and
+		<ShorthandCode source=":r" {tuning} /> do not occupy tab columns, but spaces around them still do.
+		A bare bracketed fret reuses the previous string; use <ShorthandCode
 			source="E0 |[12]|"
 			{tuning}
 		/> rather than putting

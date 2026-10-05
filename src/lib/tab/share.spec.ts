@@ -48,6 +48,13 @@ describe('share links', () => {
 		expect(decodeSharedTab(encodeSharedTab(articulated))).toEqual(articulated);
 	});
 
+	it('uses version 3 when rhythm syntax is present', () => {
+		const rhythmic = { ...tab, source: ':q E0 0 :e 0 :r 0 |' };
+		expect(requiredShareVersion(rhythmic.source, rhythmic.tuningId)).toBe('3');
+		expect(decodedPayloadVersion(encodeSharedTab(rhythmic))).toBe('3');
+		expect(decodeSharedTab(encodeSharedTab(rhythmic))).toEqual(rhythmic);
+	});
+
 	it('accepts version 3 payloads', () => {
 		const payload = btoa(String.raw`3
 Title

@@ -32,6 +32,10 @@
 .hl-technique {
 	color: var(--color-secondary-700);
 }
+.hl-duration,
+.hl-rest {
+	color: var(--color-tertiary-700);
+}
 .hl-fill {
 	opacity: 0.4;
 }
@@ -70,6 +74,10 @@
 	}
 	.hl-technique {
 		color: var(--color-secondary-300);
+	}
+	.hl-duration,
+	.hl-rest {
+		color: var(--color-tertiary-300);
 	}
 }
 
@@ -189,6 +197,8 @@
 	.hl-string,
 	.hl-string-name,
 	.hl-bar,
+	.hl-duration,
+	.hl-rest,
 	.hl-fill,
 	.hl-multi-digit,
 	.hl-focus,
