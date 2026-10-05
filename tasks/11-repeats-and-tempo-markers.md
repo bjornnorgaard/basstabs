@@ -1,6 +1,6 @@
 # 11 · Repeats and tempo markers
 
-- **Status:** Not started
+- **Status:** In progress
 - **Area:** Notation / playback
 - **Size:** Medium
 - **Depends on:** [10](./10-rhythm-and-durations.md) _(soft — same files; tempo composes with durations)_
