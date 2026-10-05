@@ -8,6 +8,8 @@ node_modules
 /.svelte-kit
 /build
 *-debug.log
+__screenshots__/
+.vitest-attachments/
 
 # OS
 .DS_Store
