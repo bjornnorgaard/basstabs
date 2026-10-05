@@ -1,5 +1,16 @@
 # Repository agent instructions
 
+## Planned work lives in `tasks/`
+
+Before starting a feature or improvement, check [tasks/README.md](./tasks/README.md)
+for the task index and [tasks/ROADMAP.md](./tasks/ROADMAP.md) for dependencies and
+file conflicts. If the work matches an existing task, follow that file and update
+its **Status** rather than starting from scratch.
+
+Set a task to `In progress` as the first commit of the session, and to `Done` when
+it is merged and verified. Several tasks run in parallel sessions, so the status
+field is how they avoid editing the same files at once.
+
 ## Firestore changes are the agent's deployment responsibility
 
 GitHub Actions builds and releases the web client but does **not** deploy

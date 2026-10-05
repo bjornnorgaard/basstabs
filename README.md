@@ -2,6 +2,9 @@
 
 Lives at [basstabs.bybear.dk](https://basstabs.bybear.dk).
 
+Planned work is tracked in [tasks/](./tasks/README.md), with dependencies and
+parallelisable work in [tasks/ROADMAP.md](./tasks/ROADMAP.md).
+
 Given input syntax
 
 ```our syntax
