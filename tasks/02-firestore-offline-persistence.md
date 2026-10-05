@@ -1,6 +1,6 @@
 # 02 · Firestore offline persistence
 
-- **Status:** Not started
+- **Status:** In progress
 - **Area:** Offline / reliability
 - **Size:** Small
 - **Depends on:** [01](./01-lazy-load-firebase.md) _(soft — same file)_

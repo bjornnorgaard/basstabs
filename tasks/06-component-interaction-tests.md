@@ -1,6 +1,6 @@
 # 06 · Component and interaction tests
 
-- **Status:** Not started
+- **Status:** In progress
 - **Area:** Testing
 - **Size:** Medium
 - **Depends on:** –

@@ -1,6 +1,6 @@
 # 12 · Improve the public library
 
-- **Status:** Not started
+- **Status:** In progress
 - **Area:** UX
 - **Size:** Medium
 - **Depends on:** –
