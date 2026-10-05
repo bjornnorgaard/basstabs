@@ -12,7 +12,7 @@ can safely run in parallel.
 | ------------------------------------------- | ---------------------------------- | -------------------- | ------ | ----------- | ----------- |
 | [01](./01-lazy-load-firebase.md)            | Lazy-load Firebase                 | Performance          | Medium | Done        | –           |
 | [02](./02-firestore-offline-persistence.md) | Firestore offline persistence      | Offline              | Small  | In progress | 01 _(soft)_ |
-| [03](./03-offline-app-shell.md)             | Offline app shell (service worker) | Offline / PWA        | Medium | In progress | –           |
+| [03](./03-offline-app-shell.md)             | Offline app shell (service worker) | Offline / PWA        | Medium | Done        | –           |
 | [04](./04-firebase-app-check.md)            | Firebase App Check                 | Security / cost      | Medium | Not started | 01 _(soft)_ |
 | [05](./05-rules-tests-in-ci.md)             | Run Firestore rules tests in CI    | CI / safety          | Small  | Done        | –           |
 | [06](./06-component-interaction-tests.md)   | Component and interaction tests    | Testing              | Medium | In progress | –           |
@@ -21,7 +21,7 @@ can safely run in parallel.
 | [09](./09-articulation-notation.md)         | Articulation notation              | Notation / parser    | Large  | Done        | –           |
 | [10](./10-rhythm-and-durations.md)          | Rhythm and note durations          | Notation / playback  | Large  | In progress | 09 _(soft)_ |
 | [11](./11-repeats-and-tempo-markers.md)     | Repeats and tempo markers          | Notation / playback  | Medium | Not started | 10 _(soft)_ |
-| [12](./12-public-library-browsing.md)       | Improve the public library         | UX                   | Medium | In progress | –           |
+| [12](./12-public-library-browsing.md)       | Improve the public library         | UX                   | Medium | Done        | –           |
 | [13](./13-print-stylesheet.md)              | Print stylesheet                   | UX                   | Small  | Done        | –           |
 
 A **soft** dependency means the tasks edit the same files, not that one needs the
