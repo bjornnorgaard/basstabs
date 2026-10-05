@@ -209,10 +209,23 @@ Cloud renames also check for duplicates; a conflicting draft stays unsaved until
 you give it a different title. Existing duplicate titles are not automatically
 renamed or deleted.
 Cloud-backed tabs are available across devices and save edits automatically
-after a short delay. **Retry save** explicitly retries
-a failed save. Sign-out waits for pending edits to save; if saving fails, the
-account stays signed in. Unsaved drafts are backed up in browser storage under
-the account's UID and restored only for that account. Browser storage errors are
+after a short delay. Firestore keeps a persistent local cache when the browser
+supports it, so previously opened cloud tabs can render while offline or after a
+reload. Content edits to an already cached cloud tab are accepted offline and
+sync automatically when the connection returns; the UI labels these as
+**Offline — changes will sync** rather than failed saves. Creating a new cloud
+tab, enabling cloud saving for a browser-only tab, and changing a cloud title
+still need a connection because the app checks title uniqueness on the server;
+those drafts stay local and retry when the browser comes back online. Private
+browsing modes and restrictive webviews may fall back to a memory-only cache, so
+cloud features still work online but cached tabs may not survive a reload.
+**Retry save** explicitly retries a failed save. Sign-out waits for pending edits
+to save; if saving fails, the account stays signed in. After sign-out the app
+terminates Firestore and asks it to clear cached cloud tabs from IndexedDB. If
+another basstabs tab is still open and the browser refuses that cleanup, the app
+reports it so you can close the other tab and sign in/out again before leaving a
+shared computer. Unsaved drafts are backed up in browser storage under the
+account's UID and restored only for that account. Browser storage errors are
 shown explicitly. Local tabs remain available after sign-out.
 
 Visibility options:

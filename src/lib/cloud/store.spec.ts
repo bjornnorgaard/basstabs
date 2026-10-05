@@ -10,8 +10,17 @@ const mocks = vi.hoisted(() => ({
 	get: vi.fn(),
 	library: vi.fn(),
 	signOut: vi.fn(),
+	clearCache: vi.fn<() => Promise<void>>(),
 	onSnapshot: vi.fn<
-		(path: unknown, next: unknown, error: (error: { code: string }) => void) => () => void
+		(
+			path: unknown,
+			options: { includeMetadataChanges: boolean },
+			next: (snapshot: {
+				docs: { id: string; data: () => CloudTab }[];
+				metadata: { fromCache: boolean; hasPendingWrites: boolean };
+			}) => void,
+			error: (error: { code: string }) => void
+		) => () => void
 	>(() => vi.fn())
 }));
 vi.mock('$app/environment', () => ({ browser: true }));
@@ -46,10 +55,24 @@ vi.mock('$lib/firebase', () => {
 				for (const args of writes) mocks.set(...args);
 				for (const args of deletes) mocks.delete(...args);
 			},
-			writeBatch: () => ({ set: mocks.set, delete: mocks.delete, commit: mocks.commit })
-		}
+			writeBatch: () => {
+				const writes: unknown[][] = [];
+				const deletes: unknown[][] = [];
+				return {
+					set: (...args: unknown[]) => writes.push(args),
+					delete: (...args: unknown[]) => deletes.push(args),
+					commit: async () => {
+						await mocks.commit();
+						for (const args of writes) mocks.set(...args);
+						for (const args of deletes) mocks.delete(...args);
+					}
+				};
+			}
+		},
+		firestoreCache: 'persistent'
 	};
 	return {
+		clearCachedFirestoreData: mocks.clearCache,
 		getCachedFirebase: vi.fn(() => firebase),
 		getFirebase: vi.fn(async () => firebase),
 		prewarmFirebase: vi.fn(async () => firebase)
@@ -82,6 +105,7 @@ describe('optional cloud store', () => {
 			removeItem: (key: string) => storage.delete(key)
 		});
 		mocks.commit.mockResolvedValue();
+		mocks.clearCache.mockResolvedValue();
 		mocks.get.mockReset();
 		mocks.get.mockImplementation(async (path: string) => ({
 			exists: () => path === `users/owner/tabs/${tab.id}`,
@@ -185,7 +209,9 @@ describe('optional cloud store', () => {
 		await cloud.logout();
 		expect(cloud.get(first.id)).toBeDefined();
 		expect(mocks.signOut).toHaveBeenCalledTimes(1);
+		expect(mocks.clearCache).toHaveBeenCalledTimes(1);
 		mocks.signOut.mockClear();
+		mocks.clearCache.mockClear();
 		const second = cloud.create({ title: 'Second song' });
 		mocks.commit.mockRejectedValueOnce(new Error('offline'));
 		await cloud.logout();
@@ -195,6 +221,21 @@ describe('optional cloud store', () => {
 		await cloud.keepBrowserOnly(second.id);
 		await cloud.logout();
 		expect(mocks.signOut).toHaveBeenCalledTimes(1);
+		expect(mocks.clearCache).toHaveBeenCalledTimes(1);
+	});
+
+	it('shows cached snapshots as offline pending sync instead of failed connection', async () => {
+		const cloud = await store();
+		const next = mocks.onSnapshot.mock.calls.at(-1)?.[2];
+		expect(next).toBeDefined();
+		next?.({
+			docs: [{ id: tab.id, data: () => ({ ...tab, source: 'E9' }) }],
+			metadata: { fromCache: true, hasPendingWrites: true }
+		});
+		expect(cloud.offline).toBe(true);
+		expect(cloud.pendingSync).toBe(true);
+		expect(cloud.connectionFailed).toBe(false);
+		expect(cloud.get(tab.id)?.source).toBe('E9');
 	});
 
 	it('does not overwrite title conflicts during automatic sign-in uploads', async () => {
@@ -684,7 +725,7 @@ describe('optional cloud store', () => {
 		cloud.update(tab.id, { source: 'E8' });
 		const subscription = mocks.onSnapshot.mock.calls.at(-1);
 		expect(subscription).toBeDefined();
-		subscription?.[2]({ code: 'permission-denied' });
+		subscription?.[3]({ code: 'permission-denied' });
 		expect(cloud.connectionFailed).toBe(true);
 		expect(cloud.loading).toBe(false);
 		expect(cloud.error).toContain('Google sign-in succeeded');

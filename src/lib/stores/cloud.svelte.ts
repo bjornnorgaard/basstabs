@@ -3,6 +3,7 @@ import { untrack } from 'svelte';
 import type { User } from 'firebase/auth';
 import type { Unsubscribe } from 'firebase/firestore';
 import {
+	clearCachedFirestoreData,
 	getCachedFirebase,
 	getFirebase,
 	prewarmFirebase,
@@ -18,7 +19,7 @@ import {
 	type CloudTab,
 	type Visibility
 } from '$lib/cloud/model';
-import { writeCloudTab } from '$lib/cloud/write';
+import { queueCloudTabWrite, writeCloudTab } from '$lib/cloud/write';
 import { tabStore, type BassTab } from './tabs.svelte';
 
 const SESSION_HINT = 'basstabs:had-session';
@@ -47,6 +48,8 @@ class CloudStore {
 	ready = $state(!hasSessionHint());
 	loading = $state(false);
 	connectionFailed = $state(false);
+	offline = $state(false);
+	pendingSync = $state(false);
 	busy = $state(false);
 	error = $state('');
 	tabs = $state<CloudTab[]>([]);
@@ -59,6 +62,7 @@ class CloudStore {
 	private writes = new Map<string, Promise<void>>();
 	private revisions = new Map<string, number>();
 	private savedShareIds = new Map<string, string | null>();
+	private savedTitleKeys = new Map<string, string>();
 	private generation = 0;
 	private uploadAttempts = new Map<string, string>();
 	private syncTask?: { generation: number; promise: Promise<void> };
@@ -73,6 +77,12 @@ class CloudStore {
 				event.preventDefault();
 				event.returnValue = '';
 			}
+		});
+		window.addEventListener('online', () => {
+			if (!this.user) return;
+			if (this.connectionFailed) this.connect();
+			void this.syncBrowserTabs();
+			this.retryDirtySaves();
 		});
 		$effect.root(() => {
 			$effect(() => {
@@ -139,6 +149,7 @@ class CloudStore {
 				this.timers.clear();
 				this.revisions.clear();
 				this.savedShareIds.clear();
+				this.savedTitleKeys.clear();
 				this.tabs = [];
 				this.dirty = [];
 				this.saving = [];
@@ -149,6 +160,8 @@ class CloudStore {
 				this.ready = true;
 				this.loading = !!user;
 				this.connectionFailed = false;
+				this.offline = false;
+				this.pendingSync = false;
 				if (!user) return;
 				this.restoreDrafts(user.uid);
 				void this.connect();
@@ -190,15 +203,21 @@ class CloudStore {
 		const { db, firestoreSdk } = firebase;
 		this.unsubscribe = firestoreSdk.onSnapshot(
 			firestoreSdk.collection(db, 'users', user.uid, 'tabs'),
+			{ includeMetadataChanges: true },
 			(snapshot) => {
 				if (this.generation !== generation) return;
 				try {
 					const remote = snapshot.docs.map((d) => readCloudTab(d.id, d.data()));
 					for (const tab of remote) {
-						if (!this.saving.includes(tab.id)) this.savedShareIds.set(tab.id, tab.shareId);
+						if (!this.saving.includes(tab.id)) {
+							this.savedShareIds.set(tab.id, tab.shareId);
+							this.savedTitleKeys.set(tab.id, cloudTitleKey(tab.title));
+						}
 					}
 					const drafts = this.tabs.filter((t) => this.dirty.includes(t.id));
 					this.tabs = [...remote.filter((t) => !this.dirty.includes(t.id)), ...drafts];
+					this.offline = snapshot.metadata.fromCache;
+					this.pendingSync = snapshot.metadata.hasPendingWrites;
 					this.loading = false;
 				} catch (error) {
 					this.error = errorMessage(error);
@@ -415,6 +434,13 @@ class CloudStore {
 				);
 			const firebase = await this.ensure();
 			await firebase.authSdk.signOut(firebase.auth);
+			this.unsubscribe?.();
+			this.unsubscribe = undefined;
+			try {
+				await clearCachedFirestoreData();
+			} catch (error) {
+				this.error = `Signed out, but this browser could not clear its cached cloud tabs: ${errorMessage(error)} Close other basstabs tabs, then sign in and out again before leaving a shared computer.`;
+			}
 			setSessionHint(false);
 		} catch (error) {
 			this.error = errorMessage(error);
@@ -426,6 +452,8 @@ class CloudStore {
 	update(id: string, changes: Partial<Pick<BassTab, 'title' | 'artist' | 'tuningId' | 'source'>>) {
 		const tab = this.get(id);
 		if (!tab || !this.user) throw new Error('Sign in to edit this cloud tab.');
+		if (!this.savedTitleKeys.has(id) && !this.dirty.includes(id))
+			this.savedTitleKeys.set(id, cloudTitleKey(tab.title));
 		if (this.movingToBrowser.includes(id)) {
 			tabStore.keepBrowserOnly({
 				...tab,
@@ -443,7 +471,8 @@ class CloudStore {
 			id,
 			setTimeout(() => {
 				void this.save(id).catch((error) => {
-					this.error = errorMessage(error);
+					if (isOfflineError(error)) this.noteOfflineRetry();
+					else this.error = errorMessage(error);
 				});
 			}, 800)
 		);
@@ -486,6 +515,7 @@ class CloudStore {
 			}
 			if (!this.get(tab.id)) this.tabs.push(tab);
 			this.savedShareIds.set(tab.id, null);
+			this.savedTitleKeys.set(tab.id, cloudTitleKey(tab.title));
 			this.finishPromotion(local.id, tab);
 			delete this.uploadErrors[local.id];
 			return tab.id;
@@ -553,26 +583,30 @@ class CloudStore {
 		const generation = this.generation;
 		const snapshot = { ...tab };
 		this.saving.push(id);
+		const resolvedOldShareId =
+			oldShareId === undefined ? (this.savedShareIds.get(id) ?? snapshot.shareId) : oldShareId;
+		const needsServerTitleCheck = this.savedTitleKeys.get(id) !== cloudTitleKey(snapshot.title);
 		const operation = firebase.then(({ db, firestoreSdk }) =>
-			writeCloudTab(
-				db,
-				snapshot,
-				user.uid,
-				oldShareId === undefined ? (this.savedShareIds.get(id) ?? snapshot.shareId) : oldShareId,
-				false,
-				firestoreSdk
-			)
+			needsServerTitleCheck
+				? writeCloudTab(db, snapshot, user.uid, resolvedOldShareId, false, firestoreSdk)
+				: queueCloudTabWrite(db, snapshot, user.uid, resolvedOldShareId, firestoreSdk)
 		);
 		this.writes.set(id, operation);
 		try {
 			await operation;
 			if (this.generation === generation) {
 				this.savedShareIds.set(id, snapshot.shareId);
+				this.savedTitleKeys.set(id, cloudTitleKey(snapshot.title));
 				if (revision === (this.revisions.get(id) ?? 0)) {
 					this.dirty = this.dirty.filter((key) => key !== id);
 				}
 				this.cacheDrafts();
 			}
+		} catch (error) {
+			if (needsServerTitleCheck && isOfflineError(error) && this.generation === generation) {
+				this.noteOfflineRetry();
+			}
+			throw error;
 		} finally {
 			if (this.writes.get(id) === operation) this.writes.delete(id);
 			if (this.generation === generation) this.saving = this.saving.filter((key) => key !== id);
@@ -629,12 +663,38 @@ class CloudStore {
 				this.tabs = this.tabs.filter((t) => t.id !== id);
 				this.dirty = this.dirty.filter((key) => key !== id);
 				this.savedShareIds.delete(id);
+				this.savedTitleKeys.delete(id);
 				this.cacheDrafts();
 			}
 		} finally {
 			if (this.writes.get(id) === operation) this.writes.delete(id);
 		}
 	}
+
+	private retryDirtySaves() {
+		for (const id of this.dirty) {
+			if (this.writes.has(id) || this.saving.includes(id)) continue;
+			void this.save(id).catch((error) => {
+				if (isOfflineError(error)) this.noteOfflineRetry();
+				else this.error = errorMessage(error);
+			});
+		}
+	}
+
+	private noteOfflineRetry() {
+		this.offline = true;
+		this.pendingSync = true;
+		this.error =
+			'You appear to be offline. Cached cloud tabs remain editable; changes that need the server will retry when the connection returns.';
+	}
 }
 
 export const cloudStore = new CloudStore();
+
+function isOfflineError(error: unknown) {
+	const candidate = error as { code?: unknown; message?: unknown };
+	return (
+		candidate.code === 'unavailable' ||
+		(typeof candidate.message === 'string' && /\boffline\b/i.test(candidate.message))
+	);
+}

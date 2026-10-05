@@ -15,6 +15,7 @@ export type FirebaseServices = {
 	db: FirebaseFirestore.Firestore;
 	authSdk: typeof FirebaseAuth;
 	firestoreSdk: typeof FirebaseFirestore;
+	firestoreCache: 'persistent' | 'memory';
 };
 
 let firebase: FirebaseServices | undefined;
@@ -40,17 +41,44 @@ async function loadFirebase(): Promise<FirebaseServices> {
 			import('firebase/auth'),
 			import('firebase/firestore')
 		]);
-		const app = appSdk.initializeApp(firebaseConfig);
+		const app = appSdk.getApps()[0] ?? appSdk.initializeApp(firebaseConfig);
+		const { db, cache } = initializeFirestore(app, firestoreSdk);
 		firebase = {
 			app,
 			auth: authSdk.getAuth(app),
-			db: firestoreSdk.getFirestore(app),
+			db,
 			authSdk,
-			firestoreSdk
+			firestoreSdk,
+			firestoreCache: cache
 		};
 		return firebase;
 	} catch (error) {
 		firebasePromise = undefined;
 		throw error;
 	}
+}
+
+function initializeFirestore(app: FirebaseApp.FirebaseApp, firestoreSdk: typeof FirebaseFirestore) {
+	try {
+		return {
+			db: firestoreSdk.initializeFirestore(app, {
+				localCache: firestoreSdk.persistentLocalCache({
+					tabManager: firestoreSdk.persistentMultipleTabManager()
+				})
+			}),
+			cache: 'persistent' as const
+		};
+	} catch {
+		return { db: firestoreSdk.getFirestore(app), cache: 'memory' as const };
+	}
+}
+
+export async function clearCachedFirestoreData() {
+	const current = firebase;
+	if (!current) return;
+	await current.firestoreSdk.terminate(current.db);
+	await current.firestoreSdk.clearIndexedDbPersistence(current.db);
+	const { db, cache } = initializeFirestore(current.app, current.firestoreSdk);
+	firebase = { ...current, db, firestoreCache: cache };
+	firebasePromise = Promise.resolve(firebase);
 }
