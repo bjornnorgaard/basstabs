@@ -30,6 +30,8 @@
 				</div>
 			{:else if block.kind === 'annotation'}
 				<div class="hl-comment whitespace-pre {gap ? 'mt-[1lh]' : ''}">{block.text}</div>
+			{:else if block.kind === 'tempo'}
+				<div class="hl-tempo whitespace-pre {gap ? 'mt-[1lh]' : ''}">{block.text}</div>
 			{:else}
 				<div class={gap ? 'mt-[1lh]' : ''}>
 					{#each block.lines as line (line.string)}

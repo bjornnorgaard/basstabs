@@ -53,6 +53,8 @@ vi.mock('$lib/audio/player.svelte', () => ({
 		playing: false,
 		looping: false,
 		bpm: 100,
+		sourceTempoActive: false,
+		activeBpm: 100,
 		key: null,
 		label: '',
 		activeNoteId: null,

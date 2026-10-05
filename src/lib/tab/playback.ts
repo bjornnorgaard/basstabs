@@ -15,6 +15,39 @@ export interface Schedule {
 	notes: ScheduledNote[];
 	/** Total length in bars. */
 	length: number;
+	/** Absolute source tempo changes in bars from the start of this schedule. */
+	tempoChanges?: TempoChange[];
+}
+
+export interface TempoChange {
+	start: number;
+	bpm: number;
+}
+
+function expandRepeats(measures: MeasureLayout[]): MeasureLayout[] {
+	const expanded: MeasureLayout[] = [];
+	let repeatStart: number | undefined;
+	for (const measure of measures) {
+		if (measure.repeatStart && repeatStart === undefined) repeatStart = expanded.length;
+		expanded.push(measure);
+		if (measure.repeatEnd && repeatStart !== undefined) {
+			const phrase = expanded.slice(repeatStart);
+			for (let pass = 1; pass < measure.repeatEnd.count; pass++) expanded.push(...phrase);
+			repeatStart = undefined;
+		}
+	}
+	return expanded;
+}
+
+function tempoChangesFor(measures: MeasureLayout[]): TempoChange[] | undefined {
+	const changes: TempoChange[] = [];
+	let current: number | undefined;
+	measures.forEach((measure, bar) => {
+		if (measure.tempoBpm === undefined || measure.tempoBpm === current) return;
+		current = measure.tempoBpm;
+		changes.push({ start: bar, bpm: measure.tempoBpm });
+	});
+	return changes.length > 0 ? changes : undefined;
 }
 
 /**
@@ -24,7 +57,8 @@ export interface Schedule {
  */
 export function buildSchedule(measures: MeasureLayout[], tuning: Tuning): Schedule {
 	const notes: ScheduledNote[] = [];
-	measures.forEach((measure, bar) => {
+	const expanded = expandRepeats(measures);
+	expanded.forEach((measure, bar) => {
 		if (measure.timed) {
 			let position = 0;
 			for (const slot of measure.timingSlots) {
@@ -61,7 +95,12 @@ export function buildSchedule(measures: MeasureLayout[], tuning: Tuning): Schedu
 			});
 		});
 	});
-	return { notes, length: measures.length };
+	const tempoChanges = tempoChangesFor(expanded);
+	return {
+		notes,
+		length: expanded.length,
+		...(tempoChanges ? { tempoChanges } : {})
+	};
 }
 
 export function midiToFrequency(midi: number): number {

@@ -36,12 +36,24 @@ describe('new tab example', () => {
 			'Articulations',
 			'Bar Lines and Rows',
 			'Rhythm and Rests',
+			'Repeats and Tempo',
 			'Verse',
 			'Try the Features'
 		]);
-		expect(systems).toHaveLength(10);
+		expect(systems).toHaveLength(12);
 		expect(new Set(tokens.map((token) => token.kind))).toEqual(
-			new Set(['section', 'comment', 'bar', 'string', 'fret', 'technique', 'duration', 'rest'])
+			new Set([
+				'section',
+				'comment',
+				'bar',
+				'string',
+				'fret',
+				'technique',
+				'duration',
+				'rest',
+				'repeat',
+				'tempo'
+			])
 		);
 		for (const token of tokens.filter((token) => token.kind === 'string')) {
 			const name = EXAMPLE_SOURCE.slice(token.start, token.end);
@@ -98,12 +110,26 @@ describe('new tab example', () => {
 			['note', 'note', 'note', 'note', 'rest', 'note'],
 			['note', 'note', 'note', 'note', 'note', 'rest']
 		]);
+		expect(systems[9].measures).toHaveLength(2);
+		expect(systems[9].measures[0]).toMatchObject({ repeatStart: true, timed: true });
+		expect(systems[9].measures[1]).toMatchObject({ repeatEnd: { count: 3 }, timed: true });
+		expect(systems[10].measures[0]).toMatchObject({
+			repeatStart: true,
+			repeatEnd: { count: 2 },
+			timed: true
+		});
 		const { layout } = renderTab(EXAMPLE_SOURCE, tuning);
 		const silentBar = layout.measures.find((measure) => measure.notes.length === 0);
 		expect(silentBar?.width).toBe(4);
 		const schedule = buildSchedule(layout.measures, tuning);
 		expect(schedule.notes.some((note) => note.measureId === silentBar?.id)).toBe(false);
-		expect(schedule.length).toBe(layout.measures.length);
+		expect(schedule.length).toBeGreaterThan(layout.measures.length);
+		expect(schedule.tempoChanges).toEqual(
+			expect.arrayContaining([
+				{ start: expect.any(Number), bpm: 120 },
+				{ start: expect.any(Number), bpm: 90 }
+			])
+		);
 	});
 
 	it('places the newline comment above the next row and preserves the previous string', () => {

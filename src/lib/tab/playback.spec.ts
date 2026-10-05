@@ -229,6 +229,64 @@ describe('buildSchedule', () => {
 		]);
 	});
 
+	it('expands repeat ranges while keeping source note and measure ids for highlighting', () => {
+		const { layout, errors } = renderTab('|: E0 | A2 :|x3 E3 |', bass4);
+		expect(errors).toEqual([]);
+		const { notes, length } = buildSchedule(layout.measures, bass4);
+		expect(length).toBe(7);
+		expect(
+			notes.map((note) => [note.midi, note.start, note.length, note.measureId, note.noteId])
+		).toEqual([
+			[28, 0, 1, 0, 0],
+			[35, 1, 1, 1, 1],
+			[28, 2, 1, 0, 0],
+			[35, 3, 1, 1, 1],
+			[28, 4, 1, 0, 0],
+			[35, 5, 1, 1, 1],
+			[31, 6, 1, 2, 2]
+		]);
+	});
+
+	it('ignores partial repeat markers when scheduling a single selected bar', () => {
+		const { layout, errors } = renderTab('|: E0 | A2 :|x3', bass4);
+		expect(errors).toEqual([]);
+		const { notes, length } = buildSchedule([layout.measures[1]], bass4);
+		expect(length).toBe(1);
+		expect(notes.map((note) => [note.midi, note.start, note.measureId])).toEqual([[35, 0, 1]]);
+	});
+
+	it('preserves explicit rhythm timing inside expanded repeats', () => {
+		const { layout, errors } = renderTab('|: :h E0 :q A2 :r :|x2', bass4);
+		expect(errors).toEqual([]);
+		const { notes, length } = buildSchedule(layout.measures, bass4);
+		expect(length).toBe(2);
+		expect(notes.map((note) => [note.midi, note.start, note.length, note.measureId])).toEqual([
+			[28, 0, 0.5, 0],
+			[35, 0.5, 0.25, 0],
+			[28, 1, 0.5, 0],
+			[35, 1.5, 0.25, 0]
+		]);
+	});
+
+	it('adds source tempo changes to the expanded schedule without changing bar math', () => {
+		const { layout, errors } = renderTab('@120\n|: E0 |\n@90\nA2 :|x2', bass4);
+		expect(errors).toEqual([]);
+		const schedule = buildSchedule(layout.measures, bass4);
+		expect(schedule.length).toBe(4);
+		expect(schedule.tempoChanges).toEqual([
+			{ start: 0, bpm: 120 },
+			{ start: 1, bpm: 90 },
+			{ start: 2, bpm: 120 },
+			{ start: 3, bpm: 90 }
+		]);
+		expect(schedule.notes.map((note) => [note.midi, note.start, note.length])).toEqual([
+			[28, 0, 1],
+			[35, 1, 1],
+			[28, 2, 1],
+			[35, 3, 1]
+		]);
+	});
+
 	it('converts MIDI notes to frequencies', () => {
 		expect(midiToFrequency(69)).toBe(440);
 		expect(midiToFrequency(28)).toBeCloseTo(41.2, 1);

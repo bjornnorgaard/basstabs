@@ -11,7 +11,7 @@ export interface SharedTab {
 }
 
 /**
- * Version 2 uses brackets for multi-digit frets; version 3 adds articulation and rhythm syntax.
+ * Version 2 uses brackets for multi-digit frets; version 3 adds articulation, rhythm, repeat and tempo syntax.
  * Encoders still emit the lowest version that can represent the source.
  */
 const CURRENT_VERSION = '3';
@@ -36,7 +36,9 @@ function fromBase64Url(value: string): Uint8Array {
  */
 export function requiredShareVersion(source: string, tuningId = DEFAULT_TUNING_ID): ShareVersion {
 	const features = parse(source, getTuning(tuningId)).features;
-	return features.articulations || features.rhythm ? '3' : '2';
+	return features.articulations || features.rhythm || features.repeats || features.tempo
+		? '3'
+		: '2';
 }
 
 /**

@@ -142,6 +142,84 @@ describe('explicit multi-digit frets', () => {
 			]);
 		});
 
+		describe('repeat and tempo notation', () => {
+			it('parses repeat start/end markers with default and explicit play counts', () => {
+				const result = parse('|: E0 | A2 :|x3', tuning);
+				expect(result.errors).toEqual([]);
+				expect(result.features.repeats).toBe(true);
+				expect(result.systems[0].measures).toHaveLength(2);
+				expect(result.systems[0].measures[0]).toMatchObject({ repeatStart: true });
+				expect(result.systems[0].measures[1]).toMatchObject({ repeatEnd: { count: 3 } });
+
+				const defaultCount = parse('|: E0 :|', tuning);
+				expect(defaultCount.errors).toEqual([]);
+				expect(defaultCount.systems[0].measures[0]).toMatchObject({
+					repeatStart: true,
+					repeatEnd: { count: 2 }
+				});
+			});
+
+			it('keeps duration markers unambiguous after repeat starts', () => {
+				expect(
+					parse('|:q E0 :|', tuning).errors.map((error) => [error.column, error.message])
+				).toEqual([[8, 'Repeat end ":|" has no matching "|:"']]);
+
+				const result = parse('|: :q E0 :| x3', tuning);
+				expect(result.errors).toEqual([]);
+				expect(result.features).toMatchObject({ repeats: true, rhythm: true });
+				expect(result.systems[0].measures[0]).toMatchObject({
+					timed: true,
+					repeatStart: true,
+					repeatEnd: { count: 3 }
+				});
+			});
+
+			it('reports unmatched repeats, nested repeats and invalid counts at their markers', () => {
+				expect(parse('E0 :|', tuning).errors).toEqual([
+					{ line: 1, column: 4, length: 2, message: 'Repeat end ":|" has no matching "|:"' }
+				]);
+				expect(parse('|: E0 |', tuning).errors).toEqual([
+					{ line: 1, column: 1, length: 2, message: 'Repeat start "|:" has no matching ":|"' }
+				]);
+				expect(parse('|: E0 |: A2 :| :|', tuning).errors).toContainEqual({
+					line: 1,
+					column: 7,
+					length: 2,
+					message: 'Nested repeats are not supported'
+				});
+				expect(parse('|: E0 :|x1', tuning).errors).toEqual([
+					{ line: 1, column: 9, length: 2, message: 'Repeat count must be x2 or greater' }
+				]);
+			});
+
+			it('parses whole-line tempo markers as structural blocks', () => {
+				const result = parse('@120\n[Verse]\nE0 |', tuning);
+				expect(result.errors).toEqual([]);
+				expect(result.features.tempo).toBe(true);
+				expect(result.blocks.map((block) => block.kind)).toEqual(['tempo', 'section', 'system']);
+				expect(result.blocks[0]).toEqual({ kind: 'tempo', bpm: 120 });
+				expect(result.tokens.filter((token) => token.kind === 'tempo')).toHaveLength(1);
+			});
+
+			it('reports invalid tempo markers at the marker line', () => {
+				expect(parse('@fast\n@12\n@301', tuning).errors).toEqual([
+					{ line: 1, column: 1, length: 5, message: 'Tempo marker must be written as @120' },
+					{
+						line: 2,
+						column: 1,
+						length: 3,
+						message: 'Tempo marker BPM must be between 30 and 300'
+					},
+					{
+						line: 3,
+						column: 1,
+						length: 4,
+						message: 'Tempo marker BPM must be between 30 and 300'
+					}
+				]);
+			});
+		});
+
 		it('treats joined notes as one duration slot', () => {
 			const result = parse(':h E320 :h A2 |', tuning);
 			expect(result.errors).toEqual([]);

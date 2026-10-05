@@ -243,6 +243,42 @@ describe('renderTab', () => {
 			[0, 0.1875]
 		]);
 	});
+
+	it('renders repeat barlines and counts without expanding the tab text', () => {
+		const source = '|: E0 0 | A2 :|x3';
+		const { text, layout, errors } = renderTab(source, bass4);
+		expect(errors).toEqual([]);
+		expect(text.split('\n')).toEqual([
+			'G|:-----|---:|x3',
+			'D|:-----|---:|x3',
+			'A|:-----|-2-:|x3',
+			'E|:-0-0-|---:|x3'
+		]);
+		expect(
+			layout.measures.map(({ column, width, repeatStart, repeatEnd }) => ({
+				column,
+				width,
+				repeatStart,
+				repeatEnd
+			}))
+		).toEqual([
+			{ column: 3, width: 5, repeatStart: true, repeatEnd: undefined },
+			{ column: 9, width: 3, repeatStart: undefined, repeatEnd: { count: 3 } }
+		]);
+	});
+
+	it('renders tempo markers as structural text so exports round-trip', () => {
+		const { text, layout, errors } = renderTab('@120\nE0 |\n@90\nA2 |', bass4);
+		expect(errors).toEqual([]);
+		expect(text).toBe('@120\nG|--|\nD|--|\nA|--|\nE|0-|\n\n@90\nG|--|\nD|--|\nA|2-|\nE|--|');
+		expect(layout.blocks.map((block) => block.kind)).toEqual([
+			'tempo',
+			'system',
+			'tempo',
+			'system'
+		]);
+		expect(layout.measures.map((measure) => measure.tempoBpm)).toEqual([120, 90]);
+	});
 });
 
 describe('parse errors', () => {

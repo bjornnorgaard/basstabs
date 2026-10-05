@@ -106,9 +106,13 @@
 					min="30"
 					max="300"
 					step="5"
-					value={player.bpm}
+					value={player.sourceTempoActive ? player.activeBpm : player.bpm}
+					disabled={player.sourceTempoActive}
 					onchange={(e) => player.setBpm(e.currentTarget.valueAsNumber)}
 				/>
+				{#if player.sourceTempoActive}
+					<span class="opacity-60">from tab</span>
+				{/if}
 			</label>
 			<span class="ml-auto opacity-70" aria-live="polite">
 				{#if player.playing}
@@ -146,6 +150,11 @@
 						<div class="print-tab-block print-tab-annotation flex gap-1 {gap ? 'mt-[1lh]' : ''}">
 							<div class="w-5 shrink-0 print:hidden"></div>
 							<div class="hl-comment whitespace-pre">{block.text}</div>
+						</div>
+					{:else if block.kind === 'tempo'}
+						<div class="print-tab-block print-tab-tempo flex gap-1 {gap ? 'mt-[1lh]' : ''}">
+							<div class="w-5 shrink-0 print:hidden"></div>
+							<div class="hl-tempo whitespace-pre">{block.text}</div>
 						</div>
 					{:else}
 						<div

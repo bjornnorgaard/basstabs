@@ -39,6 +39,9 @@ E|0-0-----|0-0-3---|
 | `:q.`           | Dotted duration marker                                      |
 | `:r`, `:re.`    | Rest using the current duration, or an explicit dotted rest |
 | `\|`            | Bar line, which ends the current measure                    |
+| `\|: ... :\|`   | Repeat the marked phrase twice                              |
+| `\|: ... :\|x3` | Repeat the marked phrase three total times                  |
+| `@120`          | Tempo marker: play from here at 120 BPM (whole line only)   |
 | new line        | Starts a new row of tab                                     |
 | `[Intro]`       | Names the section that follows (whole line only)            |
 | `# Play softly` | Displays an annotation above the next row (whole line only) |
@@ -72,6 +75,22 @@ as before: `:h E320` plays the three joined notes inside one half-note slot.
 Under-filled marked bars leave the remaining time silent; over-filled bars are
 reported as errors at the slot that exceeds the 4/4 bar.
 
+Repeats use conventional repeat barlines. `|:` starts a repeated phrase and `:|`
+ends it; add `x3`, `x4`, and so on after the repeat end for the total play count.
+Without a count, repeats play twice. Repeat barlines are structural barlines, so
+they do not consume note columns, but they do add visible `:` and optional `xN`
+characters in rendered tab and exports. Repeat markers may span rows and
+sections, but nested repeats are rejected. To preserve existing rhythm shorthand,
+`|:q`, `|:e`, `|:h`, `|:s`, `|:w` and `|:r` are parsed as a normal barline
+followed by a duration/rest marker. A repeated bar that starts with a duration
+marker therefore needs a space: write `|: :q E0 :|`, not `|:q E0 :|`.
+
+Tempo markers are whole lines such as `@120`, and apply from that point onwards
+until the next tempo marker. They are rendered as `@120` lines so copied tabs and
+`.txt` downloads keep the same playback tempo when pasted back in. Section titles
+are not parsed for tempos; put the marker on its own line before the section or
+row it should affect.
+
 Use section names and annotations for structure, playing reminders, or rough
 lyrics without aligning words to notes:
 
@@ -85,9 +104,9 @@ E0 0 A2 2 | E0 0 3 A2 |
 E3 3 A2 2 |
 ```
 
-Headings and annotations are displayed in previews, copied tabs, and `.txt`
-downloads. Both markers are recognized only at the start of their own line;
-inline notes and section repeats are not yet supported.
+Headings, annotations and tempo markers are displayed in previews, copied tabs,
+and `.txt` downloads. Whole-line markers are recognized only at the start of
+their own line; inline notes are not supported.
 
 ## Playback
 
@@ -96,7 +115,7 @@ a section heading, row or bar and click it to play just that part. Shift+click
 loops it; the loop button makes looping the default. The note currently sounding
 is highlighted.
 
-Every bar lasts four beats at the chosen BPM. A bar with no rhythm markers keeps
+Every bar lasts four beats. A bar with no rhythm markers keeps
 the original behaviour: playback divides the bar evenly between note groups, not
 its spaces, and joined notes like `E320` share a group's slot. A bar with any
 duration or rest marker is timed by those written durations instead. Rests are
@@ -106,6 +125,14 @@ headings and annotations are not played. Articulations are render-first:
 hammer-on, pull-off and slide targets play as normal joined notes, bends, vibrato
 and ghost notes play as the plain fret, and dead notes (`x`) are silent slots.
 There is not yet special slide, bend, vibrato or muted-string synthesis.
+
+When a tab has no tempo markers, the BPM control sets the global playback tempo.
+When a played selection includes tempo markers, those source tempos are absolute:
+they override the BPM control for that playback, the control is disabled, and it
+shows the source tempo currently in effect. Repeats are expanded for playback, so
+**Play all** plays every pass; the same source measure and note highlight on each
+pass. Playing or looping a single bar still plays that selected bar on its own
+unless the complete repeat start and end are inside the selection.
 
 The **Sound design** page (`/sound`, the sliders icon in the header) shapes the
 synthesised bass app-wide: exciter, Karplus–Strong string model (damping, decay,
@@ -121,9 +148,9 @@ JSON; to make a sound the default, paste its values into `DEFAULT_SOUND` in
 The shorthand editor is colour-coded, and the rendered tab uses the same colours so
 you can see which shorthand produced which part of the tab. Each string has its own
 colour, and a bare fret takes the colour of the string it plays on. Articulation
-marks use a separate technique colour, while duration and rest markers have their
-own rhythm colour. Sections are tinted, comments are muted and invalid tokens are
-underlined. Put the caret on a note to outline it in the tab.
+marks use a separate technique colour, while duration, rest, repeat and tempo
+markers have their own rhythm colour. Sections are tinted, comments are muted and
+invalid tokens are underlined. Put the caret on a note to outline it in the tab.
 
 Click the **Shorthand** heading to collapse the editor so the tab takes the full
 width. While collapsed, the heading shows a badge if the shorthand has errors. The
@@ -155,7 +182,7 @@ saving a shared tab preserves its source instead. Older saved tabs, sound-design
 version 1 share links are automatically migrated to bracket notation, preserving
 their pitches, tab columns, and playback grouping. New share links use the lowest
 compatible payload version: version 2 for bracket-era syntax, or version 3 when
-articulations or rhythm markers are present.
+articulations, rhythm markers, repeats or tempo markers are present.
 
 - Parser: `src/lib/tab/parser.ts`. New indicators go in the `TabEvent` union.
 - Renderer: `src/lib/tab/render.ts`. `layoutBlocks` records where every note and bar

@@ -33,7 +33,9 @@
 	color: var(--color-secondary-700);
 }
 .hl-duration,
-.hl-rest {
+.hl-rest,
+.hl-repeat,
+.hl-tempo {
 	color: var(--color-tertiary-700);
 }
 .hl-fill {
@@ -76,7 +78,9 @@
 		color: var(--color-secondary-300);
 	}
 	.hl-duration,
-	.hl-rest {
+	.hl-rest,
+	.hl-repeat,
+	.hl-tempo {
 		color: var(--color-tertiary-300);
 	}
 }
@@ -199,6 +203,8 @@
 	.hl-bar,
 	.hl-duration,
 	.hl-rest,
+	.hl-repeat,
+	.hl-tempo,
 	.hl-fill,
 	.hl-multi-digit,
 	.hl-focus,
