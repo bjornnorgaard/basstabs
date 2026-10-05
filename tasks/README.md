@@ -13,7 +13,7 @@ can safely run in parallel.
 | [01](./01-lazy-load-firebase.md)            | Lazy-load Firebase                 | Performance          | Medium | Done        | –           |
 | [02](./02-firestore-offline-persistence.md) | Firestore offline persistence      | Offline              | Small  | Done        | 01 _(soft)_ |
 | [03](./03-offline-app-shell.md)             | Offline app shell (service worker) | Offline / PWA        | Medium | Done        | –           |
-| [04](./04-firebase-app-check.md)            | Firebase App Check                 | Security / cost      | Medium | In progress | 01 _(soft)_ |
+| [04](./04-firebase-app-check.md)            | Firebase App Check                 | Security / cost      | Medium | Blocked     | 01 _(soft)_ |
 | [05](./05-rules-tests-in-ci.md)             | Run Firestore rules tests in CI    | CI / safety          | Small  | Done        | –           |
 | [06](./06-component-interaction-tests.md)   | Component and interaction tests    | Testing              | Medium | Done        | –           |
 | [07](./07-split-cloud-store.md)             | Split the cloud store              | Maintainability      | Medium | In progress | 01 _(soft)_ |

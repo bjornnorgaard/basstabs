@@ -1,6 +1,6 @@
 # 04 · Firebase App Check
 
-- **Status:** Partial (client ready; console setup and enforcement pending owner)
+- **Status:** Blocked — client code shipped (inert until a site key is configured); waiting on the owner to do the console setup, monitor metrics and decide on enforcement. See Outcome.
 - **Area:** Security / cost control
 - **Size:** Medium
 - **Depends on:** [01](./01-lazy-load-firebase.md) _(soft — same file)_
