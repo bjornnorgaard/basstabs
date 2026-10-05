@@ -15,35 +15,46 @@ const mocks = vi.hoisted(() => ({
 	>(() => vi.fn())
 }));
 vi.mock('$app/environment', () => ({ browser: true }));
-vi.mock('$lib/firebase', () => ({ auth: {}, db: {} }));
-vi.mock('firebase/auth', () => ({
-	GoogleAuthProvider: class {},
-	onAuthStateChanged: (_auth: unknown, callback: (user: User | null) => void) => {
-		mocks.authChange = callback;
-	},
-	signInWithPopup: vi.fn(),
-	signOut: mocks.signOut
-}));
-vi.mock('firebase/firestore', () => ({
-	collection: (_db: unknown, ...segments: string[]) => segments.join('/'),
-	doc: (_db: unknown, ...segments: string[]) => segments.join('/'),
-	onSnapshot: mocks.onSnapshot,
-	getDocsFromServer: mocks.library,
-	increment: (value: number) => ({ increment: value }),
-	runTransaction: async (_db: unknown, action: (transaction: unknown) => Promise<void>) => {
-		const writes: unknown[][] = [];
-		const deletes: unknown[][] = [];
-		await action({
-			get: mocks.get,
-			set: (...args: unknown[]) => writes.push(args),
-			delete: (...args: unknown[]) => deletes.push(args)
-		});
-		await mocks.commit();
-		for (const args of writes) mocks.set(...args);
-		for (const args of deletes) mocks.delete(...args);
-	},
-	writeBatch: () => ({ set: mocks.set, delete: mocks.delete, commit: mocks.commit })
-}));
+vi.mock('$lib/firebase', () => {
+	const firebase = {
+		auth: {},
+		db: {},
+		authSdk: {
+			GoogleAuthProvider: class {},
+			onAuthStateChanged: (_auth: unknown, callback: (user: User | null) => void) => {
+				mocks.authChange = callback;
+				return vi.fn();
+			},
+			signInWithPopup: vi.fn(),
+			signOut: mocks.signOut
+		},
+		firestoreSdk: {
+			collection: (_db: unknown, ...segments: string[]) => segments.join('/'),
+			doc: (_db: unknown, ...segments: string[]) => segments.join('/'),
+			onSnapshot: mocks.onSnapshot,
+			getDocsFromServer: mocks.library,
+			increment: (value: number) => ({ increment: value }),
+			runTransaction: async (_db: unknown, action: (transaction: unknown) => Promise<void>) => {
+				const writes: unknown[][] = [];
+				const deletes: unknown[][] = [];
+				await action({
+					get: mocks.get,
+					set: (...args: unknown[]) => writes.push(args),
+					delete: (...args: unknown[]) => deletes.push(args)
+				});
+				await mocks.commit();
+				for (const args of writes) mocks.set(...args);
+				for (const args of deletes) mocks.delete(...args);
+			},
+			writeBatch: () => ({ set: mocks.set, delete: mocks.delete, commit: mocks.commit })
+		}
+	};
+	return {
+		getCachedFirebase: vi.fn(() => firebase),
+		getFirebase: vi.fn(async () => firebase),
+		prewarmFirebase: vi.fn(async () => firebase)
+	};
+});
 
 const user = { uid: 'owner' } as User;
 const tab: CloudTab = {
@@ -80,8 +91,11 @@ describe('optional cloud store', () => {
 	});
 
 	async function store() {
+		localStorage.setItem('basstabs:had-session', '1');
 		const { cloudStore } = await import('$lib/stores/cloud.svelte');
+		await cloudStore.ensure();
 		mocks.authChange?.(user);
+		await vi.waitFor(() => expect(mocks.onSnapshot).toHaveBeenCalled());
 		cloudStore.tabs = [{ ...tab }];
 		return cloudStore;
 	}

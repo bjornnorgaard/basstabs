@@ -164,6 +164,16 @@ edits update the same cloud-backed tab, rather than creating more copies.
 Cloud-backed tabs require sign-in to access; browser-only tabs remain available
 without an account.
 
+Firebase Auth and Firestore are loaded lazily. Signed-out visitors without the
+`basstabs:had-session` browser hint skip the Firebase SDK on first load and see
+the signed-out controls immediately. Successful sign-in writes that hint so the
+next visit checks the existing Auth session and reconnects the cloud library;
+sign-out clears it. The sign-in buttons pre-warm the Firebase import on
+hover/focus/pointer-down so the click handler can call Google's popup API from
+the user gesture when the SDK has resolved. Snapshot share links
+(`/shared#<payload>`) remain fully local and do not load Firebase; live links,
+the public library and the profile page load Firebase on demand.
+
 The editor's **Save location** setting sits below Title, Artist and Tuning, alongside
 visibility and sharing. Select **Browser only** to opt out of automatic cloud saving,
 or **Cloud account** to enable it again. A compact status shows save progress;

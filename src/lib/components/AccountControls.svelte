@@ -30,7 +30,10 @@
 	<button
 		class="btn preset-tonal btn-sm"
 		disabled={cloudStore.busy}
+		onfocus={() => cloudStore.prewarmLogin()}
 		onclick={() => cloudStore.login()}
+		onpointerdown={() => cloudStore.prewarmLogin()}
+		onpointerenter={() => cloudStore.prewarmLogin()}
 	>
 		<span class="sm:hidden">Sign in</span>
 		<span class="hidden sm:inline">Sign in with Google</span>

@@ -12,8 +12,7 @@
 	import { decodeSharedTab, payloadFromHash } from '$lib/tab/share';
 	import { getTuning } from '$lib/tab/tuning';
 	import { toaster } from '$lib/toaster';
-	import { doc, onSnapshot } from 'firebase/firestore';
-	import { db } from '$lib/firebase';
+	import { getFirebase } from '$lib/firebase';
 	import { readCloudTab, errorMessage } from '$lib/cloud/model';
 	import type { SharedTab } from '$lib/tab/share';
 
@@ -34,26 +33,43 @@
 			return;
 		}
 		loading = true;
-		return onSnapshot(
-			doc(db, 'publishedTabs', token),
-			(snapshot) => {
-				try {
-					live = snapshot.exists()
-						? readCloudTab(snapshot.id, { ...snapshot.data(), shareId: snapshot.id })
-						: null;
-					error = snapshot.exists() ? '' : 'This tab was deleted or sharing was revoked.';
-				} catch (cause) {
+		let unsubscribe: (() => void) | undefined;
+		let cancelled = false;
+		void getFirebase()
+			.then(({ db, firestoreSdk }) => {
+				if (cancelled) return;
+				unsubscribe = firestoreSdk.onSnapshot(
+					firestoreSdk.doc(db, 'publishedTabs', token),
+					(snapshot) => {
+						try {
+							live = snapshot.exists()
+								? readCloudTab(snapshot.id, { ...snapshot.data(), shareId: snapshot.id })
+								: null;
+							error = snapshot.exists() ? '' : 'This tab was deleted or sharing was revoked.';
+						} catch (cause) {
+							live = null;
+							error = errorMessage(cause);
+						}
+						loading = false;
+					},
+					(cause) => {
+						live = null;
+						loading = false;
+						error = `${errorMessage(cause)}${attempt > 0 ? ' Please check the link or try again later.' : ''}`;
+					}
+				);
+			})
+			.catch((cause) => {
+				if (!cancelled) {
 					live = null;
 					error = errorMessage(cause);
+					loading = false;
 				}
-				loading = false;
-			},
-			(cause) => {
-				live = null;
-				loading = false;
-				error = `${errorMessage(cause)}${attempt > 0 ? ' Please check the link or try again later.' : ''}`;
-			}
-		);
+			});
+		return () => {
+			cancelled = true;
+			unsubscribe?.();
+		};
 	});
 	const tuning = $derived(getTuning(shared?.tuningId));
 	const result = $derived(renderTab(shared?.source ?? '', tuning));
