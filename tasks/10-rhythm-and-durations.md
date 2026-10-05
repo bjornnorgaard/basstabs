@@ -1,6 +1,6 @@
 # 10 · Rhythm and note durations
 
-- **Status:** Not started
+- **Status:** In progress
 - **Area:** Notation / playback
 - **Size:** Large
 - **Depends on:** [09](./09-articulation-notation.md) _(soft — same files; sequence, don't block on scope)_

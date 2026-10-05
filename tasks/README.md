@@ -18,8 +18,8 @@ can safely run in parallel.
 | [06](./06-component-interaction-tests.md)   | Component and interaction tests    | Testing              | Medium | In progress | –           |
 | [07](./07-split-cloud-store.md)             | Split the cloud store              | Maintainability      | Medium | Not started | 01 _(soft)_ |
 | [08](./08-pin-container-base-image.md)      | Pin the container base image       | Build / supply chain | Small  | Done        | –           |
-| [09](./09-articulation-notation.md)         | Articulation notation              | Notation / parser    | Large  | In progress | –           |
-| [10](./10-rhythm-and-durations.md)          | Rhythm and note durations          | Notation / playback  | Large  | Not started | 09 _(soft)_ |
+| [09](./09-articulation-notation.md)         | Articulation notation              | Notation / parser    | Large  | Done        | –           |
+| [10](./10-rhythm-and-durations.md)          | Rhythm and note durations          | Notation / playback  | Large  | In progress | 09 _(soft)_ |
 | [11](./11-repeats-and-tempo-markers.md)     | Repeats and tempo markers          | Notation / playback  | Medium | Not started | 10 _(soft)_ |
 | [12](./12-public-library-browsing.md)       | Improve the public library         | UX                   | Medium | In progress | –           |
 | [13](./13-print-stylesheet.md)              | Print stylesheet                   | UX                   | Small  | Done        | –           |
