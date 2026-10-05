@@ -305,9 +305,12 @@ work around this error by allowing all reads/writes.
 
 ```sh
 npm install
-npm run dev      # start the dev server
-npm test         # run the parser/renderer unit tests
-npm run build    # build a static site into build/
+npm run dev                              # start the dev server
+npm test                                 # run server and browser Vitest projects
+npm run test:unit -- --run --project server
+npm run test:unit -- --run --project client
+npx playwright install --with-deps chromium # install the browser used by client tests
+npm run build                            # build a static site into build/
 ```
 
 ## Container

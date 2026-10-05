@@ -17,9 +17,8 @@
 		"test:rules": "REQUIRE_FIRESTORE_EMULATOR=1 firebase emulators:exec --only firestore --project demo-basstabs \"node --test tests/firestore.rules.test.mjs && vitest --run src/lib/cloud/write.integration.spec.ts\""
 	},
 	"devDependencies": {
-		"@firebase/rules-unit-testing": "^5.0.2",
-		"firebase-tools": "^15.32.1",
 		"@eslint/js": "^10.0.1",
+		"@firebase/rules-unit-testing": "^5.0.2",
 		"@fontsource/caveat": "^5.3.0",
 		"@lucide/svelte": "^1.49.0",
 		"@skeletonlabs/skeleton": "^5.0.1",
@@ -29,10 +28,13 @@
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@tailwindcss/vite": "^4.3.0",
 		"@types/node": "^24",
+		"@vitest/browser-playwright": "^4.1.11",
 		"eslint": "^10.4.1",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.19.0",
+		"firebase-tools": "^15.32.1",
 		"globals": "^17.6.0",
+		"playwright": "^1.63.0",
 		"prettier": "^3.8.3",
 		"prettier-plugin-svelte": "^4.1.0",
 		"prettier-plugin-tailwindcss": "^0.8.0",
@@ -42,7 +44,8 @@
 		"typescript": "^6.0.3",
 		"typescript-eslint": "^8.60.1",
 		"vite": "^8.0.16",
-		"vitest": "^4.1.8"
+		"vitest": "^4.1.8",
+		"vitest-browser-svelte": "^3.1.0"
 	},
 	"overrides": {
 		"@firebase/firestore": {
@@ -50,10 +53,10 @@
 		}
 	},
 	"dependencies": {
-		"firebase": "^12.19.0",
 		"@codemirror/commands": "^6.11.1",
 		"@codemirror/search": "^6.7.2",
 		"@codemirror/state": "^6.7.6",
-		"@codemirror/view": "^6.43.13"
+		"@codemirror/view": "^6.43.13",
+		"firebase": "^12.19.0"
 	}
 }
