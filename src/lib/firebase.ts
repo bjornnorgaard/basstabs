@@ -2,7 +2,11 @@ import type * as FirebaseApp from 'firebase/app';
 import type * as FirebaseAppCheck from 'firebase/app-check';
 import type * as FirebaseAuth from 'firebase/auth';
 import type * as FirebaseFirestore from 'firebase/firestore';
-import { env } from '$env/dynamic/public';
+import * as publicEnv from '$env/static/public';
+
+// Static (build-time) env avoids a blocking /_app/env.js request that would break offline
+// loads. A namespace import keeps the App Check variables optional when unset.
+const env: Partial<Record<string, string>> = publicEnv;
 
 const firebaseConfig = {
 	apiKey: 'AIzaSyD0fKYg55eOfxm-_f5Qcut0MqMQAqJgfwg',

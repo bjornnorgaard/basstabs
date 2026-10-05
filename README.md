@@ -260,9 +260,11 @@ To configure App Check, the project owner must:
 3. Copy the reCAPTCHA Enterprise site key. This is a public browser key, not a
    secret.
 4. Add it as `PUBLIC_FIREBASE_APPCHECK_SITE_KEY` for local builds or in
-   `.env.local`. The app reads it through SvelteKit's `$env/dynamic/public`
-   because the variable is optional: unset builds remain valid and behave as
-   before.
+   `.env.local`. The app reads it at build time through a namespace
+   import of SvelteKit's `$env/static/public`, so the variable is optional
+   (unset builds remain valid and behave as before) and no runtime
+   `/_app/env.js` request is needed, which would break offline loads. Changing
+   the key requires a rebuild.
 5. Add the same value as the GitHub Actions repository variable
    `PUBLIC_FIREBASE_APPCHECK_SITE_KEY` if CI-produced builds and images should
    include App Check. The workflow and `Dockerfile` pass it as an optional build

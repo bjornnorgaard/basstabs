@@ -108,8 +108,12 @@ Do not run those in parallel — see [ROADMAP.md](./ROADMAP.md).
   bundle does not gain a static Firebase import and unset builds behave as before.
 - The optional build-time public env var is
   `PUBLIC_FIREBASE_APPCHECK_SITE_KEY`. The app reads it through
-  `$env/dynamic/public` so the key can be absent without causing a missing named
-  export or build failure in the adapter-static build.
+  a namespace import of `$env/static/public`, so the key can be absent without a
+  missing named export or build failure. (PM integration fix: the agent first used
+  `$env/dynamic/public`, but that makes every page load fetch `/_app/env.js`,
+  which the task 03 service worker does not precache, and offline reloads broke.
+  Static env inlines the key at build time, which is when CI and the Dockerfile
+  provide it anyway.)
 - Dev-only debug token support uses
   `PUBLIC_FIREBASE_APPCHECK_DEBUG_TOKEN` when set. If the site key is configured
   in dev and no explicit debug token is provided, `self.FIREBASE_APPCHECK_DEBUG_TOKEN`

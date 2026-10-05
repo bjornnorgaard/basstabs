@@ -3,6 +3,12 @@
 How the tasks in this folder relate, so sessions can be started in parallel
 without colliding. The task list itself is in [README.md](./README.md).
 
+> **Progress:** every task has been implemented on the `improvements/roadmap`
+> integration branch. [04](./04-firebase-app-check.md) is blocked only on the
+> owner's Firebase console setup and enforcement decision (see its Outcome).
+> The actual execution order was: wave 1 = 01, 03, 05, 08, 09, 13; wave 2 = 02,
+> 06, 10, 12; wave 3 = 04, 07, 11.
+
 ## Two kinds of dependency
 
 **Hard dependency** — the task genuinely needs another task's outcome first.

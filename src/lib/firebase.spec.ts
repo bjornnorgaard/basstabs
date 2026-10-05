@@ -44,8 +44,13 @@ vi.mock('firebase/firestore', () => ({
 	clearIndexedDbPersistence: mocks.clearIndexedDbPersistence
 }));
 
-vi.mock('$env/dynamic/public', () => ({
-	env: mocks.env
+vi.mock('$env/static/public', () => ({
+	get PUBLIC_FIREBASE_APPCHECK_SITE_KEY() {
+		return mocks.env.PUBLIC_FIREBASE_APPCHECK_SITE_KEY;
+	},
+	get PUBLIC_FIREBASE_APPCHECK_DEBUG_TOKEN() {
+		return mocks.env.PUBLIC_FIREBASE_APPCHECK_DEBUG_TOKEN;
+	}
 }));
 
 describe('Firebase lazy initialization', () => {
