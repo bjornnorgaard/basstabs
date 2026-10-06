@@ -77,7 +77,7 @@
 					</a>
 				</div>
 				<div class="hidden items-center gap-2 lg:flex">
-					<a href={resolve('/public')} class="btn preset-tonal btn-sm">Public tabbs</a>
+					<a href={resolve('/public')} class="btn preset-tonal btn-sm">Public tabs</a>
 					<a
 						href={resolve('/sound')}
 						class="btn-icon hover:preset-tonal"
