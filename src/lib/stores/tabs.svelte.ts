@@ -1,4 +1,4 @@
-import { browser } from '$app/environment';
+import { browser } from '$app/env';
 import { EXAMPLE_SOURCE } from '$lib/tab/example';
 import { migrateLegacySource } from '$lib/tab/migrate';
 import { DEFAULT_TUNING_ID, getTuning } from '$lib/tab/tuning';

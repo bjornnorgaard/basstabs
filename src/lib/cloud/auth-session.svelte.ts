@@ -1,4 +1,4 @@
-import { browser } from '$app/environment';
+import { browser } from '$app/env';
 import type { User } from 'firebase/auth';
 import type { Unsubscribe } from 'firebase/firestore';
 import {

@@ -1,4 +1,5 @@
-import { build, files, prerendered, version } from '$service-worker';
+import { assets, immutable, prerendered } from '$app/manifest';
+import { version } from '$app/env';
 
 const worker = self as ServiceWorkerGlobalScope;
 
@@ -7,7 +8,8 @@ const CACHE_NAME = `${CACHE_PREFIX}-${version}`;
 const APP_SHELL = '/200.html';
 const PRECOMPRESSED_ASSET = /\.(?:br|gz)$/;
 
-const precacheUrls = Array.from(new Set([...build, ...files, ...prerendered])).filter(
+const manifestPaths = [...immutable, ...assets, ...prerendered].map((entry) => entry.path);
+const precacheUrls = Array.from(new Set(manifestPaths)).filter(
 	(url) => !PRECOMPRESSED_ASSET.test(new URL(url, worker.location.origin).pathname)
 );
 const precachePaths = new Set(

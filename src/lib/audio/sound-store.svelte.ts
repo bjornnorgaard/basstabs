@@ -1,4 +1,4 @@
-import { browser } from '$app/environment';
+import { browser } from '$app/env';
 import { migrateLegacySource } from '$lib/tab/migrate';
 import { DEFAULT_TUNING_ID, getTuning } from '$lib/tab/tuning';
 import { DEFAULT_SOUND, normalizeSoundSettings, type SoundSettings } from './sound';

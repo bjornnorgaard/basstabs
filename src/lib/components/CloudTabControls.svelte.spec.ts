@@ -68,7 +68,7 @@ describe('CloudTabControls interactions', () => {
 		const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
 		const screen = await render(CloudTabControls, { props: { tab } });
 
-		await screen.getByLabelText('Save location').selectOptions('browser');
+		await screen.getByLabelText(/Save location/).selectOptions('browser');
 
 		expect(confirm).toHaveBeenCalledWith(
 			'Keep "Cloud riff" only in this browser? This removes it from your cloud account and revokes any live link. It will no longer be available on other devices.'
@@ -76,7 +76,7 @@ describe('CloudTabControls interactions', () => {
 		expect(mocks.cloud.keepBrowserOnly).not.toHaveBeenCalled();
 
 		confirm.mockReturnValue(true);
-		await screen.getByLabelText('Save location').selectOptions('browser');
+		await screen.getByLabelText(/Save location/).selectOptions('browser');
 
 		expect(mocks.cloud.keepBrowserOnly).toHaveBeenCalledTimes(1);
 		expect(mocks.cloud.keepBrowserOnly).toHaveBeenCalledWith('local');

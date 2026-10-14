@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EXAMPLE_SOURCE } from '$lib/tab/example';
 import { tabStore } from './tabs.svelte';
 
-vi.mock('$app/environment', () => ({ browser: false }));
+vi.mock('$app/env', () => ({ browser: false }));
 
 afterEach(() => {
 	for (const tab of [...tabStore.tabs]) tabStore.remove(tab.id);

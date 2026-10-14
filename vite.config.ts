@@ -13,6 +13,9 @@ export default defineConfig({
 				runes: ({ filename }) =>
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
+			alias: {
+				$lib: 'src/lib'
+			},
 			adapter: adapter({ fallback: '200.html', precompress: true }),
 			serviceWorker: { register: false }
 		})

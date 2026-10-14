@@ -23,7 +23,7 @@ const mocks = vi.hoisted(() => ({
 		) => () => void
 	>(() => vi.fn())
 }));
-vi.mock('$app/environment', () => ({ browser: true }));
+vi.mock('$app/env', () => ({ browser: true }));
 vi.mock('$lib/firebase', () => {
 	const firebase = {
 		auth: {},
