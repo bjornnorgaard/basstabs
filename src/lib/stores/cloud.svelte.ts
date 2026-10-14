@@ -1,4 +1,4 @@
-import { browser } from '$app/environment';
+import { browser } from '$app/env';
 import { untrack } from 'svelte';
 import type { User } from 'firebase/auth';
 import { type FirebaseServices } from '$lib/firebase';

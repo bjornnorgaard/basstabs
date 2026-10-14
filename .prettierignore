@@ -10,3 +10,6 @@ bun.lockb
 
 # Edited by .github/scripts/pin-image-tag.sh, which requires tag: "..." (double quotes).
 /deploy/
+
+# Vitest test run attachments
+/.vitest/

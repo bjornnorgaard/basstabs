@@ -126,7 +126,7 @@ describe('PlayableTab interactions', () => {
 		mocks.player.activeBpm = 140;
 
 		const screen = await render(PlayableTab, { props: { layout, tuning } });
-		const bpm = screen.getByRole('spinbutton', { name: 'BPM' });
+		const bpm = screen.getByRole('spinbutton', { name: /BPM/ });
 
 		await expect.element(bpm).toHaveValue(140);
 		await expect.element(bpm).toBeDisabled();
