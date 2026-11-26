@@ -7,7 +7,7 @@ import {
 	getFirebase,
 	prewarmFirebase,
 	type FirebaseServices
-} from '$lib/firebase';
+} from '#lib/firebase.ts';
 import { errorMessage } from './model';
 
 const SESSION_HINT = 'basstabs:had-session';

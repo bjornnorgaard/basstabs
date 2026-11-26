@@ -1,5 +1,5 @@
 import { browser } from '$app/env';
-import { toaster } from '$lib/toaster';
+import { toaster } from '#lib/toaster.ts';
 
 let started = false;
 let updateNotified = false;

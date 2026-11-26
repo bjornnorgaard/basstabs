@@ -3,12 +3,12 @@
 	import Repeat from '@lucide/svelte/icons/repeat';
 	import Square from '@lucide/svelte/icons/square';
 	import { onDestroy, untrack } from 'svelte';
-	import { player } from '$lib/audio/player.svelte';
-	import TabPreview from '$lib/components/TabPreview.svelte';
-	import { fillerParts, stringHue } from '$lib/tab/highlight';
-	import { buildSchedule } from '$lib/tab/playback';
-	import type { MeasureLayout, TabLayout } from '$lib/tab/render';
-	import type { Tuning } from '$lib/tab/tuning';
+	import { player } from '#lib/audio/player.svelte.ts';
+	import TabPreview from '#lib/components/TabPreview.svelte';
+	import { fillerParts, stringHue } from '#lib/tab/highlight.ts';
+	import { buildSchedule } from '#lib/tab/playback.ts';
+	import type { MeasureLayout, TabLayout } from '#lib/tab/render.ts';
+	import type { Tuning } from '#lib/tab/tuning.ts';
 
 	interface Props {
 		layout: TabLayout;
@@ -182,10 +182,14 @@
 														? 'preset-filled-primary-500'
 														: segment.noteId === focusedNote
 															? `${segment.class ?? 'hl-string'} hl-focus`
-															: (segment.class ?? 'hl-string')}">{segment.text}</span
-												>{:else}{#each fillerParts(segment.text) as part, p (p)}<span
-														class={part.class}>{part.text}</span
-													>{/each}{/if}{/each}
+															: (segment.class ?? 'hl-string')}"
+												>
+													{segment.text}
+												</span>{:else}{#each fillerParts(segment.text) as part, p (p)}<span
+														class={part.class}
+													>
+														{part.text}
+													</span>{/each}{/if}{/each}
 									</div>
 								{/each}
 								{#each block.measures as measure (measure.id)}

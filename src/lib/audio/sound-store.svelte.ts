@@ -1,6 +1,6 @@
 import { browser } from '$app/env';
-import { migrateLegacySource } from '$lib/tab/migrate';
-import { DEFAULT_TUNING_ID, getTuning } from '$lib/tab/tuning';
+import { migrateLegacySource } from '#lib/tab/migrate.ts';
+import { DEFAULT_TUNING_ID, getTuning } from '#lib/tab/tuning.ts';
 import { DEFAULT_SOUND, normalizeSoundSettings, type SoundSettings } from './sound';
 
 const STORAGE_KEY = 'basstabs:sound';

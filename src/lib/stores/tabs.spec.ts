@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { EXAMPLE_SOURCE } from '$lib/tab/example';
+import { EXAMPLE_SOURCE } from '#lib/tab/example.ts';
 import { tabStore } from './tabs.svelte';
 
 vi.mock('$app/env', () => ({ browser: false }));

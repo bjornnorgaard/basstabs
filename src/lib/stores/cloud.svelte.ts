@@ -1,19 +1,19 @@
 import { browser } from '$app/env';
 import { untrack } from 'svelte';
 import type { User } from 'firebase/auth';
-import { type FirebaseServices } from '$lib/firebase';
-import { CloudAuthSession } from '$lib/cloud/auth-session.svelte';
-import { isOfflineError } from '$lib/cloud/errors';
-import { CloudLibraryListener } from '$lib/cloud/library-listener.svelte';
+import { type FirebaseServices } from '#lib/firebase.ts';
+import { CloudAuthSession } from '#lib/cloud/auth-session.svelte.ts';
+import { isOfflineError } from '#lib/cloud/errors.ts';
+import { CloudLibraryListener } from '#lib/cloud/library-listener.svelte.ts';
 import {
 	cloudTitleKey,
 	errorMessage,
 	shareToken,
 	type CloudTab,
 	type Visibility
-} from '$lib/cloud/model';
-import { CloudUploadQueue } from '$lib/cloud/upload-queue.svelte';
-import { queueCloudTabWrite, writeCloudTab } from '$lib/cloud/write';
+} from '#lib/cloud/model.ts';
+import { CloudUploadQueue } from '#lib/cloud/upload-queue.svelte.ts';
+import { queueCloudTabWrite, writeCloudTab } from '#lib/cloud/write.ts';
 import { tabStore, type BassTab } from './tabs.svelte';
 
 class CloudStore {

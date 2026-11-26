@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { site } from '$lib/site';
-	import { cloudStore } from '$lib/stores/cloud.svelte';
+	import { site } from '#lib/site.ts';
+	import { cloudStore } from '#lib/stores/cloud.svelte.ts';
 	import UserRound from '@lucide/svelte/icons/user-round';
 	import { onMount } from 'svelte';
 

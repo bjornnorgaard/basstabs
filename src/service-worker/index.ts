@@ -1,7 +1,6 @@
 import { assets, immutable, prerendered } from '$app/manifest';
 import { version } from '$app/env';
-
-const worker = self as ServiceWorkerGlobalScope;
+import { self as worker } from '$app/service-worker';
 
 const CACHE_PREFIX = 'basstabs-app-shell';
 const CACHE_NAME = `${CACHE_PREFIX}-${version}`;
@@ -105,7 +104,8 @@ async function networkFirstNavigation(request: Request) {
 		const cachedNavigation = await cache.match(url.pathname);
 		if (cachedNavigation) return cachedNavigation;
 
-		const shell = await appShellForPath(cache, url.pathname);
+		// SvelteKit 3 emits root-absolute asset paths in the shell, so it works at any depth.
+		const shell = await cache.match(APP_SHELL);
 		if (shell) return shell;
 		throw error;
 	}
@@ -113,24 +113,4 @@ async function networkFirstNavigation(request: Request) {
 
 function isHtml(response: Response) {
 	return response.headers.get('content-type')?.includes('text/html') ?? false;
-}
-
-async function appShellForPath(cache: Cache, pathname: string) {
-	const shell = await cache.match(APP_SHELL);
-	if (!shell) return undefined;
-
-	const assetPrefix = '../'.repeat(Math.max(0, pathname.split('/').filter(Boolean).length - 1));
-	if (!assetPrefix) return shell;
-
-	const headers = new Headers(shell.headers);
-	headers.delete('content-length');
-	const body = (await shell.text())
-		.replace('base: new URL(".", location).pathname.slice(0, -1)', 'base: ""')
-		.replaceAll('./_app/', `${assetPrefix}_app/`);
-
-	return new Response(body, {
-		status: shell.status,
-		statusText: shell.statusText,
-		headers
-	});
 }

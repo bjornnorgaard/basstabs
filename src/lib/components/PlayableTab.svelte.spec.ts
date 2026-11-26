@@ -1,8 +1,8 @@
 import { tick } from 'svelte';
 import { render } from 'vitest-browser-svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderTab } from '$lib/tab/render';
-import { getTuning } from '$lib/tab/tuning';
+import { renderTab } from '#lib/tab/render.ts';
+import { getTuning } from '#lib/tab/tuning.ts';
 
 const mocks = vi.hoisted(() => {
 	const player = {
@@ -38,9 +38,9 @@ const mocks = vi.hoisted(() => {
 	return { player };
 });
 
-vi.mock('$lib/audio/player.svelte', () => ({ player: mocks.player }));
+vi.mock('#lib/audio/player.svelte.ts', () => ({ player: mocks.player }));
 
-import PlayableTab from '$lib/components/PlayableTab.svelte';
+import PlayableTab from '#lib/components/PlayableTab.svelte';
 
 describe('PlayableTab interactions', () => {
 	beforeEach(() => {

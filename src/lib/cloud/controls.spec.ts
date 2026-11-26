@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'svelte/server';
-import type { BassTab } from '$lib/stores/tabs.svelte';
+import type { BassTab } from '#lib/stores/tabs.svelte.ts';
 import type { CloudTab } from './model';
 
 const mocks = vi.hoisted(() => ({
@@ -15,13 +15,13 @@ const mocks = vi.hoisted(() => ({
 		get: vi.fn<(id: string) => CloudTab | undefined>(() => undefined)
 	}
 }));
-vi.mock('$lib/stores/cloud.svelte', () => ({ cloudStore: mocks.cloud }));
+vi.mock('#lib/stores/cloud.svelte.ts', () => ({ cloudStore: mocks.cloud }));
 vi.mock('$app/paths', () => ({ resolve: (path: string) => path }));
 vi.mock('$app/state', () => ({ page: { url: new URL('https://example.com') } }));
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
-vi.mock('$lib/toaster', () => ({ toaster: { error: vi.fn(), success: vi.fn() } }));
+vi.mock('#lib/toaster.ts', () => ({ toaster: { error: vi.fn(), success: vi.fn() } }));
 
-import CloudTabControls from '$lib/components/CloudTabControls.svelte';
+import CloudTabControls from '#lib/components/CloudTabControls.svelte';
 
 const tab: BassTab = {
 	id: 'local',

@@ -1,7 +1,7 @@
 import type { User } from 'firebase/auth';
 import { SvelteMap } from 'svelte/reactivity';
-import { type FirebaseServices } from '$lib/firebase';
-import { tabStore, type BassTab } from '$lib/stores/tabs.svelte';
+import { type FirebaseServices } from '#lib/firebase.ts';
+import { tabStore, type BassTab } from '#lib/stores/tabs.svelte.ts';
 import { cloudTitleConflict, cloudTitleKey, errorMessage, type CloudTab } from './model';
 import { writeCloudTab } from './write';
 

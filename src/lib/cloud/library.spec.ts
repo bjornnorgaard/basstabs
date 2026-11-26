@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'svelte/server';
-import type { BassTab } from '$lib/stores/tabs.svelte';
+import type { BassTab } from '#lib/stores/tabs.svelte.ts';
 import type { CloudTab } from './model';
 
 const mocks = vi.hoisted(() => ({
@@ -17,13 +17,13 @@ const mocks = vi.hoisted(() => ({
 		get: vi.fn<(id: string) => CloudTab | undefined>()
 	}
 }));
-vi.mock('$lib/stores/tabs.svelte', () => ({ tabStore: mocks.local }));
-vi.mock('$lib/stores/cloud.svelte', () => ({ cloudStore: mocks.cloud }));
+vi.mock('#lib/stores/tabs.svelte.ts', () => ({ tabStore: mocks.local }));
+vi.mock('#lib/stores/cloud.svelte.ts', () => ({ cloudStore: mocks.cloud }));
 vi.mock('$app/paths', () => ({
 	resolve: (path: string, params?: { id: string }) => path.replace('[id]', params?.id ?? '')
 }));
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
-vi.mock('$lib/toaster', () => ({ toaster: { error: vi.fn(), success: vi.fn() } }));
+vi.mock('#lib/toaster.ts', () => ({ toaster: { error: vi.fn(), success: vi.fn() } }));
 
 import Library from '../../routes/+page.svelte';
 

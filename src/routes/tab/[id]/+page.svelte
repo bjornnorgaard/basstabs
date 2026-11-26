@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { site } from '$lib/site';
+	import { site } from '#lib/site.ts';
 	import { page } from '$app/state';
 	import { Collapsible } from '@skeletonlabs/skeleton-svelte';
 	import type { EditorView } from '@codemirror/view';
@@ -17,23 +17,23 @@
 	import Share from '@lucide/svelte/icons/share-2';
 	import Trash from '@lucide/svelte/icons/trash';
 	import UnfoldVertical from '@lucide/svelte/icons/unfold-vertical';
-	import ShorthandEditor from '$lib/components/ShorthandEditor.svelte';
-	import SyntaxHelp from '$lib/components/SyntaxHelp.svelte';
-	import NotationInsertMenus from '$lib/components/NotationInsertMenus.svelte';
-	import PlayableTab from '$lib/components/PlayableTab.svelte';
-	import { formatErrorReport } from '$lib/error-report';
-	import { tabStore } from '$lib/stores/tabs.svelte';
-	import type { ParseError } from '$lib/tab/parser';
-	import { stringHue } from '$lib/tab/highlight';
-	import { planInsert, type Snippet } from '$lib/tab/insert';
-	import { renderTab } from '$lib/tab/render';
-	import { buildShareUrl } from '$lib/tab/share';
-	import { getTuning, TUNINGS } from '$lib/tab/tuning';
-	import { toaster } from '$lib/toaster';
-	import CloudTabControls from '$lib/components/CloudTabControls.svelte';
-	import { cloudStore } from '$lib/stores/cloud.svelte';
-	import { errorMessage } from '$lib/cloud/model';
-	import { buildLiveShareUrl } from '$lib/cloud/share';
+	import ShorthandEditor from '#lib/components/ShorthandEditor.svelte';
+	import SyntaxHelp from '#lib/components/SyntaxHelp.svelte';
+	import NotationInsertMenus from '#lib/components/NotationInsertMenus.svelte';
+	import PlayableTab from '#lib/components/PlayableTab.svelte';
+	import { formatErrorReport } from '#lib/error-report.ts';
+	import { tabStore } from '#lib/stores/tabs.svelte.ts';
+	import type { ParseError } from '#lib/tab/parser.ts';
+	import { stringHue } from '#lib/tab/highlight.ts';
+	import { planInsert, type Snippet } from '#lib/tab/insert.ts';
+	import { renderTab } from '#lib/tab/render.ts';
+	import { buildShareUrl } from '#lib/tab/share.ts';
+	import { getTuning, TUNINGS } from '#lib/tab/tuning.ts';
+	import { toaster } from '#lib/toaster.ts';
+	import CloudTabControls from '#lib/components/CloudTabControls.svelte';
+	import { cloudStore } from '#lib/stores/cloud.svelte.ts';
+	import { errorMessage } from '#lib/cloud/model.ts';
+	import { buildLiveShareUrl } from '#lib/cloud/share.ts';
 
 	const cloud = $derived(cloudStore.get(page.params.id ?? ''));
 	const tab = $derived(cloud ?? tabStore.get(page.params.id ?? ''));
@@ -387,15 +387,18 @@
 									style:--string-hue={stringHue(name, i)}
 									title="Insert {name} string"
 									onclick={() => insert({ text: name, kind: 'word' })}
-									><span class="hl-string">{name}</span></button
 								>
+									<span class="hl-string">{name}</span>
+								</button>
 							{/each}
 							<button
 								type="button"
 								class="btn preset-tonal font-tab btn-sm"
 								title="Insert bar line"
-								onclick={() => insert({ text: '| ', kind: 'word' })}>|</button
+								onclick={() => insert({ text: '| ', kind: 'word' })}
 							>
+								|
+							</button>
 							<NotationInsertMenus oninsert={insertFromMenu} />
 							<button
 								type="button"
@@ -454,10 +457,10 @@
 											onclick={() => selectError(error)}
 										>
 											<CircleAlert class="mt-0.5 size-4 shrink-0" />
-											<span
-												><strong>Line {error.line}, col {error.column}:</strong>
-												{error.message}</span
-											>
+											<span>
+												<strong>Line {error.line}, col {error.column}:</strong>
+												{error.message}
+											</span>
 										</button>
 										<button
 											type="button"

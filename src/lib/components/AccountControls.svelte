@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { cloudStore } from '$lib/stores/cloud.svelte';
+	import { cloudStore } from '#lib/stores/cloud.svelte.ts';
 	import UserRound from '@lucide/svelte/icons/user-round';
 </script>
 

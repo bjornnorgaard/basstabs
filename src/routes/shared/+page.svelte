@@ -1,21 +1,21 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { site } from '$lib/site';
+	import { site } from '#lib/site.ts';
 	import { page } from '$app/state';
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import Copy from '@lucide/svelte/icons/copy';
 	import Printer from '@lucide/svelte/icons/printer';
 	import Save from '@lucide/svelte/icons/save';
-	import PlayableTab from '$lib/components/PlayableTab.svelte';
-	import { cloudStore } from '$lib/stores/cloud.svelte';
-	import { renderTab } from '$lib/tab/render';
-	import { decodeSharedTab, payloadFromHash } from '$lib/tab/share';
-	import { getTuning } from '$lib/tab/tuning';
-	import { toaster } from '$lib/toaster';
-	import { getFirebase } from '$lib/firebase';
-	import { readCloudTab, errorMessage } from '$lib/cloud/model';
-	import type { SharedTab } from '$lib/tab/share';
+	import PlayableTab from '#lib/components/PlayableTab.svelte';
+	import { cloudStore } from '#lib/stores/cloud.svelte.ts';
+	import { renderTab } from '#lib/tab/render.ts';
+	import { decodeSharedTab, payloadFromHash } from '#lib/tab/share.ts';
+	import { getTuning } from '#lib/tab/tuning.ts';
+	import { toaster } from '#lib/toaster.ts';
+	import { getFirebase } from '#lib/firebase.ts';
+	import { readCloudTab, errorMessage } from '#lib/cloud/model.ts';
+	import type { SharedTab } from '#lib/tab/share.ts';
 
 	let live = $state<SharedTab | null>(null);
 	let loading = $state(false);
@@ -117,8 +117,10 @@
 			class="btn preset-tonal"
 			onclick={() => {
 				retry += 1;
-			}}>Retry</button
+			}}
 		>
+			Retry
+		</button>
 		<a class="btn preset-filled-primary-500" href={resolve('/')}>Back to your tabs</a>
 	</section>
 {:else if !shared}

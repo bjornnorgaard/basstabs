@@ -1,7 +1,7 @@
 <script lang="ts">
 	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
-	import { DEFAULT_SOUND, type SoundControl } from '$lib/audio/sound';
-	import { soundStore } from '$lib/audio/sound-store.svelte';
+	import { DEFAULT_SOUND, type SoundControl } from '#lib/audio/sound.ts';
+	import { soundStore } from '#lib/audio/sound-store.svelte.ts';
 
 	let { control }: { control: SoundControl } = $props();
 

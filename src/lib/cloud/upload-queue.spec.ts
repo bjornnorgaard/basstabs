@@ -5,7 +5,7 @@ import { mocks, store, tab, user } from './store.spec.fixtures';
 describe('cloud upload queue', () => {
 	it('automatically promotes existing browser tabs after the signed-in library loads', async () => {
 		const cloud = await store();
-		const { tabStore } = await import('$lib/stores/tabs.svelte');
+		const { tabStore } = await import('#lib/stores/tabs.svelte.ts');
 		const local = tabStore.create({ title: 'Local song' });
 		await cloud.syncBrowserTabs();
 		expect(cloud.get(local.id)).toBeUndefined();
@@ -17,7 +17,7 @@ describe('cloud upload queue', () => {
 
 	it('does not automatically upload while signed out or cloud access has failed', async () => {
 		const cloud = await store();
-		const { tabStore } = await import('$lib/stores/tabs.svelte');
+		const { tabStore } = await import('#lib/stores/tabs.svelte.ts');
 		const local = tabStore.create({ title: 'Local song' });
 		cloud.loading = false;
 		cloud.connectionFailed = true;
@@ -31,7 +31,7 @@ describe('cloud upload queue', () => {
 
 	it('persists opt-out and skips it across sign-out, sign-in, and local edits', async () => {
 		const cloud = await store();
-		const { tabStore } = await import('$lib/stores/tabs.svelte');
+		const { tabStore } = await import('#lib/stores/tabs.svelte.ts');
 		const local = tabStore.create({ title: 'Local song' });
 		await cloud.keepBrowserOnly(local.id);
 		expect(JSON.parse(localStorage.getItem('basstabs:tabs') ?? '[]')[0].browserOnly).toBe(true);
@@ -84,7 +84,7 @@ describe('cloud upload queue', () => {
 	it('does not overwrite title conflicts during automatic sign-in uploads', async () => {
 		const cloud = await store();
 		cloud.loading = false;
-		const { tabStore } = await import('$lib/stores/tabs.svelte');
+		const { tabStore } = await import('#lib/stores/tabs.svelte.ts');
 		const local = tabStore.create({ title: ' riff ', source: 'E9' });
 		await cloud.syncBrowserTabs();
 		expect(cloud.get(tab.id)?.source).toBe('E0');
@@ -97,7 +97,7 @@ describe('cloud upload queue', () => {
 	it('reports failed automatic saves without looping and retries after editing', async () => {
 		const cloud = await store();
 		cloud.loading = false;
-		const { tabStore } = await import('$lib/stores/tabs.svelte');
+		const { tabStore } = await import('#lib/stores/tabs.svelte.ts');
 		const local = cloud.create({ title: 'New song' });
 		mocks.commit.mockRejectedValueOnce(new Error('offline'));
 		await cloud.syncBrowserTabs();
@@ -124,7 +124,7 @@ describe('cloud upload queue', () => {
 	it('saves opted-out tabs to the cloud again only when explicitly enabled', async () => {
 		const cloud = await store();
 		cloud.loading = false;
-		const { tabStore } = await import('$lib/stores/tabs.svelte');
+		const { tabStore } = await import('#lib/stores/tabs.svelte.ts');
 		const local = tabStore.create({ title: 'Local song', browserOnly: true });
 		await cloud.syncBrowserTabs();
 		expect(mocks.commit).not.toHaveBeenCalled();
@@ -136,7 +136,7 @@ describe('cloud upload queue', () => {
 	it('enables cloud saving on the same tab and persistently removes the browser-only entry', async () => {
 		const cloud = await store();
 		cloud.tabs = [];
-		const { tabStore } = await import('$lib/stores/tabs.svelte');
+		const { tabStore } = await import('#lib/stores/tabs.svelte.ts');
 		const local = tabStore.create({ title: 'Riff', source: 'E0' });
 		const id = await cloud.upload(local);
 		expect(id).toBe(local.id);
@@ -154,7 +154,7 @@ describe('cloud upload queue', () => {
 	it('keeps the browser tab if enabling cloud saving fails', async () => {
 		const cloud = await store();
 		cloud.tabs = [];
-		const { tabStore } = await import('$lib/stores/tabs.svelte');
+		const { tabStore } = await import('#lib/stores/tabs.svelte.ts');
 		const local = tabStore.create({ title: 'Riff', source: 'E7' });
 		mocks.commit.mockRejectedValueOnce(new Error('offline'));
 		await expect(cloud.upload(local)).rejects.toThrow('offline');
@@ -166,7 +166,7 @@ describe('cloud upload queue', () => {
 	it('preserves edits made in the browser while cloud saving is being enabled', async () => {
 		const cloud = await store();
 		cloud.tabs = [];
-		const { tabStore } = await import('$lib/stores/tabs.svelte');
+		const { tabStore } = await import('#lib/stores/tabs.svelte.ts');
 		const local = tabStore.create({ title: 'Riff', source: 'E0' });
 		let finish!: () => void;
 		mocks.commit.mockImplementationOnce(
@@ -191,7 +191,7 @@ describe('cloud upload queue', () => {
 	it('keeps the browser tab if the account changes during upload', async () => {
 		const cloud = await store();
 		cloud.tabs = [];
-		const { tabStore } = await import('$lib/stores/tabs.svelte');
+		const { tabStore } = await import('#lib/stores/tabs.svelte.ts');
 		const local = tabStore.create({ title: 'Riff' });
 		let finish!: () => void;
 		mocks.commit.mockImplementationOnce(
@@ -212,7 +212,7 @@ describe('cloud upload queue', () => {
 	it('keeps newer browser edits when their cloud draft cannot be backed up', async () => {
 		const cloud = await store();
 		cloud.tabs = [];
-		const { tabStore } = await import('$lib/stores/tabs.svelte');
+		const { tabStore } = await import('#lib/stores/tabs.svelte.ts');
 		const local = tabStore.create({ title: 'Riff', source: 'E0' });
 		let finish!: () => void;
 		mocks.commit.mockImplementationOnce(
@@ -247,7 +247,7 @@ describe('cloud upload queue', () => {
 		const cloud = await store();
 		await cloud.setVisibility(tab.id, 'unlisted');
 		const token = cloud.get(tab.id)?.shareId;
-		const { tabStore } = await import('$lib/stores/tabs.svelte');
+		const { tabStore } = await import('#lib/stores/tabs.svelte.ts');
 		const local = tabStore.create({ title: 'Riff', artist: 'Bear', source: 'E8' });
 		const id = await cloud.replaceFromLocal(local, tab.id);
 		expect(id).toBe(tab.id);
@@ -268,7 +268,7 @@ describe('cloud upload queue', () => {
 
 	it('keeps both versions recoverable if updating an older copy fails', async () => {
 		const cloud = await store();
-		const { tabStore } = await import('$lib/stores/tabs.svelte');
+		const { tabStore } = await import('#lib/stores/tabs.svelte.ts');
 		const local = tabStore.create({ title: 'Riff', source: 'E8' });
 		mocks.commit.mockRejectedValueOnce(new Error('offline'));
 		await expect(cloud.replaceFromLocal(local, tab.id)).rejects.toThrow('offline');
@@ -280,7 +280,7 @@ describe('cloud upload queue', () => {
 	it('surfaces browser storage failures instead of claiming the local entry was removed', async () => {
 		const cloud = await store();
 		cloud.tabs = [];
-		const { tabStore } = await import('$lib/stores/tabs.svelte');
+		const { tabStore } = await import('#lib/stores/tabs.svelte.ts');
 		const local = tabStore.create({ title: 'Riff' });
 		vi.spyOn(localStorage, 'setItem').mockImplementationOnce(() => {
 			throw new Error('storage full');

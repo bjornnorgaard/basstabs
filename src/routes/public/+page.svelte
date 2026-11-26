@@ -2,12 +2,12 @@
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import Search from '@lucide/svelte/icons/search';
-	import TabPreview from '$lib/components/TabPreview.svelte';
-	import { getFirebase, type FirebaseServices } from '$lib/firebase';
-	import { readCloudTab, errorMessage, type CloudTab } from '$lib/cloud/model';
-	import { filterLoadedPublicTabs } from '$lib/public-library';
-	import { site } from '$lib/site';
-	import { firstSystemPreview } from '$lib/tab/preview';
+	import TabPreview from '#lib/components/TabPreview.svelte';
+	import { getFirebase, type FirebaseServices } from '#lib/firebase.ts';
+	import { readCloudTab, errorMessage, type CloudTab } from '#lib/cloud/model.ts';
+	import { filterLoadedPublicTabs } from '#lib/public-library.ts';
+	import { site } from '#lib/site.ts';
+	import { firstSystemPreview } from '#lib/tab/preview.ts';
 
 	type FirestoreConstraint =
 		| ReturnType<FirebaseServices['firestoreSdk']['where']>
@@ -152,14 +152,14 @@
 		</p>
 	{/if}
 	{#if more || error}
-		<button class="btn preset-tonal" disabled={loading} onclick={load}
-			>{loading
+		<button class="btn preset-tonal" disabled={loading} onclick={load}>
+			{loading
 				? 'Loading...'
 				: error
 					? 'Retry'
 					: filter.trim()
 						? 'Load more tabs to filter'
-						: 'Load more'}</button
-		>
+						: 'Load more'}
+		</button>
 	{/if}
 </div>

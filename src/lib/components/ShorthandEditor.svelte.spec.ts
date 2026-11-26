@@ -1,15 +1,15 @@
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
-import { renderTab } from '$lib/tab/render';
-import { getTuning } from '$lib/tab/tuning';
+import { renderTab } from '#lib/tab/render.ts';
+import { getTuning } from '#lib/tab/tuning.ts';
 
-vi.mock('$lib/audio/player.svelte', () => ({
+vi.mock('#lib/audio/player.svelte.ts', () => ({
 	player: {
 		activeNoteId: null
 	}
 }));
 
-import ShorthandEditor from '$lib/components/ShorthandEditor.svelte';
+import ShorthandEditor from '#lib/components/ShorthandEditor.svelte';
 
 describe('ShorthandEditor invalid tokens', () => {
 	it('marks malformed shorthand tokens in the mounted editor', async () => {

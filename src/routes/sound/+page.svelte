@@ -7,21 +7,21 @@
 	import Play from '@lucide/svelte/icons/play';
 	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 	import Square from '@lucide/svelte/icons/square';
-	import { player } from '$lib/audio/player.svelte';
+	import { player } from '#lib/audio/player.svelte.ts';
 	import {
 		CLEAN_SOUND,
 		DEFAULT_SOUND,
 		SOUND_CONTROLS,
 		SOUND_GROUPS,
 		type SoundSettings
-	} from '$lib/audio/sound';
-	import { DEFAULT_TEST_SOURCE, soundStore } from '$lib/audio/sound-store.svelte';
-	import PlayableTab from '$lib/components/PlayableTab.svelte';
-	import SoundSlider from '$lib/components/SoundSlider.svelte';
-	import { site } from '$lib/site';
-	import { renderTab } from '$lib/tab/render';
-	import { getTuning, TUNINGS } from '$lib/tab/tuning';
-	import { toaster } from '$lib/toaster';
+	} from '#lib/audio/sound.ts';
+	import { DEFAULT_TEST_SOURCE, soundStore } from '#lib/audio/sound-store.svelte.ts';
+	import PlayableTab from '#lib/components/PlayableTab.svelte';
+	import SoundSlider from '#lib/components/SoundSlider.svelte';
+	import { site } from '#lib/site.ts';
+	import { renderTab } from '#lib/tab/render.ts';
+	import { getTuning, TUNINGS } from '#lib/tab/tuning.ts';
+	import { toaster } from '#lib/toaster.ts';
 
 	const tuning = $derived(getTuning(soundStore.test.tuningId));
 	const result = $derived(renderTab(soundStore.test.source, tuning));

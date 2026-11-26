@@ -1,6 +1,6 @@
-import type { BassTab } from '$lib/stores/tabs.svelte';
-import { renderTab, type BlockLayout } from '$lib/tab/render';
-import { getTuning, type Tuning } from '$lib/tab/tuning';
+import type { BassTab } from '#lib/stores/tabs.svelte.ts';
+import { renderTab, type BlockLayout } from '#lib/tab/render.ts';
+import { getTuning, type Tuning } from '#lib/tab/tuning.ts';
 
 export interface TabPreviewData {
 	tuning: Tuning;

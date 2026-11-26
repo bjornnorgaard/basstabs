@@ -1,7 +1,7 @@
 import { browser } from '$app/env';
-import { EXAMPLE_SOURCE } from '$lib/tab/example';
-import { migrateLegacySource } from '$lib/tab/migrate';
-import { DEFAULT_TUNING_ID, getTuning } from '$lib/tab/tuning';
+import { EXAMPLE_SOURCE } from '#lib/tab/example.ts';
+import { migrateLegacySource } from '#lib/tab/migrate.ts';
+import { DEFAULT_TUNING_ID, getTuning } from '#lib/tab/tuning.ts';
 
 export interface BassTab {
 	id: string;

@@ -1,7 +1,7 @@
 import type { User } from 'firebase/auth';
 import type { Unsubscribe } from 'firebase/firestore';
 import { SvelteMap } from 'svelte/reactivity';
-import { getCachedFirebase, type FirebaseServices } from '$lib/firebase';
+import { getCachedFirebase, type FirebaseServices } from '#lib/firebase.ts';
 import { cloudData, cloudTitleKey, errorMessage, readCloudTab, type CloudTab } from './model';
 
 interface CloudLibraryHost {

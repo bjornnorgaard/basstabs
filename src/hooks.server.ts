@@ -1,5 +1,5 @@
 import type { Handle } from '@sveltejs/kit/hooks';
-import { seoHead } from '$lib/seo';
+import { seoHead } from '#lib/seo.ts';
 
 const head = seoHead();
 

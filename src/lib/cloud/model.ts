@@ -1,5 +1,5 @@
-import type { BassTab } from '$lib/stores/tabs.svelte';
-import { TUNINGS } from '$lib/tab/tuning';
+import type { BassTab } from '#lib/stores/tabs.svelte.ts';
+import { TUNINGS } from '#lib/tab/tuning.ts';
 
 export type Visibility = 'private' | 'unlisted' | 'public';
 export interface CloudTab extends BassTab {

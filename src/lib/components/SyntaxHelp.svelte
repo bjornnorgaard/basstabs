@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Info from '@lucide/svelte/icons/info';
-	import ShorthandCode from '$lib/components/ShorthandCode.svelte';
-	import type { Tuning } from '$lib/tab/tuning';
+	import ShorthandCode from '#lib/components/ShorthandCode.svelte';
+	import type { Tuning } from '#lib/tab/tuning.ts';
 
 	let { tuning }: { tuning: Tuning } = $props();
 

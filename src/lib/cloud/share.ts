@@ -1,4 +1,4 @@
-import { cloudStore } from '$lib/stores/cloud.svelte';
+import { cloudStore } from '#lib/stores/cloud.svelte.ts';
 
 export async function buildLiveShareUrl(base: string, id: string): Promise<string> {
 	const url = new URL(base);

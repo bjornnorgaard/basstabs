@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { midiToFrequency } from '$lib/tab/playback';
+import { midiToFrequency } from '#lib/tab/playback.ts';
 import { synthesizeBassNote } from './bass';
 import {
 	CLEAN_SOUND,

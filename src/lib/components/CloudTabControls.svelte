@@ -8,11 +8,11 @@
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import CircleAlert from '@lucide/svelte/icons/circle-alert';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
-	import { cloudStore } from '$lib/stores/cloud.svelte';
-	import type { BassTab } from '$lib/stores/tabs.svelte';
-	import { cloudTitleConflict, cloudTitleKey, errorMessage } from '$lib/cloud/model';
-	import { buildLiveShareUrl } from '$lib/cloud/share';
-	import { toaster } from '$lib/toaster';
+	import { cloudStore } from '#lib/stores/cloud.svelte.ts';
+	import type { BassTab } from '#lib/stores/tabs.svelte.ts';
+	import { cloudTitleConflict, cloudTitleKey, errorMessage } from '#lib/cloud/model.ts';
+	import { buildLiveShareUrl } from '#lib/cloud/share.ts';
+	import { toaster } from '#lib/toaster.ts';
 
 	let { tab, sharing = false }: { tab: BassTab; sharing?: boolean } = $props();
 	let busy = $state(false);
@@ -177,8 +177,9 @@
 					<option
 						value="cloud"
 						disabled={!!cloudStore.user && (cloudStore.loading || cloudStore.connectionFailed)}
-						>Cloud account</option
 					>
+						Cloud account
+					</option>
 					<option value="browser">Browser only</option>
 				</select>
 			</div>
@@ -202,16 +203,19 @@
 				<button
 					class="btn preset-tonal btn-sm"
 					{disabled}
-					onclick={() => perform(() => cloudStore.save(tab.id))}>Retry save</button
+					onclick={() => perform(() => cloudStore.save(tab.id))}
 				>
+					Retry save
+				</button>
 			{:else if !cloud && cloudStore.user && uploadMessage}
 				<button
 					class="btn preset-tonal btn-sm"
 					disabled={disabled || cloudStore.loading || cloudStore.connectionFailed}
 					aria-describedby="cloud-save-error"
 					onclick={() => upload(existing?.id)}
-					>{existing ? 'Update existing cloud tab' : 'Retry save'}</button
 				>
+					{existing ? 'Update existing cloud tab' : 'Retry save'}
+				</button>
 			{/if}
 		</div>
 		{#if !cloud && cloudStore.user && uploadMessage}
@@ -219,8 +223,10 @@
 			{#if existing}
 				<a
 					class="text-sm underline underline-offset-4"
-					href={resolve('/tab/[id]', { id: existing.id })}>Open existing cloud tab</a
+					href={resolve('/tab/[id]', { id: existing.id })}
 				>
+					Open existing cloud tab
+				</a>
 			{/if}
 		{/if}
 	</div>
@@ -247,8 +253,10 @@
 					<button
 						class="btn w-full preset-filled-primary-500 btn-sm sm:w-auto"
 						{disabled}
-						onclick={share}>Copy live link</button
+						onclick={share}
 					>
+						Copy live link
+					</button>
 				</div>
 			</SegmentedControl>
 		{:else}
@@ -263,8 +271,10 @@
 				<button
 					class="btn preset-tonal btn-sm"
 					disabled={cloudStore.busy}
-					onclick={() => cloudStore.login()}>Sign in for cloud saving</button
+					onclick={() => cloudStore.login()}
 				>
+					Sign in for cloud saving
+				</button>
 			{/if}
 		{/if}
 	</div>

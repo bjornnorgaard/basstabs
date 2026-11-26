@@ -1,4 +1,4 @@
-import type { CloudTab } from '$lib/cloud/model';
+import type { CloudTab } from '#lib/cloud/model.ts';
 
 export function filterLoadedPublicTabs(tabs: CloudTab[], query: string): CloudTab[] {
 	const q = query.trim().toLowerCase();

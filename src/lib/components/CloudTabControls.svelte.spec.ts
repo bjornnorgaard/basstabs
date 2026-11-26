@@ -1,7 +1,7 @@
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
-import type { BassTab } from '$lib/stores/tabs.svelte';
-import type { CloudTab } from '$lib/cloud/model';
+import type { BassTab } from '#lib/stores/tabs.svelte.ts';
+import type { CloudTab } from '#lib/cloud/model.ts';
 
 const mocks = vi.hoisted(() => {
 	const cloudTab: CloudTab = {
@@ -41,16 +41,16 @@ const mocks = vi.hoisted(() => {
 	return { cloud, cloudTab };
 });
 
-vi.mock('$lib/stores/cloud.svelte', () => ({ cloudStore: mocks.cloud }));
+vi.mock('#lib/stores/cloud.svelte.ts', () => ({ cloudStore: mocks.cloud }));
 vi.mock('$app/paths', () => ({ resolve: (path: string) => path }));
 vi.mock('$app/state', () => ({ page: { url: new URL('https://example.test/tab/local') } }));
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
-vi.mock('$lib/toaster', () => ({ toaster: { error: vi.fn(), success: vi.fn() } }));
-vi.mock('$lib/cloud/share', () => ({
+vi.mock('#lib/toaster.ts', () => ({ toaster: { error: vi.fn(), success: vi.fn() } }));
+vi.mock('#lib/cloud/share.ts', () => ({
 	buildLiveShareUrl: vi.fn(() => Promise.resolve('https://example.test/shared?id=live'))
 }));
 
-import CloudTabControls from '$lib/components/CloudTabControls.svelte';
+import CloudTabControls from '#lib/components/CloudTabControls.svelte';
 
 const tab: BassTab = {
 	id: 'local',

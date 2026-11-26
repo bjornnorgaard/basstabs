@@ -18,10 +18,10 @@
 		placeholder as placeholderExtension,
 		type DecorationSet
 	} from '@codemirror/view';
-	import { player } from '$lib/audio/player.svelte';
-	import type { SourceToken } from '$lib/tab/parser';
-	import { noteAtCaret, stringHue, tokenClass } from '$lib/tab/highlight';
-	import type { Tuning } from '$lib/tab/tuning';
+	import { player } from '#lib/audio/player.svelte.ts';
+	import type { SourceToken } from '#lib/tab/parser.ts';
+	import { noteAtCaret, stringHue, tokenClass } from '#lib/tab/highlight.ts';
+	import type { Tuning } from '#lib/tab/tuning.ts';
 
 	interface Props {
 		value: string;

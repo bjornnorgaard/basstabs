@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { fillerParts, stringHue } from '$lib/tab/highlight';
-	import type { BlockLayout } from '$lib/tab/render';
-	import type { Tuning } from '$lib/tab/tuning';
+	import { fillerParts, stringHue } from '#lib/tab/highlight.ts';
+	import type { BlockLayout } from '#lib/tab/render.ts';
+	import type { Tuning } from '#lib/tab/tuning.ts';
 
 	interface Props {
 		blocks: BlockLayout[];
@@ -41,10 +41,13 @@
 						>
 							{#each line.segments as segment, s (s)}{#if segment.noteId !== undefined}<span
 										class="hl-string {segment.text.length > 1 ? 'hl-multi-digit' : ''}"
-										>{segment.text}</span
-									>{:else}{#each fillerParts(segment.text) as part, p (p)}<span class={part.class}
-											>{part.text}</span
-										>{/each}{/if}{/each}
+									>
+										{segment.text}
+									</span>{:else}{#each fillerParts(segment.text) as part, p (p)}<span
+											class={part.class}
+										>
+											{part.text}
+										</span>{/each}{/if}{/each}
 						</div>
 					{/each}
 				</div>

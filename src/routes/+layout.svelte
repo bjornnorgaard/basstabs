@@ -3,17 +3,17 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
-	import { site } from '$lib/site';
+	import { site } from '#lib/site.ts';
 	import { AppBar, Toast } from '@skeletonlabs/skeleton-svelte';
 	import Plus from '@lucide/svelte/icons/plus';
 	import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
 	import UserRound from '@lucide/svelte/icons/user-round';
-	import Brand from '$lib/components/Brand.svelte';
-	import ModeToggle from '$lib/components/ModeToggle.svelte';
-	import { registerServiceWorker } from '$lib/service-worker-registration';
-	import { toaster } from '$lib/toaster';
-	import AccountControls from '$lib/components/AccountControls.svelte';
-	import { cloudStore } from '$lib/stores/cloud.svelte';
+	import Brand from '#lib/components/Brand.svelte';
+	import ModeToggle from '#lib/components/ModeToggle.svelte';
+	import { registerServiceWorker } from '#lib/service-worker-registration.ts';
+	import { toaster } from '#lib/toaster.ts';
+	import AccountControls from '#lib/components/AccountControls.svelte';
+	import { cloudStore } from '#lib/stores/cloud.svelte.ts';
 	import { onMount } from 'svelte';
 
 	let { children } = $props();
@@ -122,8 +122,10 @@
 					class="btn preset-tonal btn-sm"
 					onclick={() => {
 						cloudStore.error = '';
-					}}>Dismiss</button
+					}}
 				>
+					Dismiss
+				</button>
 			</div>
 		{/if}
 		{@render children()}

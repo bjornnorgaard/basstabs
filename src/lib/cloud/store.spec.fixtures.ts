@@ -24,7 +24,7 @@ const mocks = vi.hoisted(() => ({
 	>(() => vi.fn())
 }));
 vi.mock('$app/env', () => ({ browser: true }));
-vi.mock('$lib/firebase', () => {
+vi.mock('#lib/firebase.ts', () => {
 	const firebase = {
 		auth: {},
 		db: {},
@@ -115,7 +115,7 @@ beforeEach(() => {
 
 export async function store() {
 	localStorage.setItem('basstabs:had-session', '1');
-	const { cloudStore } = await import('$lib/stores/cloud.svelte');
+	const { cloudStore } = await import('#lib/stores/cloud.svelte.ts');
 	await cloudStore.ensure();
 	mocks.authChange?.(user);
 	await vi.waitFor(() => expect(mocks.onSnapshot).toHaveBeenCalled());

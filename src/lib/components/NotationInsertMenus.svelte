@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Menu, Portal } from '@skeletonlabs/skeleton-svelte';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
-	import { NOTATION_GROUPS, type Snippet } from '$lib/tab/insert';
+	import { NOTATION_GROUPS, type Snippet } from '#lib/tab/insert.ts';
 
 	let { oninsert }: { oninsert: (snippet: Snippet) => void } = $props();
 
@@ -39,8 +39,10 @@
 						>
 							<span
 								class="w-10 shrink-0 text-center font-tab font-bold {item.glyphClass ??
-									group.glyphClass}">{item.glyph}</span
+									group.glyphClass}"
 							>
+								{item.glyph}
+							</span>
 							<Menu.ItemText class="flex-1">{item.label}</Menu.ItemText>
 							<code class="font-tab text-xs opacity-60">{item.example}</code>
 						</Menu.Item>

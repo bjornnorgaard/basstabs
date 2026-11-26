@@ -1,6 +1,6 @@
 import { render } from 'vitest-browser-svelte';
 import { describe, expect, it, vi } from 'vitest';
-import type { BassTab } from '$lib/stores/tabs.svelte';
+import type { BassTab } from '#lib/stores/tabs.svelte.ts';
 
 const mocks = vi.hoisted(() => {
 	const tab: BassTab = {
@@ -42,13 +42,13 @@ vi.mock('$app/paths', () => ({ resolve: (path: string) => path }));
 vi.mock('$app/state', () => ({
 	page: { params: { id: 'local' }, url: new URL('https://example.test/tab/local') }
 }));
-vi.mock('$lib/stores/tabs.svelte', () => ({ tabStore: mocks.tabStore }));
-vi.mock('$lib/stores/cloud.svelte', () => ({ cloudStore: mocks.cloudStore }));
-vi.mock('$lib/toaster', () => ({ toaster: { error: vi.fn(), success: vi.fn() } }));
-vi.mock('$lib/cloud/share', () => ({
+vi.mock('#lib/stores/tabs.svelte.ts', () => ({ tabStore: mocks.tabStore }));
+vi.mock('#lib/stores/cloud.svelte.ts', () => ({ cloudStore: mocks.cloudStore }));
+vi.mock('#lib/toaster.ts', () => ({ toaster: { error: vi.fn(), success: vi.fn() } }));
+vi.mock('#lib/cloud/share.ts', () => ({
 	buildLiveShareUrl: vi.fn(() => Promise.resolve('https://example.test/shared?id=live'))
 }));
-vi.mock('$lib/audio/player.svelte', () => ({
+vi.mock('#lib/audio/player.svelte.ts', () => ({
 	player: {
 		playing: false,
 		looping: false,

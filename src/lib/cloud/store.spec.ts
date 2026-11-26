@@ -7,7 +7,7 @@ describe('cloud store facade', () => {
 		await cloud.setVisibility(tab.id, 'unlisted');
 		const token = cloud.get(tab.id)?.shareId;
 		cloud.update(tab.id, { source: 'E9' });
-		const { tabStore } = await import('$lib/stores/tabs.svelte');
+		const { tabStore } = await import('#lib/stores/tabs.svelte.ts');
 		mocks.commit.mockImplementationOnce(async () => {
 			expect(JSON.parse(localStorage.getItem('basstabs:tabs') ?? '[]')[0]).toMatchObject({
 				id: tab.id,
@@ -39,7 +39,7 @@ describe('cloud store facade', () => {
 
 	it('keeps both versions and reports failure if cloud deletion fails', async () => {
 		const cloud = await store();
-		const { tabStore } = await import('$lib/stores/tabs.svelte');
+		const { tabStore } = await import('#lib/stores/tabs.svelte.ts');
 		mocks.commit.mockRejectedValueOnce(new Error('offline'));
 		await expect(cloud.keepBrowserOnly(tab.id)).rejects.toThrow('offline');
 		expect(tabStore.get(tab.id)).toMatchObject({ browserOnly: true, source: 'E0' });
@@ -49,7 +49,7 @@ describe('cloud store facade', () => {
 
 	it('keeps edits made during a cloud-to-browser move and does not queue another cloud save', async () => {
 		const cloud = await store();
-		const { tabStore } = await import('$lib/stores/tabs.svelte');
+		const { tabStore } = await import('#lib/stores/tabs.svelte.ts');
 		let finish!: () => void;
 		mocks.commit.mockImplementationOnce(
 			() =>

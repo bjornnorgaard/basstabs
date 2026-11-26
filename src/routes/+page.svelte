@@ -8,14 +8,14 @@
 	import Trash from '@lucide/svelte/icons/trash';
 	import Cloud from '@lucide/svelte/icons/cloud';
 	import HardDrive from '@lucide/svelte/icons/hard-drive';
-	import TabPreview from '$lib/components/TabPreview.svelte';
-	import { tabStore, type BassTab } from '$lib/stores/tabs.svelte';
-	import { EXAMPLE_SOURCE } from '$lib/tab/example';
-	import { getTuning } from '$lib/tab/tuning';
-	import { firstSystemPreview } from '$lib/tab/preview';
-	import { cloudStore } from '$lib/stores/cloud.svelte';
-	import { errorMessage } from '$lib/cloud/model';
-	import { toaster } from '$lib/toaster';
+	import TabPreview from '#lib/components/TabPreview.svelte';
+	import { tabStore, type BassTab } from '#lib/stores/tabs.svelte.ts';
+	import { EXAMPLE_SOURCE } from '#lib/tab/example.ts';
+	import { getTuning } from '#lib/tab/tuning.ts';
+	import { firstSystemPreview } from '#lib/tab/preview.ts';
+	import { cloudStore } from '#lib/stores/cloud.svelte.ts';
+	import { errorMessage } from '#lib/cloud/model.ts';
+	import { toaster } from '#lib/toaster.ts';
 
 	let query = $state('');
 
@@ -95,9 +95,9 @@
 				<p role="alert">
 					Cloud tabs could not be loaded. Your cloud library is unavailable, not necessarily empty.
 				</p>
-				<button class="btn preset-tonal btn-sm" onclick={() => cloudStore.connect()}
-					>Reconnect cloud</button
-				>
+				<button class="btn preset-tonal btn-sm" onclick={() => cloudStore.connect()}>
+					Reconnect cloud
+				</button>
 			{:else if cloudStore.offline || cloudStore.pendingSync}
 				<p role="status">
 					{cloudStore.pendingSync

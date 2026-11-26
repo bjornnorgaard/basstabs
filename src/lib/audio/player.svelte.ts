@@ -1,4 +1,4 @@
-import type { Schedule, ScheduledNote } from '$lib/tab/playback';
+import type { Schedule, ScheduledNote } from '#lib/tab/playback.ts';
 import { synthesizeBassNote } from './bass';
 import { dbToGain, synthKey, type SoundSettings } from './sound';
 import { soundStore } from './sound-store.svelte';
